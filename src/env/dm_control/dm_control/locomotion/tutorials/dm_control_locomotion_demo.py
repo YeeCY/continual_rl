@@ -4,7 +4,7 @@ from dm_control.composer.variation import distributions
 from dm_control.locomotion.arenas import corridors as corr_arenas
 from dm_control.locomotion.tasks import corridors as corr_tasks
 from dm_control.locomotion.walkers import ant, jumping_ball, initializers
-from dm_control.locomotion.walkers.walker import PlanarWalker
+from dm_control.locomotion.walkers.planar_walker import PlanarWalker
 
 
 _CONTROL_TIMESTEP = .02

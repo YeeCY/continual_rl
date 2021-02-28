@@ -8,7 +8,7 @@ from dm_control import mjcf
 from dm_control.composer.observation.observable import base as observable_base
 from dm_control.locomotion.arenas import corridors as corr_arenas
 from dm_control.locomotion.tasks import corridors as corr_tasks
-from dm_control.locomotion.walkers.walker import Walker
+from dm_control.locomotion.walkers.planar_walker import Walker
 import numpy as np
 
 _CONTROL_TIMESTEP = .02
