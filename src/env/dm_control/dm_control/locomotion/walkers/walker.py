@@ -84,7 +84,7 @@ class Walker(legacy_base.Walker):
 
     @composer.cached_property
     def observable_joints(self):
-        return (actuator.joint for actuator in self.actuators)
+        return tuple(actuator.joint for actuator in self.actuators)
 
     @composer.cached_property
     def egocentric_camera(self):
