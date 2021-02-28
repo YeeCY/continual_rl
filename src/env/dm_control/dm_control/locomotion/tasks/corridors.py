@@ -156,3 +156,50 @@ class RunThroughCorridor(composer.Task):
       return 0.
     else:
       return 1.
+
+
+class PlanarRunThroughCorridor(RunThroughCorridor):
+  """A task that requires a planar walker to run through a corridor.
+
+  This task rewards an agent for controlling a walker to move at a specific
+  target velocity along the corridor, and for minimising the magnitude of the
+  control signals used to achieve this.
+  """
+  def __init__(self,
+               walker,
+               arena,
+               target_velocity=3.0,
+               contact_termination=True,
+               terminate_at_height=-0.5,
+               physics_timestep=0.005,
+               control_timestep=0.025):
+    super().__init__(
+      walker=walker,
+      arena=arena,
+      target_velocity=target_velocity,
+      contact_termination=contact_termination,
+      terminate_at_height=terminate_at_height,
+      physics_timestep=physics_timestep,
+      control_timestep=control_timestep)
+
+  def initialize_episode(self, physics, random_state):
+    self._walker.reinitialize_pose(physics, random_state)
+
+    self._failure_termination = False
+    walker_foot_geoms = set(self._walker.ground_contact_geoms)
+    walker_nonfoot_geoms = [
+      geom for geom in self._walker.mjcf_model.find_all('geom')
+      if geom not in walker_foot_geoms]
+    self._walker_nonfoot_geomids = set(
+      physics.bind(walker_nonfoot_geoms).element_id)
+    self._ground_geomids = set(
+      physics.bind(self._arena.ground_geoms).element_id)
+
+  def get_reward(self, physics):
+    walker_xvel = physics.bind(self._walker.root_body).subtree_linvel[0]
+    xvel_term = rewards.tolerance(
+      walker_xvel, (self._vel, float('inf')),
+      margin=self._vel / 2,
+      value_at_margin=0.5,
+      sigmoid='linear')
+    return xvel_term

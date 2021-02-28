@@ -17,6 +17,8 @@
 
 import abc
 import numpy as np
+from dm_control.mujoco.wrapper import mjbindings
+from dm_control.suite.utils.randomizers import random_limited_quaternion
 
 
 class WalkerInitializer(metaclass=abc.ABCMeta):
@@ -62,4 +64,42 @@ class NoOpInitializer(WalkerInitializer):
     pass
 
 
+class RandomJointPositionInitializer(WalkerInitializer):
+  """An initializer adapt from 'dm_control.suite.utils.randomizers'"""
 
+  def initialize_pose(self, physics, walker, random_state):
+    random = random_state or np.random
+
+    hinge = mjbindings.enums.mjtJoint.mjJNT_HINGE
+    slide = mjbindings.enums.mjtJoint.mjJNT_SLIDE
+    ball = mjbindings.enums.mjtJoint.mjJNT_BALL
+    free = mjbindings.enums.mjtJoint.mjJNT_FREE
+
+    all_joints = [physics.bind(joint) for joint in walker.mjcf_model.find_all('joint')]
+    for joint in all_joints:
+      joint_type = joint.type
+      range_min, range_max = joint.range
+
+      if joint.limited:
+        if joint_type == hinge or joint_type == slide:
+          joint.qpos = random.uniform(range_min, range_max)
+
+        elif joint_type == ball:
+          joint.qpos = random_limited_quaternion(random, range_max)
+
+      else:
+        if joint_type == hinge:
+          joint.qpos = random.uniform(-np.pi, np.pi)
+
+        elif joint_type == ball:
+          quat = random.randn(4)
+          quat /= np.linalg.norm(quat)
+          joint.qpos = quat
+
+        elif joint_type == free:
+          quat = random.rand(4)
+          quat /= np.linalg.norm(quat)
+          joint.qpos[3:] = quat
+
+    walker.set_velocity(
+      physics, velocity=np.zeros(3), angular_velocity=np.zeros(3))

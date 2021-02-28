@@ -3,10 +3,9 @@ from dm_control import viewer
 from dm_control.composer.variation import distributions
 from dm_control.locomotion.arenas import corridors as corr_arenas
 from dm_control.locomotion.tasks import corridors as corr_tasks
-from dm_control.locomotion.walkers import ant, jumping_ball
+from dm_control.locomotion.walkers import ant, jumping_ball, initializers
 from dm_control.locomotion.walkers.walker import PlanarWalker
 
-from dm_control.locomotion.examples import basic_cmu_2019
 
 _CONTROL_TIMESTEP = .02
 _PHYSICS_TIMESTEP = 0.005
@@ -111,13 +110,12 @@ def walker_run(random_state=None):
 
 
 def walker_run_long(random_state=None):
-    walker = PlanarWalker()
+    walker = PlanarWalker(initializer=initializers.RandomJointPositionInitializer())
     arena = corr_arenas.LongCorridor()
-    task = corr_tasks.RunThroughCorridor(
+    task = corr_tasks.PlanarRunThroughCorridor(
         walker=walker,
         arena=arena,
-        walker_spawn_position=(0.5, 0, 0),
-        walker_spawn_rotation=0,
+        contact_termination=False,
         physics_timestep=_PHYSICS_TIMESTEP,
         control_timestep=_CONTROL_TIMESTEP)
 
