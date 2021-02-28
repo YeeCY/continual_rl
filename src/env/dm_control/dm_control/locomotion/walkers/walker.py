@@ -5,20 +5,20 @@ import os
 from dm_control import composer
 from dm_control import mjcf
 from dm_control.composer.observation import observable
-from dm_control.locomotion.walkers import base
 from dm_control.locomotion.walkers import legacy_base
 from dm_control.mujoco import math as mjmath
 import numpy as np
+
 
 _XML_PATH = os.path.join(os.path.dirname(__file__),
                             'assets/walker.xml')
 
 
-class Walker(legacy_base.Walker):
-    """A two leg "walker" walker."""
+class PlanarWalker(legacy_base.Walker):
+    """A two leg "PlanarWalker" walker."""
 
-    def _build(self, name='walker', marker_rgba=None, initializer=None):
-        """Build an Walker walker.
+    def _build(self, name='planar_walker', marker_rgba=None, initializer=None):
+        """Build an PlanarWalker walker.
 
         Args:
             name: name of the walker.
@@ -50,7 +50,7 @@ class Walker(legacy_base.Walker):
         self._prev_action[:] = action
 
     def _build_observables(self):
-        return WalkerObservables(self)
+        return PlanarWalkerObservables(self)
 
     @property
     def mjcf_model(self):
@@ -105,8 +105,8 @@ class Walker(legacy_base.Walker):
         return self._prev_action
 
 
-class WalkerObservables(legacy_base.WalkerObservables):
-    """Observables for the Walker."""
+class PlanarWalkerObservables(legacy_base.WalkerObservables):
+    """Observables for the PlanarWalker."""
 
     @composer.observable
     def appendages_pos(self):

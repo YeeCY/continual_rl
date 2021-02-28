@@ -432,3 +432,71 @@ class WallsCorridor(EmptyCorridor):
   @property
   def ground_geoms(self):
     return (self._ground_plane,)
+
+
+class LongCorridor(EmptyCorridor):
+    """An long corridor with planes around the perimeter."""
+
+    def _build(self,
+               corridor_width=0.8,
+               corridor_length=250,
+               visible_side_planes=False,
+               aesthetic='grid',
+               name='long_corridor'):
+        """Builds the corridor.
+
+        Args:
+            corridor_width: A number or a `composer.variation.Variation` object that
+                specifies the width of the corridor.
+            corridor_length: A number or a `composer.variation.Variation` object that
+                specifies the length of the corridor.
+            visible_side_planes: Whether to the side planes that bound the corridor's
+                perimeter should be rendered.
+            aesthetic: option to adjust the material properties and skybox.
+            name: The name of this arena.
+        """
+        super()._build(
+            corridor_width=corridor_width,
+            corridor_length=corridor_length,
+            visible_side_planes=visible_side_planes,
+            name=name)
+
+        self._aesthetic = aesthetic
+
+        if self._aesthetic == 'grid':
+            self._ground_texture = self._mjcf_root.asset.add(
+                'texture', name='grid_tex', type='2d', builtin='checker', rgb1='.1 .2 .3', rgb2='.2 .3 .4',
+                width='300', height='300', mark='edge', markrgb='.2 .3 .4')
+            self._ground_material = self._mjcf_root.asset.add(
+                'material', name='grid', texture='grid_tex', texrepeat='1 1', texuniform='true', reflectance='.2')
+
+            # remove existing skybox
+            for texture in self._mjcf_root.asset.find_all('texture'):
+                if texture.type == 'skybox':
+                    texture.remove()
+
+            self._skybox = self._mjcf_root.asset.add(
+                'texture', name='skybox', type='skybox', builtin='gradient', rgb1='.4 .6 .8', rgb2='0 0 0',
+                width='800', height='800', mark='random', markrgb='1 1 1')
+
+            self._ground_plane.material = self._ground_material
+        elif self._aesthetic != 'default':
+            ground_info = locomotion_arenas_assets.get_ground_texture_info(aesthetic)
+            sky_info = locomotion_arenas_assets.get_sky_texture_info(aesthetic)
+            texturedir = locomotion_arenas_assets.get_texturedir(aesthetic)
+            self._mjcf_root.compiler.texturedir = texturedir
+
+            self._ground_texture = self._mjcf_root.asset.add(
+                'texture', name='aesthetic_texture', file=ground_info.file,
+                type=ground_info.type)
+            self._ground_material = self._mjcf_root.asset.add(
+                'material', name='aesthetic_material', texture=self._ground_texture,
+                texuniform='true')
+            # remove existing skybox
+            for texture in self._mjcf_root.asset.find_all('texture'):
+                if texture.type == 'skybox':
+                    texture.remove()
+            self._skybox = self._mjcf_root.asset.add(
+                'texture', name='aesthetic_skybox', file=sky_info.file,
+                type='skybox', gridsize=sky_info.gridsize,
+                gridlayout=sky_info.gridlayout)

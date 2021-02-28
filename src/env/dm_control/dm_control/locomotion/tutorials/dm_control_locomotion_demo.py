@@ -4,7 +4,7 @@ from dm_control.composer.variation import distributions
 from dm_control.locomotion.arenas import corridors as corr_arenas
 from dm_control.locomotion.tasks import corridors as corr_tasks
 from dm_control.locomotion.walkers import ant, jumping_ball
-from dm_control.locomotion.walkers.walker import Walker
+from dm_control.locomotion.walkers.walker import PlanarWalker
 
 from dm_control.locomotion.examples import basic_cmu_2019
 
@@ -93,12 +93,30 @@ def jumping_ball_with_head_run(random_state=None):
 
 
 def walker_run(random_state=None):
-    walker = Walker()
-    arena = corr_arenas.EmptyCorridor()
+    walker = PlanarWalker()
+    arena = corr_arenas.EmptyCorridor(visible_side_planes=False)
     task = corr_tasks.RunThroughCorridor(
         walker=walker,
         arena=arena,
-        walker_spawn_position=(5, 0, 0),
+        walker_spawn_position=(0.5, 0, 0),
+        walker_spawn_rotation=0,
+        physics_timestep=_PHYSICS_TIMESTEP,
+        control_timestep=_CONTROL_TIMESTEP)
+
+    return composer.Environment(
+        time_limit=30,
+        task=task,
+        random_state=random_state,
+        strip_singleton_obs_buffer_dim=True)
+
+
+def walker_run_long(random_state=None):
+    walker = PlanarWalker()
+    arena = corr_arenas.LongCorridor()
+    task = corr_tasks.RunThroughCorridor(
+        walker=walker,
+        arena=arena,
+        walker_spawn_position=(0.5, 0, 0),
         walker_spawn_rotation=0,
         physics_timestep=_PHYSICS_TIMESTEP,
         control_timestep=_CONTROL_TIMESTEP)
@@ -111,7 +129,7 @@ def walker_run(random_state=None):
 
 
 def walker_run_walls(random_state=None):
-    walker = Walker()
+    walker = PlanarWalker()
 
     arena = corr_arenas.WallsCorridor(
         wall_gap=4.,
@@ -137,7 +155,7 @@ def walker_run_walls(random_state=None):
 
 
 def walker_run_gaps(random_state=None):
-    walker = Walker()
+    walker = PlanarWalker()
 
     # Build a corridor-shaped arena with gaps, where the sizes of the gaps and
     # platforms are uniformly randomized.
@@ -171,8 +189,9 @@ def main():
     # viewer.launch(environment_loader=basic_cmu_2019.cmu_humanoid_run_walls)
     # viewer.launch(environment_loader=basic_cmu_2019.cmu_humanoid_run_gaps)
     # viewer.launch(environment_loader=walker_run)
+    viewer.launch(environment_loader=walker_run_long)
     # viewer.launch(environment_loader=walker_run_walls)
-    viewer.launch(environment_loader=walker_run_gaps)
+    # viewer.launch(environment_loader=walker_run_gaps)
 
 
 if __name__ == "__main__":
