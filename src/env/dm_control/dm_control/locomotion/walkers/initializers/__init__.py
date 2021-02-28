@@ -15,17 +15,11 @@
 
 """Initializers for the locomotion walkers."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import abc
 import numpy as np
-import six
 
 
-@six.add_metaclass(abc.ABCMeta)
-class WalkerInitializer(object):
+class WalkerInitializer(metaclass=abc.ABCMeta):
   """The abstract base class for a walker initializer."""
 
   @abc.abstractmethod
@@ -49,7 +43,7 @@ class UprightInitializer(WalkerInitializer):
 
 
 class RandomlySampledInitializer(WalkerInitializer):
-  """Initializer that random selects between many initializers."""
+  """An initializer that random selects between many initializers."""
 
   def __init__(self, initializers):
     self._initializers = initializers
@@ -59,3 +53,13 @@ class RandomlySampledInitializer(WalkerInitializer):
     random_initalizer_idx = np.random.randint(0, self.num_initializers)
     self._initializers[random_initalizer_idx].initialize_pose(
         physics, walker, random_state)
+
+
+class NoOpInitializer(WalkerInitializer):
+  """An initializer that does nothing."""
+
+  def initialize_pose(self, physics, walker, random_state):
+    pass
+
+
+

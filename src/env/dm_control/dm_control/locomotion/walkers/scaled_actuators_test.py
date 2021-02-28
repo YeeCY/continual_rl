@@ -15,21 +15,17 @@
 
 """Tests for scaled actuators."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 from absl.testing import absltest
 from dm_control import mjcf
 from dm_control.locomotion.walkers import scaled_actuators
 import numpy as np
-from six.moves import range
 
 
 class ScaledActuatorsTest(absltest.TestCase):
 
   def setUp(self):
-    super(ScaledActuatorsTest, self).setUp()
+    super().setUp()
     self._mjcf_model = mjcf.RootElement()
     self._min = -1.4
     self._max = 2.3

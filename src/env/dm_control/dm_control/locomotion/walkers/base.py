@@ -15,10 +15,6 @@
 
 """Base class for Walkers."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import abc
 import collections
 
@@ -27,7 +23,6 @@ from dm_control.composer.observation import observable
 
 from dm_env import specs
 import numpy as np
-import six
 
 
 def _make_readonly_float64_copy(value):
@@ -70,8 +65,7 @@ class WalkerPose(collections.namedtuple(
             np.all(self.xquat == other.xquat))
 
 
-@six.add_metaclass(abc.ABCMeta)
-class Walker(composer.Robot):
+class Walker(composer.Robot, metaclass=abc.ABCMeta):
   """Abstract base class for Walker robots."""
 
   def create_root_joints(self, attachment_frame):
@@ -105,8 +99,7 @@ class Walker(composer.Robot):
       ValueError: if `vec_in_world_frame` does not have shape ending with (2,)
         or (3,).
     """
-    return super(Walker, self).global_vector_to_local_frame(
-        physics, vec_in_world_frame)
+    return super().global_vector_to_local_frame(physics, vec_in_world_frame)
 
   def transform_xmat_to_egocentric_frame(self, physics, xmat):
     """Transforms another entity's `xmat` into this walker's egocentric frame.
@@ -127,7 +120,7 @@ class Walker(composer.Robot):
     Raises:
       ValueError: if `xmat` does not have shape (3, 3) or (9,).
     """
-    return super(Walker, self).global_xmat_to_local_frame(physics, xmat)
+    return super().global_xmat_to_local_frame(physics, xmat)
 
   @abc.abstractproperty
   def root_body(self):
@@ -173,6 +166,11 @@ class WalkerObservables(composer.Observables):
     return observable.MJCFFeature('sensordata',
                                   self._entity.mjcf_model.sensor.accelerometer)
 
+  @composer.observable
+  def sensors_framequat(self):
+    return observable.MJCFFeature('sensordata',
+                                  self._entity.mjcf_model.sensor.framequat)
+
   # Semantic groupings of Walker observables.
   def _collect_from_attachments(self, attribute_name):
     out = []
@@ -187,10 +185,11 @@ class WalkerObservables(composer.Observables):
 
   @property
   def kinematic_sensors(self):
-    return ([self.sensors_gyro, self.sensors_accelerometer] +
+    return ([self.sensors_gyro,
+             self.sensors_accelerometer,
+             self.sensors_framequat] +
             self._collect_from_attachments('kinematic_sensors'))
 
   @property
   def dynamic_sensors(self):
     return self._collect_from_attachments('dynamic_sensors')
-

@@ -15,23 +15,17 @@
 
 """Tests for locomotion.tasks.soccer."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import unittest
-# Internal dependencies.
 
 from absl.testing import absltest
 from absl.testing import parameterized
 from dm_control import composer
 from dm_control import mjcf
 from dm_control.locomotion import soccer
+from dm_control.locomotion.soccer import camera
 from dm_control.locomotion.soccer import initializers
 from dm_control.mujoco.wrapper import mjbindings
 import numpy as np
-from six.moves import range
-from six.moves import zip
 
 RGBA_BLUE = [.1, .1, .8, 1.]
 RGBA_RED = [.8, .1, .1, 1.]
@@ -423,6 +417,31 @@ class TaskTest(parameterized.TestCase):
       timestep = env.step(actions)
 
     self.assertEqual(timestep.discount, expected_terminal_discount)
+
+  @parameterized.named_parameters(("reset_only", False), ("step", True))
+  def test_render(self, take_step):
+    height = 100
+    width = 150
+    tracking_cameras = []
+    for min_distance in [1, 1, 2]:
+      tracking_cameras.append(
+          camera.MultiplayerTrackingCamera(
+              min_distance=min_distance,
+              distance_factor=1,
+              smoothing_update_speed=0.1,
+              width=width,
+              height=height,
+          ))
+    env = _env(_home_team(1) + _away_team(1), tracking_cameras=tracking_cameras)
+    env.reset()
+    if take_step:
+      actions = [np.zeros(s.shape, s.dtype) for s in env.action_spec()]
+      env.step(actions)
+    rendered_frames = [cam.render() for cam in tracking_cameras]
+    for frame in rendered_frames:
+      assert frame.shape == (height, width, 3)
+    self.assertTrue(np.array_equal(rendered_frames[0], rendered_frames[1]))
+    self.assertFalse(np.array_equal(rendered_frames[1], rendered_frames[2]))
 
 
 class UniformInitializerTest(parameterized.TestCase):
