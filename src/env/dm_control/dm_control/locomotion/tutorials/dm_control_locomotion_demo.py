@@ -93,7 +93,7 @@ def jumping_ball_with_head_run(random_state=None):
 
 def walker_run(random_state=None):
     walker = PlanarWalker()
-    arena = corr_arenas.EmptyCorridor(visible_side_planes=False)
+    arena = corr_arenas.EmptyCorridor()
     task = corr_tasks.RunThroughCorridor(
         walker=walker,
         arena=arena,
@@ -187,8 +187,8 @@ def main():
     # viewer.launch(environment_loader=basic_cmu_2019.cmu_humanoid_run_walls)
     # viewer.launch(environment_loader=basic_cmu_2019.cmu_humanoid_run_gaps)
     # viewer.launch(environment_loader=walker_run)
-    viewer.launch(environment_loader=walker_run_long)
-    # viewer.launch(environment_loader=walker_run_walls)
+    # viewer.launch(environment_loader=walker_run_long)
+    viewer.launch(environment_loader=walker_run_walls)
     # viewer.launch(environment_loader=walker_run_gaps)
 
 

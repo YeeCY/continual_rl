@@ -100,6 +100,3 @@ class RandomJointPositionInitializer(WalkerInitializer):
           quat = random.rand(4)
           quat /= np.linalg.norm(quat)
           joint.qpos[3:] = quat
-
-    walker.set_velocity(
-      physics, velocity=np.zeros(3), angular_velocity=np.zeros(3))

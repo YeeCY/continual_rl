@@ -30,7 +30,7 @@
       <light name="light" pos="0 0 2" mode="trackcom"/>
 
       <camera name="floating"  pos="-2 0 1" xyaxes="0 -1 0 .5 0 1" mode="trackcom" fovy="90"/>
-      <camera name="egocentric"  pos=".07 0 .2" xyaxes="0 -1 0 0 0 1" fovy="90" />
+      <camera name="egocentric"  pos=".07 0 .2" xyaxes="0 -1 0 0 0 1" fovy="90"/>
 
       <joint name="rootz" axis="0 0 1" type="slide" limited="false" armature="0" damping="0"/>
       <joint name="rootx" axis="1 0 0" type="slide" limited="false" armature="0" damping="0"/>
