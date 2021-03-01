@@ -53,35 +53,45 @@ class ReplayBuffer(object):
         # the proprioceptive obs is stored as float32, pixels obs as uint8
         obs_dtype = np.float32 if len(obs_shape) == 1 else np.uint8
 
+        self.obses = np.empty((capacity, *obs_shape), dtype=obs_dtype)
+        self.next_obses = np.empty((capacity, *obs_shape), dtype=obs_dtype)
+        self.actions = np.empty((capacity, *action_shape), dtype=np.float32)
+        self.rewards = np.empty((capacity, 1), dtype=np.float32)
+        self.not_dones = np.empty((capacity, 1), dtype=np.float32)
         # (chongyi zheng): create 0 size buffer instead of max_size buffer to save memory
-        # self.obses = np.empty((capacity, *obs_shape), dtype=obs_dtype)
-        # self.next_obses = np.empty((capacity, *obs_shape), dtype=obs_dtype)
-        # self.actions = np.empty((capacity, *action_shape), dtype=np.float32)
-        # self.rewards = np.empty((capacity, 1), dtype=np.float32)
-        # self.not_dones = np.empty((capacity, 1), dtype=np.float32)
-        self.obses = np.empty((0, *obs_shape), dtype=obs_dtype)
-        self.next_obses = np.empty((0, *obs_shape), dtype=obs_dtype)
-        self.actions = np.empty((0, *action_shape), dtype=np.float32)
-        self.rewards = np.empty((0, 1), dtype=np.float32)
-        self.not_dones = np.empty((0, 1), dtype=np.float32)
+        # self.obses = np.empty((0, *obs_shape), dtype=obs_dtype)
+        # self.next_obses = np.empty((0, *obs_shape), dtype=obs_dtype)
+        # self.actions = np.empty((0, *action_shape), dtype=np.float32)
+        # self.rewards = np.empty((0, ), dtype=np.float32)
+        # self.not_dones = np.empty((0, ), dtype=np.float32)
 
         self.idx = 0
         self.full = False
 
     def add(self, obs, action, reward, next_obs, done):
+        np.copyto(self.obses[self.idx], obs)
+        np.copyto(self.actions[self.idx], action)
+        np.copyto(self.rewards[self.idx], reward)
+        np.copyto(self.next_obses[self.idx], next_obs)
+        np.copyto(self.not_dones[self.idx], not done)
         # (chongyi zheng): append transition to buffer when it is not full, replace the last recent one otherwise
-        if not self.full:
-            self.obses = np.append(self.obses, obs, axis=0)
-            self.actions = np.append(self.actions, action, axis=0)
-            self.rewards = np.append(self.rewards, reward, axis=0)
-            self.next_obses = np.append(self.next_obses, next_obs, axis=0)
-            self.not_dones = np.append(self.not_dones, not done, axis=0)
-        else:
-            np.copyto(self.obses[self.idx], obs)
-            np.copyto(self.actions[self.idx], action)
-            np.copyto(self.rewards[self.idx], reward)
-            np.copyto(self.next_obses[self.idx], next_obs)
-            np.copyto(self.not_dones[self.idx], not done)
+        # if not self.full:
+        #     self.obses = np.append(
+        #         self.obses, np.expand_dims(obs, axis=0).astype(self.obses.dtype), axis=0)
+        #     self.actions = np.append(
+        #         self.actions, np.expand_dims(action, axis=0).astype(self.actions.dtype), axis=0)
+        #     self.rewards = np.append(
+        #         self.rewards, np.expand_dims(reward, axis=0).astype(self.rewards.dtype), axis=0)
+        #     self.next_obses = np.append(
+        #         self.next_obses, np.expand_dims(next_obs, axis=0).astype(self.next_obses.dtype), axis=0)
+        #     self.not_dones = np.append(
+        #         self.not_dones, np.expand_dims(not done, axis=0).astype(self.not_dones.dtype), axis=0)
+        # else:
+        #     np.copyto(self.obses[self.idx], obs)
+        #     np.copyto(self.actions[self.idx], action)
+        #     np.copyto(self.rewards[self.idx], reward)
+        #     np.copyto(self.next_obses[self.idx], next_obs)
+        #     np.copyto(self.not_dones[self.idx], not done)
 
         self.idx = (self.idx + 1) % self.capacity
         self.full = self.full or self.idx == 0
