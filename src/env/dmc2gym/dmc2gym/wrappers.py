@@ -3,17 +3,19 @@ from dm_control import suite
 from dm_control import composer
 from dm_env import specs
 import numpy as np
+from env import locomotion_envs
 
 
 def _spec_to_box(spec):
     def extract_min_max(s):
-        assert s.dtype == np.float64 or s.dtype == np.float32
+        # (chongyi zheng) add uint8 data type
+        assert s.dtype == np.float64 or s.dtype == np.float32 or s.dtype == np.uint8
         dim = np.int(np.prod(s.shape))
         if type(s) == specs.Array:
             bound = np.inf * np.ones(dim, dtype=np.float32)
             return -bound, bound
         elif type(s) == specs.BoundedArray:
-            zeros = np.zeros(dim, dtype=np.float32)
+            zeros = np.zeros(dim, dtype=np.uint8 if s.dtype == np.uint8 else np.float32)
             return s.minimum + zeros, s.maximum + zeros
 
     mins, maxs = [], []
@@ -206,7 +208,7 @@ class DMCSuiteWrapper(DMCWrapper):
 class DMCLocomotionWrapper(DMCWrapper):
     def __init__(
         self,
-        env,
+        env_name,
         task_kwargs=None,
         from_pixels=False,
         height=84,
@@ -219,9 +221,8 @@ class DMCLocomotionWrapper(DMCWrapper):
         assert 'random' in task_kwargs, 'please specify a seed, for deterministic behaviour'
         self._task_kwargs = task_kwargs
 
-        assert isinstance(env, composer.Environment), 'please use this wrapper for dm_control.composer.Environment ' \
-                                                      'instance'
-        self.env = env
+        # create environment
+        self._env = getattr(locomotion_envs, env_name)()
 
         # true and normalized action spaces
         self._true_action_space = _spec_to_box([self._env.action_spec()])

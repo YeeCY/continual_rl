@@ -10,6 +10,8 @@ from dm_control.suite import common
 import cv2
 from collections import deque
 
+from env import locomotion_envs
+
 
 def make_pad_env(
 		domain_name,
@@ -26,6 +28,34 @@ def make_pad_env(
 		task_name=task_name,
 		seed=seed,
 		visualize_reward=False,
+		from_pixels=True,
+		height=100,
+		width=100,
+		episode_length=episode_length,
+		frame_skip=action_repeat
+	)
+	env.seed(seed)
+	env = GreenScreen(env, mode)
+	env = FrameStack(env, frame_stack)
+	env = ColorWrapper(env, mode)
+
+	assert env.action_space.low.min() >= -1
+	assert env.action_space.high.max() <= 1
+
+	return env
+
+
+def make_locomotion_env(
+	env_name,
+	seed=0,
+	episode_length=1000,
+	frame_stack=3,
+	action_repeat=4,
+	mode='train'):
+	"""(chongyi zheng) Make dm_control locomotion environments for experiments"""
+	env = dmc2gym.make_locomotion(
+		env_name=env_name,
+		seed=seed,
 		from_pixels=True,
 		height=100,
 		width=100,
