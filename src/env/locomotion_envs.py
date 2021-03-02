@@ -39,3 +39,22 @@ def ant_run():
         time_limit=30,
         task=task,
         strip_singleton_obs_buffer_dim=True)
+
+
+def ant_run_long():
+    walker = ant.Ant()
+    arena = corr_arenas.EmptyCorridor(
+        corridor_length=250,
+        visible_side_planes=False)
+    task = corr_tasks.RunThroughCorridor(
+        walker=walker,
+        arena=arena,
+        walker_spawn_position=(1, 0, 0),
+        walker_spawn_rotation=0,
+        physics_timestep=_PHYSICS_TIMESTEP,
+        control_timestep=_CONTROL_TIMESTEP)
+
+    return composer.Environment(
+        time_limit=30,
+        task=task,
+        strip_singleton_obs_buffer_dim=True)
