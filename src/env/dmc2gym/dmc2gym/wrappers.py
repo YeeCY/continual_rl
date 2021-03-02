@@ -1,5 +1,6 @@
 from gym import core, spaces
 from dm_control import suite
+from dm_control import composer
 from dm_env import specs
 import numpy as np
 
@@ -37,6 +38,108 @@ def _flatten_obs(obs):
 class DMCWrapper(core.Env):
     def __init__(
         self,
+        from_pixels=False,
+        height=84,
+        width=84,
+        camera_id=0,
+        frame_skip=1,
+        channels_first=True
+    ):
+        self._from_pixels = from_pixels
+        self._height = height
+        self._width = width
+        self._camera_id = camera_id
+        self._frame_skip = frame_skip
+        self._channels_first = channels_first
+
+        self._env = None
+
+        self._true_action_space = None
+        self._norm_action_space = None
+        self._observation_space = None
+        self._state_space = None
+
+        self.current_state = None
+
+    def __getattr__(self, name):
+        return getattr(self._env, name)
+
+    def _get_obs(self, time_step):
+        if self._from_pixels:
+            obs = self.render(
+                height=self._height,
+                width=self._width,
+                camera_id=self._camera_id
+            )
+            if self._channels_first:
+                obs = obs.transpose(2, 0, 1).copy()
+        else:
+            obs = _flatten_obs(time_step.observation)
+        return obs
+
+    def _convert_action(self, action):
+        action = action.astype(np.float64)
+        true_delta = self._true_action_space.high - self._true_action_space.low
+        norm_delta = self._norm_action_space.high - self._norm_action_space.low
+        action = (action - self._norm_action_space.low) / norm_delta
+        action = action * true_delta + self._true_action_space.low
+        action = action.astype(np.float32)
+        return action
+
+    @property
+    def observation_space(self):
+        return self._observation_space
+
+    @property
+    def state_space(self):
+        return self._state_space
+
+    @property
+    def action_space(self):
+        return self._norm_action_space
+
+    def seed(self, seed=None):
+        self._true_action_space.seed(seed)
+        self._norm_action_space.seed(seed)
+        self._observation_space.seed(seed)
+
+    def step(self, action):
+        assert self._norm_action_space.contains(action)
+        action = self._convert_action(action)
+        assert self._true_action_space.contains(action)
+        reward = 0
+        extra = {'internal_state': self._env.physics.get_state().copy()}
+
+        for _ in range(self._frame_skip):
+            time_step = self._env.step(action)
+            reward += time_step.reward or 0
+            done = time_step.last()
+            if done:
+                break
+        obs = self._get_obs(time_step)
+        self.current_state = _flatten_obs(time_step.observation)
+        extra['discount'] = time_step.discount
+        return obs, reward, done, extra
+
+    def reset(self):
+        time_step = self._env.reset()
+        self.current_state = _flatten_obs(time_step.observation)
+        obs = self._get_obs(time_step)
+        return obs
+
+    def render(self, mode='rgb_array', height=None, width=None, camera_id=0):
+        assert mode == 'rgb_array', 'only support rgb_array mode, given %s' % mode
+        height = height or self._height
+        width = width or self._width
+        camera_id = camera_id or self._camera_id
+        return self._env.physics.render(
+            height=height, width=width, camera_id=camera_id
+        )
+
+
+class DMCSuiteWrapper(DMCWrapper):
+    def __init__(
+        self,
         domain_name,
         task_name,
         task_kwargs=None,
@@ -50,15 +153,15 @@ class DMCWrapper(core.Env):
         setting_kwargs=None,
         channels_first=True
     ):
+        super(DMCSuiteWrapper, self).__init__(from_pixels, height, width, camera_id, frame_skip, channels_first)
+
         assert 'random' in task_kwargs, 'please specify a seed, for deterministic behaviour'
         self._domain_name = domain_name
         self._task_name = task_name
-        self._from_pixels = from_pixels
-        self._height = height
-        self._width = width
-        self._camera_id = camera_id
-        self._frame_skip = frame_skip
-        self._channels_first = channels_first
+        self._task_kwargs = task_kwargs
+        self._visualize_reward = visualize_reward
+        self._environment_kwargs = environment_kwargs
+        self._setting_kwargs = setting_kwargs
 
         # create task
         self._env = suite.load(
@@ -99,77 +202,52 @@ class DMCWrapper(core.Env):
         # set seed
         self.seed(seed=task_kwargs.get('random', 1))
 
-    def __getattr__(self, name):
-        return getattr(self._env, name)
 
-    def _get_obs(self, time_step):
-        if self._from_pixels:
-            obs = self.render(
-                height=self._height,
-                width=self._width,
-                camera_id=self._camera_id
-            )
-            if self._channels_first:
-                obs = obs.transpose(2, 0, 1).copy()
-        else:
-            obs = _flatten_obs(time_step.observation)
-        return obs
+class DMCLocomotionWrapper(DMCWrapper):
+    def __init__(
+        self,
+        env,
+        task_kwargs=None,
+        from_pixels=False,
+        height=84,
+        width=84,
+        camera_id=0,
+        frame_skip=1,
+        channels_first=True
+    ):
+        super(DMCLocomotionWrapper, self).__init__(from_pixels, height, width, camera_id, frame_skip, channels_first)
+        assert 'random' in task_kwargs, 'please specify a seed, for deterministic behaviour'
+        self._task_kwargs = task_kwargs
 
-    def _convert_action(self, action):
-        action = action.astype(np.float64)
-        true_delta = self._true_action_space.high - self._true_action_space.low
-        norm_delta = self._norm_action_space.high - self._norm_action_space.low
-        action = (action - self._norm_action_space.low) / norm_delta
-        action = action * true_delta + self._true_action_space.low
-        action = action.astype(np.float32)
-        return action
+        assert isinstance(env, composer.Environment), 'please use this wrapper for dm_control.composer.Environment ' \
+                                                      'instance'
+        self.env = env
 
-    @property
-    def observation_space(self):
-        return self._observation_space
-
-    @property
-    def state_space(self):
-        return self._state_space
-
-    @property
-    def action_space(self):
-        return self._norm_action_space
-
-    def seed(self, seed):
-        self._true_action_space.seed(seed)
-        self._norm_action_space.seed(seed)
-        self._observation_space.seed(seed)
-
-    def step(self, action):
-        assert self._norm_action_space.contains(action)
-        action = self._convert_action(action)
-        assert self._true_action_space.contains(action)
-        reward = 0
-        extra = {'internal_state': self._env.physics.get_state().copy()}
-
-        for _ in range(self._frame_skip):
-            time_step = self._env.step(action)
-            reward += time_step.reward or 0
-            done = time_step.last()
-            if done:
-                break
-        obs = self._get_obs(time_step)
-        self.current_state = _flatten_obs(time_step.observation)
-        extra['discount'] = time_step.discount
-        return obs, reward, done, extra
-
-    def reset(self):
-        time_step = self._env.reset()
-        self.current_state = _flatten_obs(time_step.observation)
-        obs = self._get_obs(time_step)
-        return obs
-
-    def render(self, mode='rgb_array', height=None, width=None, camera_id=0):
-        assert mode == 'rgb_array', 'only support rgb_array mode, given %s' % mode
-        height = height or self._height
-        width = width or self._width
-        camera_id = camera_id or self._camera_id
-        return self._env.physics.render(
-            height=height, width=width, camera_id=camera_id
+        # true and normalized action spaces
+        self._true_action_space = _spec_to_box([self._env.action_spec()])
+        self._norm_action_space = spaces.Box(
+            low=-1.0,
+            high=1.0,
+            shape=self._true_action_space.shape,
+            dtype=np.float32
         )
+
+        # create observation space
+        if from_pixels:
+            shape = [3, height, width] if channels_first else [height, width, 3]
+            self._observation_space = spaces.Box(
+                low=0, high=255, shape=shape, dtype=np.uint8
+            )
+        else:
+            self._observation_space = _spec_to_box(
+                self._env.observation_spec().values()
+            )
+
+        self._state_space = _spec_to_box(
+            self._env.observation_spec().values()
+        )
+
+        self.current_state = None
+
+        # set seed
+        self.seed(seed=task_kwargs.get('random', 1))
