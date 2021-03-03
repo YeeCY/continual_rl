@@ -7,7 +7,7 @@ import utils
 from video import VideoRecorder
 
 from arguments import parse_args
-from env.wrappers import make_pad_env
+from env.wrappers import make_locomotion_env
 from agent.agent import make_agent
 from utils import get_curl_pos_neg
 
@@ -17,7 +17,7 @@ def evaluate(env, agent, args, video, adapt=False):
 	episode_rewards = []
 
 	for i in tqdm(range(args.pad_num_episodes)):
-		ep_agent = deepcopy(agent) # make a new copy
+		ep_agent = deepcopy(agent)  # make a new copy
 
 		if args.use_curl:  # initialize replay buffer for CURL
 			replay_buffer = utils.ReplayBuffer(
@@ -44,7 +44,7 @@ def evaluate(env, agent, args, video, adapt=False):
 			
 			# Make self-supervised update if flag is true
 			if adapt:
-				if args.use_rot: # rotation prediction
+				if args.use_rot:  # rotation prediction
 
 					# Prepare batch of cropped observations
 					batch_next_obs = utils.batch_from_obs(torch.Tensor(next_obs).cuda(), batch_size=args.pad_batch_size)
@@ -63,7 +63,7 @@ def evaluate(env, agent, args, video, adapt=False):
 					# Adapt using inverse dynamics prediction
 					losses.append(ep_agent.update_inv(utils.random_crop(batch_obs), utils.random_crop(batch_next_obs), batch_action))
 
-				if args.use_curl: # CURL
+				if args.use_curl:  # CURL
 
 					# Add observation to replay buffer for use as negative samples
 					# (only first argument obs is used, but we store all for convenience)
@@ -87,9 +87,8 @@ def evaluate(env, agent, args, video, adapt=False):
 
 def init_env(args):
 		utils.set_seed_everywhere(args.seed)
-		return make_pad_env(
-			domain_name=args.domain_name,
-			task_name=args.task_name,
+		return make_locomotion_env(
+			env_name=args.env_name,
 			seed=args.seed,
 			episode_length=args.episode_length,
 			action_repeat=args.action_repeat,
