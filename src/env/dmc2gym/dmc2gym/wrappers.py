@@ -73,8 +73,6 @@ class DMCWrapper(core.Env):
                 width=self._width,
                 camera_id=self._camera_id
             )
-            if self._channels_first:
-                obs = obs.transpose(2, 0, 1).copy()
         else:
             obs = _flatten_obs(time_step.observation)
         return obs
@@ -100,6 +98,18 @@ class DMCWrapper(core.Env):
     def action_space(self):
         return self._norm_action_space
 
+    @property
+    def height(self):
+        return self._height
+
+    @property
+    def width(self):
+        return self._width
+
+    @property
+    def camera_id(self):
+        return self._camera_id
+
     def seed(self, seed=None):
         self._true_action_space.seed(seed)
         self._norm_action_space.seed(seed)
@@ -124,19 +134,24 @@ class DMCWrapper(core.Env):
         return obs, reward, done, extra
 
     def reset(self):
-        time_step = self._env.reset()
+        time_step = self._env.reset
         self.current_state = _flatten_obs(time_step.observation)
         obs = self._get_obs(time_step)
         return obs
 
     def render(self, mode='rgb_array', height=None, width=None, camera_id=0):
-        assert mode == 'rgb_array', 'only support rgb_array mode, given %s' % mode
+        assert mode == 'rgb_array' or 'segmentation', 'only support rgb_array and segmentation mode, given %s' % mode
         height = height or self._height
         width = width or self._width
         camera_id = camera_id or self._camera_id
-        return self._env.physics.render(
-            height=height, width=width, camera_id=camera_id
+        img = self._env.physics.render(
+            height=height, width=width, camera_id=camera_id, segmentation=(mode == 'segmentation')
         )
+
+        if self._channels_first:
+            img = img.transpose(2, 0, 1).copy()
+
+        return img
 
 
 class DMCSuiteWrapper(DMCWrapper):
@@ -155,7 +170,14 @@ class DMCSuiteWrapper(DMCWrapper):
         setting_kwargs=None,
         channels_first=True
     ):
-        super(DMCSuiteWrapper, self).__init__(from_pixels, height, width, camera_id, frame_skip, channels_first)
+        super(DMCSuiteWrapper, self).__init__(
+            from_pixels,
+            height,
+            width,
+            camera_id,
+            frame_skip,
+            channels_first
+        )
 
         assert 'random' in task_kwargs, 'please specify a seed, for deterministic behaviour'
         self._domain_name = domain_name
@@ -217,7 +239,14 @@ class DMCLocomotionWrapper(DMCWrapper):
         frame_skip=1,
         channels_first=True
     ):
-        super(DMCLocomotionWrapper, self).__init__(from_pixels, height, width, camera_id, frame_skip, channels_first)
+        super(DMCLocomotionWrapper, self).__init__(
+            from_pixels,
+            height,
+            width,
+            camera_id,
+            frame_skip,
+            channels_first
+        )
         assert 'random' in task_kwargs, 'please specify a seed, for deterministic behaviour'
         self._task_kwargs = task_kwargs
 
