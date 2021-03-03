@@ -60,7 +60,7 @@ def main(args):
 		args=args
 	)
 
-	L = Logger(args.work_dir, use_tb=False)
+	L = Logger(args.work_dir, use_tb=args.use_tb)
 	episode, episode_reward, done = 0, 0, True
 	start_time = time.time()
 	for step in range(args.train_steps+1):

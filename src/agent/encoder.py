@@ -44,18 +44,19 @@ class PixelEncoder(nn.Module):
 		self.num_layers = num_layers
 		self.num_shared_layers = num_shared_layers
 
+		# (chongyi zheng): add shape indicators in the comment
 		self.preprocess = nn.Sequential(
 			CenterCrop(size=84), NormalizeImg()
-		)
+		)  # if x.shape = (N, 9, 100, 100), convert it to (N, 9, 84, 84). Then normalize pixel value to [0, 1].
 
 		self.convs = nn.ModuleList(
 			[nn.Conv2d(obs_shape[0], num_filters, 3, stride=2)]
-		)
-		for i in range(num_layers - 1):
+		)  # (N, 9, 84, 84) -> (N, 32, 41, 41)
+		for i in range(num_layers - 1):  # (N, 32, 41, 41) -> (N, 32, 39, 39) -> (N, 32, 37, 37) ...
 			self.convs.append(nn.Conv2d(num_filters, num_filters, 3, stride=1))
 
 		out_dim = OUT_DIM[num_layers]
-		self.fc = nn.Linear(num_filters * out_dim * out_dim, self.feature_dim)
+		self.fc = nn.Linear(num_filters * out_dim * out_dim, self.feature_dim)  # (N, 32 * out_dim * out_dim) -> (N, 100)
 		self.ln = nn.LayerNorm(self.feature_dim)
 
 	def forward_conv(self, obs, detach=False):

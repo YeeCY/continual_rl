@@ -363,22 +363,22 @@ class SacSSAgent(object):
 
     def init_ss_optimizers(self, encoder_lr=1e-3, ss_lr=1e-3):
         if self.ss_encoder is not None:
-            self.encoder_optimizer =  torch.optim.Adam(
+            self.encoder_optimizer = torch.optim.Adam(
                 self.ss_encoder.parameters(), lr=encoder_lr
             )
         if self.use_rot:
-            self.rot_optimizer =  torch.optim.Adam(
+            self.rot_optimizer = torch.optim.Adam(
                 self.rot.parameters(), lr=ss_lr
             )
         if self.use_inv:
-            self.inv_optimizer =  torch.optim.Adam(
+            self.inv_optimizer = torch.optim.Adam(
                 self.inv.parameters(), lr=ss_lr
             )
         if self.use_curl:
-            self.encoder_optimizer =  torch.optim.Adam(
+            self.encoder_optimizer = torch.optim.Adam(
                 self.critic.encoder.parameters(), lr=encoder_lr
             )
-            self.curl_optimizer =  torch.optim.Adam(
+            self.curl_optimizer = torch.optim.Adam(
                 self.curl.parameters(), lr=ss_lr
             )
     
