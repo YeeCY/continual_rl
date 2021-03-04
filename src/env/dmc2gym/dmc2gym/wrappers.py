@@ -73,6 +73,9 @@ class DMCWrapper(core.Env):
                 width=self._width,
                 camera_id=self._camera_id
             )
+
+            if self._channels_first:
+                obs = obs.transpose(2, 0, 1).copy()
         else:
             obs = _flatten_obs(time_step.observation)
         return obs
@@ -134,7 +137,7 @@ class DMCWrapper(core.Env):
         return obs, reward, done, extra
 
     def reset(self):
-        time_step = self._env.reset
+        time_step = self._env.reset()
         self.current_state = _flatten_obs(time_step.observation)
         obs = self._get_obs(time_step)
         return obs
@@ -147,9 +150,6 @@ class DMCWrapper(core.Env):
         img = self._env.physics.render(
             height=height, width=width, camera_id=camera_id, segmentation=(mode == 'segmentation')
         )
-
-        if self._channels_first:
-            img = img.transpose(2, 0, 1).copy()
 
         return img
 

@@ -393,6 +393,7 @@ class VideoBackground(gym.Wrapper):
                 width=dmc_loco_wrapper.width,
                 camera_id=dmc_loco_wrapper.camera_id
             )
+            seg = seg.transpose(2, 0, 1)  # channels first
 
             return replace_bg(obs, seg, bg)
         return obs
