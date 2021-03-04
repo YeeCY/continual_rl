@@ -88,7 +88,7 @@ class ColorWrapper(gym.Wrapper):
         # TODO (chongyi zheng): implement color randomization for locomotion environments
         if 'color' in self._mode:
             self.randomize()
-        return self.env.reset
+        return self.env.reset()
 
     def step(self, action):
         self.time_step += 1
@@ -172,7 +172,7 @@ class FrameStack(gym.Wrapper):
         self._max_episode_steps = env._max_episode_steps
 
     def reset(self):
-        obs = self.env.reset
+        obs = self.env.reset()
         for _ in range(self._k):
             self._frames.append(obs)
         return self._get_obs()
@@ -276,7 +276,7 @@ class GreenScreen(gym.Wrapper):
 
     def reset(self):
         self._current_frame = 0
-        return self._greenscreen(self.env.reset)
+        return self._greenscreen(self.env.reset())
 
     def step(self, action):
         self._current_frame += 1
@@ -373,7 +373,7 @@ class VideoBackground(gym.Wrapper):
 
     def reset(self):
         self._current_frame = 0
-        return self._change_bg(self.env.reset)
+        return self._change_bg(self.env.reset())
 
     def step(self, action):
         self._current_frame += 1
