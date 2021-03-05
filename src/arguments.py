@@ -65,6 +65,7 @@ def parse_args():
 	parser.add_argument('--work_dir', default=None, type=str)
 	parser.add_argument('--save_model', default=False, action='store_true')
 	parser.add_argument('--save_video', default=False, action='store_true')
+	parser.add_argument('--replay_buffer_capacity', default=500000, type=int)
 	parser.add_argument('--use_tb', default=False, action='store_true')
 
 	# test
