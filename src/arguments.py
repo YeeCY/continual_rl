@@ -9,7 +9,9 @@ def parse_args():
 	parser.add_argument('--domain_name', default='walker')
 	parser.add_argument('--task_name', default='walk')
 	parser.add_argument('--env_name', default='walker_run')  # (chongyi zheng)
-	parser.add_argument('--camera_id', default=0, type=int)
+	parser.add_argument('--obs_height', default=100, type=int)
+	parser.add_argument('--obs_width', default=100, type=int)
+	parser.add_argument('--camera_id', default=0, type=int)  # (chongyi zheng)
 	parser.add_argument('--frame_stack', default=3, type=int)
 	parser.add_argument('--action_repeat', default=4, type=int)
 	parser.add_argument('--episode_length', default=1000, type=int)
@@ -66,8 +68,8 @@ def parse_args():
 	parser.add_argument('--work_dir', default=None, type=str)
 	parser.add_argument('--save_model', default=False, action='store_true')
 	parser.add_argument('--save_video', default=False, action='store_true')
-	parser.add_argument('--replay_buffer_capacity', default=500000, type=int)
-	parser.add_argument('--use_tb', default=False, action='store_true')
+	parser.add_argument('--replay_buffer_capacity', default=500000, type=int)  # (chongyi zheng)
+	parser.add_argument('--use_tb', default=False, action='store_true')  # (chongyi zheng)
 
 	# test
 	parser.add_argument('--pad_checkpoint', default=None, type=str)

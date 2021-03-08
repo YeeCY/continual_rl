@@ -49,14 +49,18 @@ def make_locomotion_env(
         episode_length=1000,
         frame_stack=3,
         action_repeat=4,
+        obs_height=100,
+        obs_width=100,
+        camera_id=0,
         mode='train'):
     """(chongyi zheng) Make dm_control locomotion environments for experiments"""
     env = dmc2gym.make_locomotion(
         env_name=env_name,
         seed=seed,
         from_pixels=True,
-        height=100,
-        width=100,
+        height=obs_height,
+        width=obs_width,
+        camera_id=camera_id,
         episode_length=episode_length,
         frame_skip=action_repeat
     )
@@ -380,7 +384,7 @@ class VideoBackground(gym.Wrapper):
         obs, reward, done, info = self.env.step(action)
         return self._change_bg(obs), reward, done, info
 
-    def _change_bg(self, obs):
+    def _change_bg(self, obs, camera_id=None):
         """Applies greenscreen if video is selected, otherwise does nothing"""
         if self._video:
             bg = self._data[self._current_frame % len(self._data)]  # select frame
@@ -389,22 +393,22 @@ class VideoBackground(gym.Wrapper):
             dmc_loco_wrapper = self.env.env
             seg = self.env.render(
                 mode='segmentation',
-                height=dmc_loco_wrapper.height,
-                width=dmc_loco_wrapper.width,
-                camera_id=dmc_loco_wrapper.camera_id
+                height=obs.shape[1],
+                width=obs.shape[2],
+                camera_id=dmc_loco_wrapper.camera_id if not camera_id else camera_id
             )
             seg = seg.transpose(2, 0, 1)  # channels first
 
             return replace_bg(obs, seg, bg)
         return obs
 
-    def apply_to(self, obs):
+    def apply_to(self, obs, camera_id=None):
         """Applies greenscreen mode of object to observation"""
         obs = obs.copy()
         channels_last = obs.shape[-1] == 3
         if channels_last:
             obs = torch.from_numpy(obs).permute(2, 0, 1).numpy()
-        obs = self._change_bg(obs)
+        obs = self._change_bg(obs, camera_id=camera_id)
         if channels_last:
             obs = torch.from_numpy(obs).permute(1, 2, 0).numpy()
         return obs

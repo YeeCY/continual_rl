@@ -95,8 +95,8 @@ def ant_run_gaps():
     # Build a corridor-shaped arena with gaps, where the sizes of the gaps and
     # platforms are uniformly randomized.
     arena = corr_arenas.GapsCorridor(
-        platform_length=distributions.Uniform(.3, 2.5),
-        gap_length=distributions.Uniform(.5, 1.25),
+        platform_length=distributions.Uniform(.5, 2.5),  # (0.3, 2.5)
+        gap_length=distributions.Uniform(.5, 1.0),  # (0.5, 1.25)
         corridor_width=10,
         corridor_length=250)
 
