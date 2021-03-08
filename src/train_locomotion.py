@@ -63,28 +63,28 @@ def main(args):
 	L = Logger(args.work_dir, use_tb=args.use_tb)
 	episode, episode_reward, done = 0, 0, True
 	start_time = time.time()
-	for step in range(args.train_steps+1):
+	for step in range(args.train_steps + 1):
+		# (chongyi zheng): we can also evaluate and save model when current episode is not finished
+		# Evaluate agent periodically
+		if step % args.eval_freq == 0:
+			print('Evaluating:', args.work_dir)
+			L.log('eval/episode', episode, step)
+			evaluate(env, agent, video, args.eval_episodes, L, step)
+
+		# Save agent periodically
+		if step % args.save_freq == 0 and step > 0:
+			if args.save_model:
+				agent.save(model_dir, step)
+
 		if done:
 			if step > 0:
 				L.log('train/duration', time.time() - start_time, step)
 				start_time = time.time()
 				L.dump(step)
 
-			# Evaluate agent periodically
-			if step % args.eval_freq == 0:
-				print('Evaluating:', args.work_dir)
-				L.log('eval/episode', episode, step)
-				evaluate(env, agent, video, args.eval_episodes, L, step)
-			
-			# Save agent periodically
-			if step % args.save_freq == 0 and step > 0:
-				if args.save_model:
-					agent.save(model_dir, step)
-
 			L.log('train/episode_reward', episode_reward, step)
 
 			obs = env.reset()
-			done = False
 			episode_reward = 0
 			episode_step = 0
 			episode += 1
