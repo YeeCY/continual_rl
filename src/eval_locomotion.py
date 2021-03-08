@@ -100,8 +100,8 @@ def main(args):
 	# Initialize environment
 	env = init_env(args)
 	model_dir = utils.make_dir(os.path.join(args.work_dir, 'model'))
-	video_dir = utils.make_dir(os.path.join(args.work_dir, 'video'))
-	video = VideoRecorder(video_dir if args.save_video else None, height=448, width=448)
+	video_dir = utils.make_dir(os.path.join(args.work_dir, 'eval_video'))
+	video = VideoRecorder(video_dir if args.save_video else None, height=448, width=448, camera_id=args.camera_id)
 
 	# Prepare agent
 	assert torch.cuda.is_available(), 'must have cuda enabled'

@@ -9,6 +9,7 @@ def parse_args():
 	parser.add_argument('--domain_name', default='walker')
 	parser.add_argument('--task_name', default='walk')
 	parser.add_argument('--env_name', default='walker_run')  # (chongyi zheng)
+	parser.add_argument('--camera_id', default=0, type=int)
 	parser.add_argument('--frame_stack', default=3, type=int)
 	parser.add_argument('--action_repeat', default=4, type=int)
 	parser.add_argument('--episode_length', default=1000, type=int)
@@ -44,15 +45,15 @@ def parse_args():
 	parser.add_argument('--encoder_tau', default=0.05, type=float)
 
 	# self-supervision
-	parser.add_argument('--use_rot', default=False, action='store_true') # rotation prediction
-	parser.add_argument('--use_inv', default=False, action='store_true') # inverse dynamics model
-	parser.add_argument('--use_curl', default=False, action='store_true') # CURL
-	parser.add_argument('--ss_lr', default=1e-3, type=float) # self-supervised learning rate
-	parser.add_argument('--ss_update_freq', default=2, type=int) # self-supervised update frequency
-	parser.add_argument('--num_layers', default=11, type=int) # number of conv layers
-	parser.add_argument('--num_shared_layers', default=-1, type=int) # number of shared conv layers
-	parser.add_argument('--num_filters', default=32, type=int) # number of filters in conv
-	parser.add_argument('--curl_latent_dim', default=128, type=int) # latent dimension for curl
+	parser.add_argument('--use_rot', default=False, action='store_true')  # rotation prediction
+	parser.add_argument('--use_inv', default=False, action='store_true')  # inverse dynamics model
+	parser.add_argument('--use_curl', default=False, action='store_true')  # CURL
+	parser.add_argument('--ss_lr', default=1e-3, type=float)   # self-supervised learning rate
+	parser.add_argument('--ss_update_freq', default=2, type=int)  # self-supervised update frequency
+	parser.add_argument('--num_layers', default=11, type=int)  # number of conv layers
+	parser.add_argument('--num_shared_layers', default=-1, type=int)  # number of shared conv layers
+	parser.add_argument('--num_filters', default=32, type=int)  # number of filters in conv
+	parser.add_argument('--curl_latent_dim', default=128, type=int)  # latent dimension for curl
 	
 	# sac
 	parser.add_argument('--discount', default=0.99, type=float)
