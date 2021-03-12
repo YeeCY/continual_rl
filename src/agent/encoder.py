@@ -65,7 +65,7 @@ class PixelEncoder(nn.Module):
 
 		for i in range(1, self.num_layers):
 			conv = torch.relu(self.convs[i](conv))
-			if i == self.num_shared_layers-1 and detach:
+			if i == self.num_shared_layers - 1 and detach:
 				conv = conv.detach()
 
 		h = conv.view(conv.size(0), -1)

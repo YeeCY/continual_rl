@@ -56,6 +56,8 @@ def parse_args():
 	parser.add_argument('--num_shared_layers', default=-1, type=int)  # number of shared conv layers
 	parser.add_argument('--num_filters', default=32, type=int)  # number of filters in conv
 	parser.add_argument('--curl_latent_dim', default=128, type=int)  # latent dimension for curl
+	parser.add_argument('--use_ensemble', default=False, action='store_true')  # ensemble
+	parser.add_argument('--num_ensem_comps', default=4, type=int)  # number of components in ensemble
 	
 	# sac
 	parser.add_argument('--discount', default=0.99, type=float)
