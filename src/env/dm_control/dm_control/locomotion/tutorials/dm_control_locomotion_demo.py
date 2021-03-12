@@ -122,7 +122,7 @@ def rolling_ball_with_head_run(random_state=None):
         strip_singleton_obs_buffer_dim=True)
 
 
-def jumping_ball_with_head_run(random_state=None):
+def jumping_ball_run(random_state=None):
     walker = jumping_ball.JumpingBallWithHead()
     arena = corr_arenas.EmptyCorridor()
     task = corr_tasks.RunThroughCorridor(
@@ -137,6 +137,34 @@ def jumping_ball_with_head_run(random_state=None):
         time_limit=30,
         task=task,
         random_state=random_state,
+        strip_singleton_obs_buffer_dim=True)
+
+
+def jumping_ball_run_gaps():
+    walker = jumping_ball.JumpingBallWithHead()
+
+    # Build a corridor-shaped arena with gaps, where the sizes of the gaps and
+    # platforms are uniformly randomized.
+    arena = corr_arenas.GapsCorridor(
+        platform_length=distributions.Uniform(1.0, 2.5),  # (0.3, 2.5)
+        gap_length=distributions.Uniform(0.3, 0.7),  # (0.5, 1.25)
+        corridor_width=10,
+        corridor_length=250)
+
+    # Build a task that rewards the agent for running down the corridor at a
+    # specific velocity.
+    task = corr_tasks.RunThroughCorridor(
+        walker=walker,
+        arena=arena,
+        walker_spawn_position=(1.0, 0, 0),
+        target_velocity=3.0,
+        contact_termination=False,
+        physics_timestep=_PHYSICS_TIMESTEP,
+        control_timestep=_CONTROL_TIMESTEP)
+
+    return composer.Environment(
+        time_limit=30,
+        task=task,
         strip_singleton_obs_buffer_dim=True)
 
 
@@ -209,9 +237,10 @@ def main():
     # viewer.launch(environment_loader=ant_run)
     # viewer.launch(ant_run_long)
     # viewer.launch(environment_loader=ant_run_walls)
-    viewer.launch(environment_loader=ant_run_gaps)
+    # viewer.launch(environment_loader=ant_run_gaps)
     # viewer.launch(environment_loader=rolling_ball_with_head_run)
-    # viewer.launch(environment_loader=jumping_ball_with_head_run)
+    # viewer.launch(environment_loader=jumping_ball_run)
+    viewer.launch(environment_loader=jumping_ball_run_gaps)
     # viewer.launch(environment_loader=basic_cmu_2019.cmu_humanoid_run_walls)
     # viewer.launch(environment_loader=basic_cmu_2019.cmu_humanoid_run_gaps)
     # viewer.launch(environment_loader=walker_run)
