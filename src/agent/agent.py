@@ -815,9 +815,9 @@ class SacSSEnsembleAgent:
             "invalid transitions shapes!"
 
         with torch.no_grad():
-            obs = torch.FloatTensor(obs).cuda()
-            next_obs = torch.FloatTensor(next_obs).cuda()
-            action = torch.FloatTensor(action).cuda()
+            obs = torch.FloatTensor(obs).cuda() if not isinstance(obs, torch.Tensor) else obs.cuda()
+            next_obs = torch.FloatTensor(next_obs).cuda() if not isinstance(next_obs, torch.Tensor) else next_obs.cuda()
+            action = torch.FloatTensor(action).cuda() if not isinstance(action, torch.Tensor) else action.cuda()
 
             if len(obs.size()) == 3:
                 obs = obs.unsqueeze(0)
@@ -915,7 +915,7 @@ class SacSSEnsembleAgent:
 
             inv_loss_items.append(inv_loss.item())
 
-        return inv_loss_items
+        return np.asarray(inv_loss_items)
 
     def update(self, replay_buffer, L, step):
         obs, action, reward, next_obs, not_done = replay_buffer.sample()
