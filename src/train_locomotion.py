@@ -1,4 +1,5 @@
 import torch
+import numpy as np
 import os
 
 from arguments import parse_args
@@ -12,6 +13,11 @@ from video import VideoRecorder
 
 def evaluate(env, agent, video, num_episodes, L, step):
 	"""Evaluate agent"""
+	episode_rewards = []
+	episode_invs_pred_vars = []
+	obs_buf = []
+	next_obs_buf = []
+	action_buf = []
 	for i in range(num_episodes):
 		obs = env.reset()
 		video.init(enabled=(i == 0))
@@ -20,12 +26,24 @@ def evaluate(env, agent, video, num_episodes, L, step):
 		while not done:
 			with utils.eval_mode(agent):
 				action = agent.select_action(obs)
-			obs, reward, done, _ = env.step(action)
-			video.record(env)
-			episode_reward += reward
+			next_obs, reward, done, _ = env.step(action)
 
+			obs_buf.append(obs)
+			next_obs_buf.append(next_obs)
+			action_buf.append(action)
+			episode_reward += reward
+			video.record(env)
+			obs = next_obs
+		episode_rewards.append(episode_reward)
+		episode_invs_pred_vars.append(np.mean(
+			agent.invs_pred_var(
+				np.asarray(obs_buf, dtype=obs.dtype),
+				np.asarray(next_obs_buf, dtype=obs.dtype),
+				np.asarray(action_buf, dtype=action.dtype))
+		))
 		video.save('%d.mp4' % step)
-		L.log('eval/episode_reward', episode_reward, step)
+	L.log('eval/episode_reward', np.mean(episode_rewards), step)
+	L.log('eval/episode_invs_pred_var', np.mean(episode_invs_pred_vars), step)
 	L.dump(step)
 
 

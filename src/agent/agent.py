@@ -740,11 +740,10 @@ class SacSSEnsembleAgent:
                 self.ss_encoders.append(ss_encoder)
 
             # inverse dynamics ensemble
-            if use_inv:
-                for _ in range(self.num_ensem_comps):
-                    inv = InvFunction(encoder_feature_dim, action_shape[0], hidden_dim).cuda()
-                    inv.apply(weight_init)  # different initialization for each component
-                    self.invs.append(inv)
+            for _ in range(self.num_ensem_comps):
+                inv = InvFunction(encoder_feature_dim, action_shape[0], hidden_dim).cuda()
+                inv.apply(weight_init)  # different initialization for each component
+                self.invs.append(inv)
 
         # ss optimizers
         self.init_ss_optimizers(encoder_lr, ss_lr)
@@ -812,7 +811,7 @@ class SacSSEnsembleAgent:
         # TODO (chongyi zheng):
         #  do we need action - measure the prediction error,
         #  or we just need to predictions - measure the prediction variance?
-        assert obs.shape() == next_obs.shape() and obs.shape[0] == next_obs.shape[0] == action.shape[0], \
+        assert obs.shape == next_obs.shape and obs.shape[0] == next_obs.shape[0] == action.shape[0], \
             "invalid transitions shapes!"
 
         with torch.no_grad():
@@ -834,10 +833,9 @@ class SacSSEnsembleAgent:
                 preds.append(inv(h, h_next))
 
             # (chongyi zheng): the same as equation (1) in https://arxiv.org/abs/1906.04161
-            pred_vars = torch.var(torch.cat(preds), dim=0).sum(dim=-1)
-            mean_pred_var = pred_vars.mean()  # average over transitions
+            pred_vars = torch.var(torch.stack(preds), dim=0).sum(dim=-1)
 
-            return mean_pred_var
+            return pred_vars.cpu().data.numpy()
 
     def update_critic(self, obs, action, reward, next_obs, not_done, L, step):
         with torch.no_grad():
@@ -943,6 +941,8 @@ class SacSSEnsembleAgent:
 
         if len(self.invs) > 0 and step % self.ss_update_freq == 0:
             self.update_inv(obs, next_obs, action, L, step)
+            invs_pred_var = self.invs_pred_var(obs, next_obs, action)
+            L.log('train/batch_invs_pred_var', invs_pred_var.mean(), step)
 
     def save(self, model_dir, step):
         torch.save(
