@@ -67,7 +67,7 @@ def init_env(args):
 		action_repeat=args.action_repeat,
 		obs_height=args.obs_height,
 		obs_width=args.obs_width,
-		camera_id=args.camera_id,
+		camera_id=args.env_camera_id,
 		mode=args.mode
 	)
 
@@ -77,7 +77,8 @@ def main(args):
 	env = init_env(args)
 	model_dir = utils.make_dir(os.path.join(args.work_dir, 'model'))
 	video_dir = utils.make_dir(os.path.join(args.work_dir, 'video'))
-	video = VideoRecorder(video_dir if args.save_video else None, height=448, width=448, camera_id=args.camera_id)
+	video = VideoRecorder(video_dir if args.save_video else None, height=448, width=448,
+						  camera_id=args.video_camera_id)
 
 	# Prepare agent
 	assert torch.cuda.is_available(), 'must have cuda enabled'
