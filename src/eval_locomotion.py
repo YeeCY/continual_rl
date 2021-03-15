@@ -81,7 +81,7 @@ def main(args):
 
 	# Prepare agent
 	assert torch.cuda.is_available(), 'must have cuda enabled'
-	cropped_obs_shape = (3* args.frame_stack, 84, 84)
+	cropped_obs_shape = (3 * args.frame_stack, 84, 84)
 	agent = make_agent(
 		obs_shape=cropped_obs_shape,
 		action_shape=env.action_space.shape,
@@ -93,7 +93,7 @@ def main(args):
 	print(f'Evaluating {args.work_dir} for {args.eval_episodes} episodes (mode: {args.mode})')
 	eval_reward, eval_invs_pred_var = evaluate(env, agent, args, video)
 	print('eval reward:', int(eval_reward))
-	print('eval_invs_pred_var: ', eval_invs_pred_var)
+	print('eval inverse predictor variance: ', eval_invs_pred_var)
 
 	# # Evaluate agent with PAD (if applicable)
 	# pad_reward = None
@@ -105,13 +105,14 @@ def main(args):
 	# 	print('pad reward:', int(pad_reward))
 
 	# Save results
-	results_fp = os.path.join(args.work_dir, '{}.pt'.format(args.mode))
-	torch.save({
-		'args': args,
-		'eval_reward': eval_reward,
-		'eval_invs_pred_var': eval_invs_pred_var
-	}, results_fp)
-	print('Saved results to', results_fp)
+	if args.eval_results:
+		results_fp = os.path.join(args.work_dir, '{}.pt'.format(args.mode))
+		torch.save({
+			'args': args,
+			'eval_reward': eval_reward,
+			'eval_invs_pred_var': eval_invs_pred_var
+		}, results_fp)
+		print('Saved results to', results_fp)
 
 
 if __name__ == '__main__':
