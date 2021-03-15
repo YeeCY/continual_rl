@@ -9,23 +9,18 @@ from video import VideoRecorder
 from arguments import parse_args
 from env.wrappers import make_locomotion_env
 from agent.agent import make_agent
-from utils import get_curl_pos_neg
 
 
-def evaluate(env, agent, args, video, adapt=False):
+def evaluate(env, agent, args, video):
 	"""Evaluate an agent, optionally adapt using PAD"""
 	episode_rewards = []
+	episode_invs_pred_vars = []
+	obs_buf = []
+	next_obs_buf = []
+	action_buf = []
 
-	for i in tqdm(range(args.pad_num_episodes)):
+	for i in tqdm(range(args.eval_episodes)):
 		ep_agent = deepcopy(agent)  # make a new copy
-
-		if args.use_curl:  # initialize replay buffer for CURL
-			replay_buffer = utils.ReplayBuffer(
-				obs_shape=env.observation_space.shape,
-				action_shape=env.action_space.shape,
-				capacity=args.train_steps,
-				batch_size=args.pad_batch_size
-			)
 		video.init(enabled=True)
 
 		obs = env.reset()
@@ -41,62 +36,40 @@ def evaluate(env, agent, args, video, adapt=False):
 				action = ep_agent.select_action(obs)
 			next_obs, reward, done, _ = env.step(action)
 			episode_reward += reward
-			
-			# Make self-supervised update if flag is true
-			if adapt:
-				if args.use_rot:  # rotation prediction
 
-					# Prepare batch of cropped observations
-					batch_next_obs = utils.batch_from_obs(torch.Tensor(next_obs).cuda(), batch_size=args.pad_batch_size)
-					batch_next_obs = utils.random_crop(batch_next_obs)
-
-					# Adapt using rotation prediction
-					losses.append(ep_agent.update_rot(batch_next_obs))
-				
-				if args.use_inv: # inverse dynamics model
-
-					# Prepare batch of observations
-					batch_obs = utils.batch_from_obs(torch.Tensor(obs).cuda(), batch_size=args.pad_batch_size)
-					batch_next_obs = utils.batch_from_obs(torch.Tensor(next_obs).cuda(), batch_size=args.pad_batch_size)
-					batch_action = torch.Tensor(action).cuda().unsqueeze(0).repeat(args.pad_batch_size, 1)
-
-					# Adapt using inverse dynamics prediction
-					losses.append(ep_agent.update_inv(utils.random_crop(batch_obs), utils.random_crop(batch_next_obs), batch_action))
-
-				if args.use_curl:  # CURL
-
-					# Add observation to replay buffer for use as negative samples
-					# (only first argument obs is used, but we store all for convenience)
-					replay_buffer.add(obs, action, reward, next_obs, True)
-
-					# Prepare positive and negative samples
-					obs_anchor, obs_pos = get_curl_pos_neg(next_obs, replay_buffer)
-
-					# Adapt using CURL
-					losses.append(ep_agent.update_curl(obs_anchor, obs_pos, ema=True))
-
+			obs_buf.append(obs)
+			next_obs_buf.append(next_obs)
+			action_buf.append(action)
 			video.record(env, losses)
 			obs = next_obs
 			step += 1
 
-		video.save(f'{args.mode}_pad_{i}.mp4' if adapt else f'{args.mode}_eval_{i}.mp4')
+		video.save('{}_{}.mp4'.format(args.mode, i))
 		episode_rewards.append(episode_reward)
+		# Compute self-supervised ensemble variance
+		if args.use_inv:
+			episode_invs_pred_vars.append(np.mean(
+				agent.invs_pred_var(
+					np.asarray(obs_buf, dtype=obs.dtype),
+					np.asarray(next_obs_buf, dtype=obs.dtype),
+					np.asarray(action_buf, dtype=action.dtype))
+			))
 
-	return np.mean(episode_rewards)
+	return np.mean(episode_rewards), np.mean(episode_invs_pred_vars)
 
 
 def init_env(args):
-		utils.set_seed_everywhere(args.seed)
-		return make_locomotion_env(
-			env_name=args.env_name,
-			seed=args.seed,
-			episode_length=args.episode_length,
-			action_repeat=args.action_repeat,
-			obs_height=args.obs_height,
-			obs_width=args.obs_width,
-			camera_id=args.camera_id,
-			mode=args.mode
-		)
+	utils.set_seed_everywhere(args.seed)
+	return make_locomotion_env(
+		env_name=args.env_name,
+		seed=args.seed,
+		episode_length=args.episode_length,
+		action_repeat=args.action_repeat,
+		obs_height=args.obs_height,
+		obs_width=args.obs_width,
+		camera_id=args.camera_id,
+		mode=args.mode
+	)
 
 
 def main(args):
@@ -114,27 +87,29 @@ def main(args):
 		action_shape=env.action_space.shape,
 		args=args
 	)
-	agent.load(model_dir, args.pad_checkpoint)
+	agent.load(model_dir, args.load_checkpoint)
 
 	# Evaluate agent without PAD
-	print(f'Evaluating {args.work_dir} for {args.pad_num_episodes} episodes (mode: {args.mode})')
-	eval_reward = evaluate(env, agent, args, video)
+	print(f'Evaluating {args.work_dir} for {args.eval_episodes} episodes (mode: {args.mode})')
+	eval_reward, eval_invs_pred_var = evaluate(env, agent, args, video)
 	print('eval reward:', int(eval_reward))
+	print('eval_invs_pred_var: ', eval_invs_pred_var)
 
-	# Evaluate agent with PAD (if applicable)
-	pad_reward = None
-	if args.use_inv or args.use_curl or args.use_rot:
-		env = init_env(args)
-		print(f'Policy Adaptation during Deployment of {args.work_dir} for {args.pad_num_episodes} episodes (mode: {args.mode})')
-		pad_reward = evaluate(env, agent, args, video, adapt=True)
-		print('pad reward:', int(pad_reward))
+	# # Evaluate agent with PAD (if applicable)
+	# pad_reward = None
+	# if args.use_inv or args.use_curl or args.use_rot:
+	# 	env = init_env(args)
+	# 	print(f'Policy Adaptation during Deployment of {args.work_dir} for {args.pad_num_episodes} episodes '
+	# 		  f'(mode: {args.mode})')
+	# 	pad_reward = evaluate(env, agent, args, video, adapt=True)
+	# 	print('pad reward:', int(pad_reward))
 
 	# Save results
-	results_fp = os.path.join(args.work_dir, f'pad_{args.mode}.pt')
+	results_fp = os.path.join(args.work_dir, '{}.pt'.format(args.mode))
 	torch.save({
 		'args': args,
 		'eval_reward': eval_reward,
-		'pad_reward': pad_reward
+		'eval_invs_pred_var': eval_invs_pred_var
 	}, results_fp)
 	print('Saved results to', results_fp)
 

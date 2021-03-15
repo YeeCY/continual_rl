@@ -68,30 +68,32 @@ def parse_args():
 	# misc
 	parser.add_argument('--seed', default=None, type=int)
 	parser.add_argument('--work_dir', default=None, type=str)
+	parser.add_argument('--load_checkpoint', default=None, type=str)
 	parser.add_argument('--save_model', default=False, action='store_true')
 	parser.add_argument('--save_video', default=False, action='store_true')
 	parser.add_argument('--replay_buffer_capacity', default=500000, type=int)  # (chongyi zheng)
 	parser.add_argument('--use_tb', default=False, action='store_true')  # (chongyi zheng)
 
 	# test
-	parser.add_argument('--pad_checkpoint', default=None, type=str)
-	parser.add_argument('--pad_batch_size', default=32, type=int)
-	parser.add_argument('--pad_num_episodes', default=100, type=int)
+	# parser.add_argument('--pad_checkpoint', default=None, type=str)
+	# parser.add_argument('--pad_batch_size', default=32, type=int)
+	# parser.add_argument('--pad_num_episodes', default=100, type=int)
 
 	args = parser.parse_args()
 
-	assert args.mode in {'train', 'color_easy', 'color_hard'} or 'video' in args.mode, f'unrecognized mode "{args.mode}"'
+	assert args.mode in {'train', 'eval', 'eval_color_easy', 'eval_color_hard'} or 'eval_video' in args.mode, \
+		f'unrecognized mode "{args.mode}"'
 	assert args.seed is not None, 'must provide seed for experiment'
 	assert args.work_dir is not None, 'must provide a working directory for experiment'
 
 	assert np.sum([args.use_inv, args.use_rot, args.use_curl]) <= 1, \
 		'can use at most one self-supervised task'
 
-	if args.pad_checkpoint is not None:
+	if args.load_checkpoint is not None:
 		try:
-			args.pad_checkpoint = args.pad_checkpoint.replace('k', '000')
-			args.pad_checkpoint = int(args.pad_checkpoint)
+			args.load_checkpoint = args.load_checkpoint.replace('k', '000')
+			args.load_checkpoint = int(args.load_checkpoint)
 		except:
-			return ValueError('pad_checkpoint must be int, received', args.pad_checkpoint)
+			return ValueError('load_checkpoint must be int, received', args.load_checkpoint)
 	
 	return args

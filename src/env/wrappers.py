@@ -103,8 +103,8 @@ class ColorWrapper(gym.Wrapper):
         self.reload_physics(self.get_random_color())
 
     def _load_colors(self):
-        assert self._mode in {'color_easy', 'color_hard'}
-        self._colors = torch.load(f'src/env/data/{self._mode}.pt')
+        assert self._mode in {'eval_color_easy', 'eval_color_hard'}
+        self._colors = torch.load('src/env/data/{}.pt'.format(self._mode.replace('eval_', '')))
 
     def get_random_color(self):
         assert len(self._colors) >= 100, 'env must include at least 100 colors'
@@ -252,7 +252,7 @@ class GreenScreen(gym.Wrapper):
         gym.Wrapper.__init__(self, env)
         self._mode = mode
         if 'video' in mode:
-            self._video = mode
+            self._video = mode.replace('eval_', '')
             if not self._video.endswith('.mp4'):
                 self._video += '.mp4'
             self._video = os.path.join('src/env/data', self._video)
@@ -348,7 +348,7 @@ class VideoBackground(gym.Wrapper):
         gym.Wrapper.__init__(self, env)
         self._mode = mode
         if 'video' in mode:
-            self._video = mode
+            self._video = mode.replace('eval_', '')
             if not self._video.endswith('.mp4'):
                 self._video += '.mp4'
             self._video = os.path.join('src/env/data', self._video)
