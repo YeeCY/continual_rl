@@ -678,11 +678,12 @@ class SacSSEnsembleAgent:
             use_inv=False,
             ss_lr=1e-3,
             ss_update_freq=1,
+            ss_stop_shared_layers_grad=False,  # (chongyi zheng)
             num_layers=4,
             num_shared_layers=4,
             num_filters=32,
             curl_latent_dim=128,
-            num_ensem_comps=4,
+            num_ensem_comps=4,  # (chongyi zheng)
     ):
         self.discount = discount
         self.critic_tau = critic_tau
@@ -690,6 +691,7 @@ class SacSSEnsembleAgent:
         self.actor_update_freq = actor_update_freq
         self.critic_target_update_freq = critic_target_update_freq
         self.ss_update_freq = ss_update_freq
+        self.ss_stop_shared_layers_grad = ss_stop_shared_layers_grad
         self.use_inv = use_inv
         self.curl_latent_dim = curl_latent_dim
         self.num_ensem_comps = num_ensem_comps
@@ -724,10 +726,9 @@ class SacSSEnsembleAgent:
 
         # self-supervision ensembles
         self.ss_encoders = []
-        self.encoder_optimizers = []
-
         self.invs = []
-        self.inv_optimizers = []
+        self.encoder_optimizer = None
+        self.inv_optimizer = None
 
         if use_inv:
             # self-supervised encoder ensemble
@@ -766,15 +767,15 @@ class SacSSEnsembleAgent:
 
     def init_ss_optimizers(self, encoder_lr=1e-3, ss_lr=1e-3):
         if len(self.ss_encoders) > 0:
+            ss_encoder_params = []
             for ss_encoder in self.ss_encoders:
-                self.encoder_optimizers.append(
-                    torch.optim.Adam(ss_encoder.parameters(), lr=encoder_lr)
-                )
+                ss_encoder_params += list(ss_encoder.parameters())
+            self.encoder_optimizer = torch.optim.Adam(ss_encoder_params, lr=encoder_lr)
         if self.use_inv:
+            inv_params = []
             for inv in self.invs:
-                self.inv_optimizers.append(
-                    torch.optim.Adam(inv.parameters(), lr=ss_lr)
-                )
+                inv_params += list(inv.parameters())
+            self.inv_optimizer = torch.optim.Adam(inv_params, lr=ss_lr)
 
     def train(self, training=True):
         self.training = training
@@ -864,10 +865,11 @@ class SacSSEnsembleAgent:
         actor_Q = torch.min(actor_Q1, actor_Q2)
         actor_loss = (self.alpha.detach() * log_pi - actor_Q).mean()
 
+        entropy = 0.5 * log_std.shape[1] * (1.0 + np.log(2 * np.pi)
+                                            ) + log_std.sum(dim=-1)
+
         if L is not None:
             L.log('train_actor/loss', actor_loss, step)
-            entropy = 0.5 * log_std.shape[1] * (1.0 + np.log(2 * np.pi)
-                                                ) + log_std.sum(dim=-1)
 
         # optimize the actor
         self.actor_optimizer.zero_grad()
@@ -889,31 +891,37 @@ class SacSSEnsembleAgent:
         assert obs.shape[-1] == 84 and next_obs.shape[-1] == 84
 
         inv_loss_items = []
+        inv_losses = []
         # (chongyi zheng): split transitions for each component of the ensemble
         num_samples_each_slice = obs.shape[0] // self.num_ensem_comps
-        for idx, (ss_encoder, inv, encoder_optimizer, inv_optimizer) in enumerate(zip(
-                self.ss_encoders, self.invs, self.encoder_optimizers, self.inv_optimizers)):
+        for idx, (ss_encoder, inv) in enumerate(zip(self.ss_encoders, self.invs)):
             obs_slice = obs[idx * num_samples_each_slice:(idx + 1) * num_samples_each_slice]
             next_obs_slice = next_obs[idx * num_samples_each_slice:(idx + 1) * num_samples_each_slice]
             action_slice = action[idx * num_samples_each_slice:(idx + 1) * num_samples_each_slice]
 
-            h = ss_encoder(obs_slice)
-            h_next = ss_encoder(next_obs_slice)
+            # only back propagate the gradients from first predictor in the ensemble to shared encoder
+            if self.ss_stop_shared_layers_grad and idx != 0:
+                h = ss_encoder(obs_slice, detach=True)
+                h_next = ss_encoder(next_obs_slice, detach=True)
+            else:
+                h = ss_encoder(obs_slice)
+                h_next = ss_encoder(next_obs_slice)
 
             pred_action = inv(h, h_next)
             inv_loss = F.mse_loss(pred_action, action_slice)
-
-            encoder_optimizer.zero_grad()
-            inv_optimizer.zero_grad()
-            inv_loss.backward()
-
-            encoder_optimizer.step()
-            inv_optimizer.step()
+            inv_losses.append(inv_loss)
 
             if L is not None:
                 L.log('train_inv/inv_loss_{}'.format(idx), inv_loss, step)
 
             inv_loss_items.append(inv_loss.item())
+        mean_inv_loss = torch.mean(torch.stack(inv_losses))
+        self.encoder_optimizer.zero_grad()
+        self.inv_optimizer.zero_grad()
+        mean_inv_loss.backward()
+
+        self.encoder_optimizer.step()
+        self.inv_optimizer.step()
 
         return np.asarray(inv_loss_items)
 
