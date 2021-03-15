@@ -18,8 +18,8 @@
 
   <worldbody>
     <camera name="sideon" pos="0 -10 5" euler="1.0472 0 0" fovy="45" mode="trackcom"/>
-    <camera name="float_far"  pos="-4 0 2" xyaxes="0 -1 0 .5 0 1" mode="trackcom" fovy="90"/>
-    <camera name="floating"  pos="-2 0 1" xyaxes="0 -1 0 .5 0 1" mode="trackcom" fovy="90"/>
+    <camera name="float_far" pos="-4 0 2" xyaxes="0 -1 0 .5 0 1" mode="trackcom" fovy="90"/>
+    <camera name="floating" pos="-2 0 1" xyaxes="0 -1 0 .5 0 1" mode="trackcom" fovy="90"/>
     <body pos="0 0 0.6" quat="1 0 0 -1" name="head_body">
       <body name="egocentric_camera" pos="0 0.15 0.9" zaxis="0 -0.99503719021 0.09950371902">
         <inertial pos="0 0 0" mass="1" diaginertia="1 1 1"/>

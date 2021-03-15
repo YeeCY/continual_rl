@@ -143,11 +143,11 @@ class DMCWrapper(core.Env):
 
     def render(self, mode='rgb_array', height=None, width=None, camera_id=None):
         assert mode == 'rgb_array' or 'segmentation', 'only support rgb_array and segmentation mode, given %s' % mode
-        height = height or self._height
-        width = width or self._width
-        camera_id = camera_id or self._camera_id
         img = self._env.physics.render(
-            height=height, width=width, camera_id=camera_id, segmentation=(mode == 'segmentation')
+            height=height if height is not None else self._height,
+            width=width if width is not None else self._width,
+            camera_id=camera_id if camera_id is not None else self._camera_id,
+            segmentation=(mode == 'segmentation')
         )
 
         return img
