@@ -15,14 +15,14 @@ def evaluate(env, agent, video, num_episodes, L, step):
 	"""Evaluate agent"""
 	episode_rewards = []
 	episode_invs_pred_vars = []
-	obs_buf = []
-	next_obs_buf = []
-	action_buf = []
 	for i in range(num_episodes):
 		obs = env.reset()
 		video.init(enabled=(i == 0))
 		done = False
 		episode_reward = 0
+		obs_buf = []
+		next_obs_buf = []
+		action_buf = []
 		while not done:
 			with utils.eval_mode(agent):
 				action = agent.select_action(obs)

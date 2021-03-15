@@ -15,25 +15,25 @@ def evaluate(env, agent, args, video):
 	"""Evaluate an agent, optionally adapt using PAD"""
 	episode_rewards = []
 	episode_invs_pred_vars = []
-	obs_buf = []
-	next_obs_buf = []
-	action_buf = []
 
 	for i in tqdm(range(args.eval_episodes)):
-		ep_agent = deepcopy(agent)  # make a new copy
+		# ep_agent = deepcopy(agent)  # make a new copy
 		video.init(enabled=True)
 
 		obs = env.reset()
 		done = False
 		episode_reward = 0
+		obs_buf = []
+		next_obs_buf = []
+		action_buf = []
 		losses = []
 		step = 0
-		ep_agent.train()
+		# ep_agent.train()
 
 		while not done:
 			# Take step
-			with utils.eval_mode(ep_agent):
-				action = ep_agent.select_action(obs)
+			with utils.eval_mode(agent):
+				action = agent.select_action(obs)
 			next_obs, reward, done, _ = env.step(action)
 			episode_reward += reward
 
@@ -81,7 +81,7 @@ def main(args):
 
 	# Prepare agent
 	assert torch.cuda.is_available(), 'must have cuda enabled'
-	cropped_obs_shape = (3*args.frame_stack, 84, 84)
+	cropped_obs_shape = (3* args.frame_stack, 84, 84)
 	agent = make_agent(
 		obs_shape=cropped_obs_shape,
 		action_shape=env.action_space.shape,
