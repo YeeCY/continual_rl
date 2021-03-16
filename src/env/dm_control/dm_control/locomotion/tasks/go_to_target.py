@@ -31,6 +31,7 @@ class GoToTarget(composer.Task):
   def __init__(self,
                walker,
                arena,
+               sparse_reward=True,
                moving_target=False,
                target_relative=False,
                target_relative_dist=1.5,
@@ -46,6 +47,7 @@ class GoToTarget(composer.Task):
     Args:
       walker: an instance of `locomotion.walkers.base.Walker`.
       arena: an instance of `locomotion.arenas.floors.Floor`.
+      sparse_reward: bool, Whether the reward signal is sparse
       moving_target: bool, Whether the target should move after receiving the
         walker reaches it.
       target_relative: bool, Whether the target be set relative to its current
@@ -91,6 +93,7 @@ class GoToTarget(composer.Task):
 
     self._walker_spawn_rotation = walker_spawn_rotation
 
+    self._sparse_reward = sparse_reward
     self._distance_tolerance = distance_tolerance
     self._moving_target = moving_target
     self._target_relative = target_relative
@@ -178,14 +181,19 @@ class GoToTarget(composer.Task):
       return 1.
 
   def get_reward(self, physics):
-    reward = 0.
     distance = np.linalg.norm(
         physics.bind(self._target).pos[:2] -
         physics.bind(self._walker.root_body).xpos[:2])
-    if distance < self._distance_tolerance:
-      reward = 1.
-      if self._moving_target:
-        self._reward_step_counter += 1
+
+    if self._sparse_reward:
+        reward = 0.
+        if distance < self._distance_tolerance:
+          reward = 1.
+          if self._moving_target:
+            self._reward_step_counter += 1
+    else:
+        reward = -distance
+
     return reward
 
   def before_step(self, physics, action, random_state):

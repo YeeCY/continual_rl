@@ -2,7 +2,9 @@ from dm_control import composer
 from dm_control import viewer
 from dm_control.composer.variation import distributions
 from dm_control.locomotion.arenas import corridors as corr_arenas
+from dm_control.locomotion.arenas import floors
 from dm_control.locomotion.tasks import corridors as corr_tasks
+from dm_control.locomotion.tasks import go_to_target
 from dm_control.locomotion.examples import basic_cmu_2019
 from dm_control.locomotion.walkers import ant, jumping_ball, initializers
 from dm_control.locomotion.walkers.planar_walker import PlanarWalker
@@ -140,7 +142,7 @@ def jumping_ball_run(random_state=None):
         strip_singleton_obs_buffer_dim=True)
 
 
-def jumping_ball_run_gaps():
+def jumping_ball_run_gaps(random_state=None):
     walker = jumping_ball.JumpingBallWithHead()
 
     # Build a corridor-shaped arena with gaps, where the sizes of the gaps and
@@ -162,10 +164,30 @@ def jumping_ball_run_gaps():
         physics_timestep=_PHYSICS_TIMESTEP,
         control_timestep=_CONTROL_TIMESTEP)
 
-    return composer.Environment(
-        time_limit=30,
-        task=task,
-        strip_singleton_obs_buffer_dim=True)
+    return composer.Environment(time_limit=30,
+                                task=task,
+                                random_state=random_state,
+                                strip_singleton_obs_buffer_dim=True)
+
+
+def jumping_ball_go_to_target(random_state=None):
+    walker = jumping_ball.JumpingBallWithHead()
+
+    # Build a standard floor arena.
+    arena = floors.Floor()
+
+    # Build a task that rewards the agent for going to a target.
+    task = go_to_target.GoToTarget(
+        walker=walker,
+        arena=arena,
+        sparse_reward=False,
+        physics_timestep=_PHYSICS_TIMESTEP,
+        control_timestep=_CONTROL_TIMESTEP)
+
+    return composer.Environment(time_limit=30,
+                                task=task,
+                                random_state=random_state,
+                                strip_singleton_obs_buffer_dim=True)
 
 
 def walker_run(random_state=None):
@@ -233,6 +255,26 @@ def walker_run_gaps(random_state=None):
                                 strip_singleton_obs_buffer_dim=True)
 
 
+def walker_go_to_target(random_state=None):
+    walker = PlanarWalker()
+
+    # Build a standard floor arena.
+    arena = floors.Floor()
+
+    # Build a task that rewards the agent for going to a target.
+    task = go_to_target.GoToTarget(
+        walker=walker,
+        arena=arena,
+        sparse_reward=False,
+        physics_timestep=_PHYSICS_TIMESTEP,
+        control_timestep=_CONTROL_TIMESTEP)
+
+    return composer.Environment(time_limit=30,
+                                task=task,
+                                random_state=random_state,
+                                strip_singleton_obs_buffer_dim=True)
+
+
 def main():
     # viewer.launch(environment_loader=ant_run)
     # viewer.launch(ant_run_long)
@@ -240,11 +282,13 @@ def main():
     # viewer.launch(environment_loader=ant_run_gaps)
     # viewer.launch(environment_loader=rolling_ball_with_head_run)
     # viewer.launch(environment_loader=jumping_ball_run)
-    viewer.launch(environment_loader=jumping_ball_run_gaps)
+    # viewer.launch(environment_loader=jumping_ball_run_gaps)
+    # viewer.launch(environment_loader=jumping_ball_go_to_target)
     # viewer.launch(environment_loader=basic_cmu_2019.cmu_humanoid_run_walls)
     # viewer.launch(environment_loader=basic_cmu_2019.cmu_humanoid_run_gaps)
     # viewer.launch(environment_loader=walker_run)
     # viewer.launch(environment_loader=walker_run_gaps)
+    viewer.launch(environment_loader=walker_go_to_target)
 
     # # Build an example environment.
     # import numpy as np

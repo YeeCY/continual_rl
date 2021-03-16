@@ -40,11 +40,12 @@ class PlanarWalker(legacy_base.Walker):
                                      dtype=self.action_spec.dtype)
 
     def create_root_joints(self, attachment_frame):
-        attachment_frame.add('joint', name='slide_z', axis='0 0 1', type='slide', limited='false',
+        ### Planar attachment joint
+        attachment_frame.add('joint', name='root_z', axis='0 0 1', type='slide', limited='false',
                              armature='0', damping='0')
-        attachment_frame.add('joint', name='slide_x', axis='1 0 0', type='slide', limited='false',
+        attachment_frame.add('joint', name='root_x', axis='1 0 0', type='slide', limited='false',
                              armature='0', damping='0')
-        attachment_frame.add('joint', name='hinge_y', axis='0 1 0', type='hinge', limited='false',
+        attachment_frame.add('joint', name='root_y', axis='0 1 0', type='hinge', limited='false',
                              armature='0', damping='0')  # can only rotate around y axis
 
     def initialize_episode(self, physics, random_state):
