@@ -74,6 +74,9 @@ class Escape(composer.Task):
     elif 'Rat' in str(type(self._walker)):
       core_body = 'walker/torso'
       self._reward_body = 'walker/head'
+    elif 'Ant' in str(type(self._walker)):
+      core_body = 'walker/torso'
+      self._reward_body = 'walker/torso_site'
     else:
       raise ValueError('Expects Rat or CMUHumanoid.')
 
@@ -105,7 +108,7 @@ class Escape(composer.Task):
     # Initial configuration.
     orientation = random_state.randn(4)
     orientation /= np.linalg.norm(orientation)
-    _find_non_contacting_height(physics, self._walker, orientation)
+    _find_non_contacting_height(physics, self._walker, orientation, position=self._walker_spawn_position)
 
   def get_reward(self, physics):
     # Escape reward term.
@@ -124,19 +127,17 @@ class Escape(composer.Task):
     return 1.
 
 
-def _find_non_contacting_height(physics, walker, orientation,
-                                x_pos=0.0, y_pos=0.0, maxiter=1000):
+def _find_non_contacting_height(physics, walker, orientation, position=(0, 0, 0), maxiter=1000):
   """Find a height with no contacts given a body orientation.
 
   Args:
     physics: An instance of `Physics`.
     walker: the focal walker.
     orientation: A quaternion.
-    x_pos: A float. Position along global x-axis.
-    y_pos: A float. Position along global y-axis.
+    position: A tuple. Position along global x, y, z axes.
     maxiter: maximum number of iterations to try
   """
-  z_pos = 0.0  # Start embedded in the floor.
+  z_pos = position[2]  # Start embedded in the floor.
   num_contacts = 1
   count = 1
   # Move up in 1cm increments until no contacts.
@@ -144,7 +145,7 @@ def _find_non_contacting_height(physics, walker, orientation,
     try:
       with physics.reset_context():
         freejoint = mjcf.get_frame_freejoint(walker.mjcf_model)
-        physics.bind(freejoint).qpos[:3] = x_pos, y_pos, z_pos
+        physics.bind(freejoint).qpos[:3] = position[0], position[1], z_pos
         physics.bind(freejoint).qpos[3:] = orientation
     except control.PhysicsError:
       # We may encounter a PhysicsError here due to filling the contact
