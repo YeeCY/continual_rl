@@ -7,10 +7,15 @@ https://opensource.org/licenses/MIT.
 -->
 <mujoco model="ant">
   <compiler angle="radian"/>
+  <statistic extent="2" center="0 0 1"/>
   <default>
-    <motor ctrlrange="-1.0 1.0" ctrllimited="true" gear="75"/>
-    <geom friction="1 0.5 0.5" solref=".02 1" solimp="0 .8 .01" material="self" density="50.0"/>
-    <joint limited="true" armature="1" damping="1" stiffness="1" solreflimit=".04 1" solimplimit="0 .8 .03"/>
+    <motor ctrlrange="-1.0 1.0" ctrllimited="true" gear="150"/>
+    <!-- dm_control configuration -->
+<!--    <geom friction="1 0.5 0.5" solref=".02 1" solimp="0 .8 .01" material="self" density="50.0"/>-->
+<!--    <joint limited="true" armature="1" damping="1" stiffness="1" solreflimit=".04 1" solimplimit="0 .8 .03"/>-->
+    <!-- openai_gym configuration -->
+    <joint armature="1" damping="1" limited="true"/>
+    <geom conaffinity="0" condim="3" density="5.0" friction="1 0.5 0.5" margin="0.01" material="self"/>
     <default class="rangefinder">
         <site type="capsule" size=".05 .5" rgba="1 0 0 .4" group="4"/>
     </default>
@@ -19,9 +24,10 @@ https://opensource.org/licenses/MIT.
     <material name="self" rgba=".8 .6 .4 1"/>
   </asset>
   <worldbody>
+<!--    <geom name="floor" type="plane" conaffinity="1" pos="248 0 0" size="250 .8 .2" zaxis="0 0 1"/>-->
     <camera name="sideon" pos="0 -10 5" euler="1.0472 0 0" fovy="45" mode="trackcom"/>
     <camera name="float_far"  pos="-4 0 2" xyaxes="0 -1 0 .5 0 1" mode="trackcom" fovy="90"/>
-    <body name="torso" pos="0 0 0.522">
+    <body name="torso" pos="0 0 0.75">
       <camera name="floating"  pos="-2 0 1" xyaxes="0 -1 0 .5 0 1" mode="trackcom" fovy="90"/>
       <camera name="egocentric"  pos=".25 0 .11" xyaxes="0 -1 0 0 0 1" fovy="90" />
 
@@ -61,10 +67,13 @@ https://opensource.org/licenses/MIT.
         <geom name="front_left_aux_geom" type="capsule" size="0.08" fromto="0.0 0.0 0.0 0.2 0.2 0.0"/>
         <body name="front_left_aux" pos="0.2 0.2 0">
           <joint name="front_left_hip" range="-0.52359 0.52359"/>
+<!--          <joint name="front_left_hip" axis="0 0 1" range="-0.52359 0.52359" type="hinge"/>-->
           <geom name="front_left_leg_geom" type="capsule" size="0.08" fromto="0.0 0.0 0.0 0.2 0.2 0.0"/>
           <site name="front_left_leg_touch" type="box" pos="0.1 0.1 0" size="0.09 0.09 0.24" zaxis="0.2 0.2 0" rgba="1 1 0 0"/>
           <body name="front_left_foot" pos="0.2 0.2 0" quat="0.98480775301220802 -0.33428158105097677 0.33428158105097677 0">
+<!--          <body name="front_left_foot" pos="0.2 0.2 0">-->
             <joint name="front_left_ankle" type="hinge" pos="0.0 0.0 0.0" axis="1 -1 0" range="-0.34906 0.34906"/>
+<!--            <joint name="front_left_ankle" type="hinge" pos="0.0 0.0 0.0" axis="-1 1 0" range="0.52359 1.22173"/>-->
             <geom name="front_left_ankle_geom" type="capsule" size="0.08" fromto="0.0 0.0 0.0 0.4 0.4 0.0"/>
             <site name="front_left_ankle_touch" type="box" pos="0.2 0.2 0" size="0.1 0.1 0.45" zaxis="0.2 0.2 0.0" rgba="1 1 0 0" />
           </body>
@@ -75,10 +84,13 @@ https://opensource.org/licenses/MIT.
         <geom name="front_right_aux_geom" type="capsule" size="0.08" fromto="0.0 0.0 0.0 0.2 -0.2 0.0"/>
         <body name="front_right_aux" pos="0.2 -0.2 0">
           <joint name="front_right_hip" range="-0.52359 0.52359"/>
+<!--          <joint name="front_right_hip" axis="0 0 1" range="-0.52359 0.52359" type="hinge"/>-->
           <geom name="front_right_leg_geom" type="capsule" size="0.08" fromto="0.0 0.0 0.0 0.2 -0.2 0.0"/>
           <site name="front_right_leg_touch" type="box" pos="0.1 -0.1 0" size="0.09 0.09 0.24" zaxis="0.2 -0.2 0.0" rgba="0 0 1 0"/>
           <body name="front_right_foot" pos="0.2 -0.2 0" quat="0.98480775301220802 0.33428158105097677 0.33428158105097677 0">
+<!--          <body name="front_right_foot" pos="0.2 -0.2 0">-->
             <joint name="front_right_ankle" type="hinge" pos="0.0 0.0 0.0" axis="-1 -1 0" range="-0.34906 0.34906"/>
+<!--            <joint name="front_right_ankle" type="hinge" pos="0.0 0.0 0.0" axis="1 1 0" range="0.52359 1.22173"/>-->
             <geom name="front_right_ankle_geom" type="capsule" size="0.08" fromto="0.0 0.0 0.0 0.4 -0.4 0.0"/>
             <site name="front_right_ankle_touch" type="box" pos="0.2 -0.2 0" size="0.09 0.09 0.39" zaxis="0.2 -0.2 0.0" rgba="0 0 1 0"/>
           </body>
@@ -89,10 +101,13 @@ https://opensource.org/licenses/MIT.
         <geom name="back_right_aux_geom" type="capsule" size="0.08" fromto="0.0 0.0 0.0 -0.2 -0.2 0.0"/>
         <body name="back_right_aux" pos="-0.2 -0.2 0">
           <joint name="back_right_hip" range="-0.52359 0.52359"/>
+<!--          <joint name="back_right_hip" axis="0 0 1" range="-0.52359 0.52359" type="hinge"/>-->
           <geom name="back_right_leg_geom" type="capsule" size="0.08" fromto="0.0 0.0 0.0 -0.2 -0.2 0.0"/>
           <site name="back_right_leg_touch" type="box" pos="-0.1 -0.1 0" size="0.09 0.09 0.24" zaxis="-0.2 -0.2 0.0" rgba="0 0 1 0"/>
           <body name="back_right_foot" pos="-0.2 -0.2 0" quat="0.98480775301220802 0.33428158105097677 -0.33428158105097677 0">
+<!--          <body name="back_right_foot" pos="-0.2 -0.2 0">-->
             <joint name="back_right_ankle" type="hinge" pos="0.0 0.0 0.0" axis="-1 1 0" range="-0.34906 0.34906"/>
+<!--            <joint name="back_right_ankle" type="hinge" pos="0.0 0.0 0.0" axis="-1 1 0" range="-1.22173 -0.52359"/>-->
             <geom name="back_right_ankle_geom" type="capsule" size="0.08" fromto="0.0 0.0 0.0 -0.4 -0.4 0.0"/>
             <site name="back_right_ankle_touch" type="box" pos="-0.2 -0.2 0" size="0.09 0.09 0.39" zaxis="-0.2 -0.2 0.0" rgba="0 0 1 0"/>
           </body>
@@ -103,10 +118,13 @@ https://opensource.org/licenses/MIT.
         <geom name="back_left_aux_geom" type="capsule" size="0.08" fromto="0.0 0.0 0.0 -0.2 0.2 0.0"/>
         <body name="back_left_aux" pos="-0.2 0.2 0">
           <joint name="back_left_hip" range="-0.52359 0.52359"/>
+<!--          <joint name="back_left_hip" axis="0 0 1" range="-0.52359 0.52359" type="hinge"/>-->
           <geom name="back_left_leg_geom" type="capsule" size="0.08" fromto="0.0 0.0 0.0 -0.2 0.2 0.0"/>
           <site name="back_left_leg_touch" type="box" pos="-0.1 0.1 0" size="0.09 0.09 0.24" zaxis="-0.2 0.2 0.0" rgba="0 0 1 0"/>
           <body name="back_left_foot" pos="-0.2 0.2 0" quat="0.98480775301220802 -0.33428158105097677 -0.33428158105097677 0">
+<!--          <body name="back_left_foot" pos="-0.2 0.2 0">-->
             <joint name="back_left_ankle" type="hinge" pos="0.0 0.0 0.0" axis="1 1 0" range="-0.34906 0.34906" />
+<!--            <joint name="back_left_ankle" type="hinge" pos="0.0 0.0 0.0" axis="1 1 0" range="-1.22173 -0.52359" />-->
             <geom name="back_left_ankle_geom" type="capsule" size="0.08" fromto="0.0 0.0 0.0 -0.4 0.4 0.0"/>
             <site name="back_left_ankle_touch" type="box" pos="-0.2 0.2 0" size="0.09 0.09 0.39" zaxis="-0.2 0.2 0.0" rgba="0 0 1 0"/>
           </body>

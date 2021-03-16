@@ -108,45 +108,21 @@ def ant_run_gaps(random_state=None):
         strip_singleton_obs_buffer_dim=True)
 
 
-def rodent_escape_bowl(random_state=None):
-    """Requires a rodent to climb out of a bowl-shaped terrain."""
-
-    # Build a position-controlled rodent walker.
-    walker = rodent.Rat()
-
-    # Build a bowl-shaped arena.
-    arena = bowl.Bowl(
-        size=(20., 20.),
-        aesthetic='outdoor_natural')
-
-    # Build a task that rewards the agent for being far from the origin.
-    task = escape.Escape(
-        walker=walker,
-        arena=arena,
-        physics_timestep=_PHYSICS_TIMESTEP,
-        control_timestep=_CONTROL_TIMESTEP)
-
-    return composer.Environment(time_limit=20,
-                                task=task,
-                                random_state=random_state,
-                                strip_singleton_obs_buffer_dim=True)
-
-
 def ant_escape_bowl(random_state=None):
     walker = ant.Ant()
 
     # Build a bowl-shaped arena.
-    arena = bowl.Bowl(
-        size=(50., 50.))
+    arena = bowl.Bowl(ground_size=(15., 15.), hfield_size=(30, 30, 5), terrain_smoothness=0.15, terrain_bump_scale=2.0)
 
     # Build a task that rewards the agent for being far from the origin.
     task = escape.Escape(
         walker=walker,
         arena=arena,
+        walker_spawn_position=(0, 0, 1.5),
         physics_timestep=_PHYSICS_TIMESTEP,
         control_timestep=_CONTROL_TIMESTEP)
 
-    return composer.Environment(time_limit=20,
+    return composer.Environment(time_limit=30,  # 20
                                 task=task,
                                 random_state=random_state,
                                 strip_singleton_obs_buffer_dim=True)
@@ -306,7 +282,7 @@ def main():
     # viewer.launch(ant_run_long)
     # viewer.launch(environment_loader=ant_run_walls)
     # viewer.launch(environment_loader=ant_run_gaps)
-    viewer.launch(environment_loader=basic_rodent_2020.rodent_escape_bowl)
+    viewer.launch(environment_loader=ant_escape_bowl)
     # viewer.launch(environment_loader=rolling_ball_with_head_run)
     # viewer.launch(environment_loader=jumping_ball_run)
     # viewer.launch(environment_loader=jumping_ball_run_gaps)

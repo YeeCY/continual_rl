@@ -34,15 +34,18 @@ _TERRAIN_BUMP_SCALE = .2  # Spatial scale of terrain bumps (in meters).
 class Bowl(composer.Arena):
   """A bowl arena with sinusoidal bumps."""
 
-  def _build(self, size=(10, 10), aesthetic='default', name='bowl'):
+  def _build(self, ground_size=(10, 10), hfield_size=(6, 6, 0.5), terrain_smoothness=.5, terrain_bump_scale=.2,
+             aesthetic='default', name='bowl'):
     super()._build(name=name)
 
+    self._terrain_smoothness = terrain_smoothness
+    self._terrain_bump_scale = terrain_bump_scale
     self._hfield = self._mjcf_root.asset.add(
         'hfield',
         name='terrain',
         nrow=201,
         ncol=201,
-        size=(6, 6, 0.5, 0.1))
+        size=list(hfield_size) + [0.1])
 
     if aesthetic != 'default':
       ground_info = locomotion_arenas_assets.get_ground_texture_info(aesthetic)
@@ -71,7 +74,7 @@ class Bowl(composer.Arena):
           'geom',
           type='plane',
           name='groundplane',
-          size=list(size) + [0.5],
+          size=list(ground_size) + [0.5],
           material=self._material)
     else:
       self._terrain_geom = self._mjcf_root.worldbody.add(
@@ -86,7 +89,7 @@ class Bowl(composer.Arena):
           type='plane',
           name='groundplane',
           rgba=(0.2, 0.3, 0.4, 1),
-          size=list(size) + [0.5])
+          size=list(ground_size) + [0.5])
 
     self._mjcf_root.visual.headlight.set_attributes(
         ambient=[.4, .4, .4], diffuse=[.8, .8, .8], specular=[.1, .1, .1])
@@ -112,8 +115,8 @@ class Bowl(composer.Arena):
 
       # Random smooth bumps.
       terrain_size = 2 * physics.bind(self._hfield).size[0]
-      bump_res = int(terrain_size / _TERRAIN_BUMP_SCALE)
-      bumps = random_state.uniform(_TERRAIN_SMOOTHNESS, 1, (bump_res, bump_res))
+      bump_res = int(terrain_size / self._terrain_bump_scale)
+      bumps = random_state.uniform(self._terrain_smoothness, 1, (bump_res, bump_res))
       smooth_bumps = ndimage.zoom(bumps, res / float(bump_res))
 
       # Terrain is elementwise product.
