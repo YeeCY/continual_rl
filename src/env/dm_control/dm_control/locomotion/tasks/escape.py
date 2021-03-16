@@ -74,6 +74,9 @@ class Escape(composer.Task):
     elif 'Rat' in str(type(self._walker)):
       core_body = 'walker/torso'
       self._reward_body = 'walker/head'
+    elif 'Ant' in str(type(self._walker)):
+      core_body = 'walker/torso'
+      self._reward_body = 'walker/torso_site'
     else:
       raise ValueError('Expects Rat or CMUHumanoid.')
 

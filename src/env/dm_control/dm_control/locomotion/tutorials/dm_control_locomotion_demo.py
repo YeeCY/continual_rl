@@ -3,10 +3,12 @@ from dm_control import viewer
 from dm_control.composer.variation import distributions
 from dm_control.locomotion.arenas import corridors as corr_arenas
 from dm_control.locomotion.arenas import floors
+from dm_control.locomotion.arenas import bowl
 from dm_control.locomotion.tasks import corridors as corr_tasks
 from dm_control.locomotion.tasks import go_to_target
-from dm_control.locomotion.examples import basic_cmu_2019
-from dm_control.locomotion.walkers import ant, jumping_ball, initializers
+from dm_control.locomotion.tasks import escape
+from dm_control.locomotion.examples import basic_cmu_2019, basic_rodent_2020
+from dm_control.locomotion.walkers import ant, jumping_ball, rodent, initializers
 from dm_control.locomotion.walkers.planar_walker import PlanarWalker
 
 
@@ -104,6 +106,50 @@ def ant_run_gaps(random_state=None):
         task=task,
         random_state=random_state,
         strip_singleton_obs_buffer_dim=True)
+
+
+def rodent_escape_bowl(random_state=None):
+    """Requires a rodent to climb out of a bowl-shaped terrain."""
+
+    # Build a position-controlled rodent walker.
+    walker = rodent.Rat()
+
+    # Build a bowl-shaped arena.
+    arena = bowl.Bowl(
+        size=(20., 20.),
+        aesthetic='outdoor_natural')
+
+    # Build a task that rewards the agent for being far from the origin.
+    task = escape.Escape(
+        walker=walker,
+        arena=arena,
+        physics_timestep=_PHYSICS_TIMESTEP,
+        control_timestep=_CONTROL_TIMESTEP)
+
+    return composer.Environment(time_limit=20,
+                                task=task,
+                                random_state=random_state,
+                                strip_singleton_obs_buffer_dim=True)
+
+
+def ant_escape_bowl(random_state=None):
+    walker = ant.Ant()
+
+    # Build a bowl-shaped arena.
+    arena = bowl.Bowl(
+        size=(50., 50.))
+
+    # Build a task that rewards the agent for being far from the origin.
+    task = escape.Escape(
+        walker=walker,
+        arena=arena,
+        physics_timestep=_PHYSICS_TIMESTEP,
+        control_timestep=_CONTROL_TIMESTEP)
+
+    return composer.Environment(time_limit=20,
+                                task=task,
+                                random_state=random_state,
+                                strip_singleton_obs_buffer_dim=True)
 
 
 def rolling_ball_with_head_run(random_state=None):
@@ -255,31 +301,12 @@ def walker_run_gaps(random_state=None):
                                 strip_singleton_obs_buffer_dim=True)
 
 
-def walker_go_to_target(random_state=None):
-    walker = PlanarWalker()
-
-    # Build a standard floor arena.
-    arena = floors.Floor()
-
-    # Build a task that rewards the agent for going to a target.
-    task = go_to_target.GoToTarget(
-        walker=walker,
-        arena=arena,
-        sparse_reward=False,
-        physics_timestep=_PHYSICS_TIMESTEP,
-        control_timestep=_CONTROL_TIMESTEP)
-
-    return composer.Environment(time_limit=30,
-                                task=task,
-                                random_state=random_state,
-                                strip_singleton_obs_buffer_dim=True)
-
-
 def main():
     # viewer.launch(environment_loader=ant_run)
     # viewer.launch(ant_run_long)
     # viewer.launch(environment_loader=ant_run_walls)
     # viewer.launch(environment_loader=ant_run_gaps)
+    viewer.launch(environment_loader=basic_rodent_2020.rodent_escape_bowl)
     # viewer.launch(environment_loader=rolling_ball_with_head_run)
     # viewer.launch(environment_loader=jumping_ball_run)
     # viewer.launch(environment_loader=jumping_ball_run_gaps)
@@ -288,7 +315,6 @@ def main():
     # viewer.launch(environment_loader=basic_cmu_2019.cmu_humanoid_run_gaps)
     # viewer.launch(environment_loader=walker_run)
     # viewer.launch(environment_loader=walker_run_gaps)
-    viewer.launch(environment_loader=walker_go_to_target)
 
     # # Build an example environment.
     # import numpy as np
