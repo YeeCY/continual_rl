@@ -979,9 +979,9 @@ class SacSSEnsembleAgent:
 
             if L is not None:
                 if self.use_fwd:
-                    L.log('train_fwd_ensem/fwd_loss_{}'.format(idx), fwd_loss, step)
+                    L.log('train_fwd_ensem/loss_{}'.format(idx), fwd_loss, step)
                 if self.use_inv:
-                    L.log('train_inv_ensem/inv_loss_{}'.format(idx), inv_loss, step)
+                    L.log('train_inv_ensem/loss_{}'.format(idx), inv_loss, step)
 
         if self.use_fwd:
             mean_fwd_loss = torch.mean(torch.stack(fwd_losses))

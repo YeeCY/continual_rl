@@ -52,7 +52,7 @@ def main(args):
 		obs_shape=env.observation_space.shape,
 		action_shape=env.action_space.shape,
 		capacity=args.replay_buffer_capacity,
-		batch_size=args.batch_size
+		batch_size=args.batch_size,
 	)
 	cropped_obs_shape = (3*args.frame_stack, 84, 84)
 	agent = make_agent(

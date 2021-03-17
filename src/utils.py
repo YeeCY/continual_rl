@@ -52,25 +52,24 @@ class ReplayBuffer(object):
     - https://github.com/hill-a/stable-baselines/blob/master/stable_baselines/common/buffers.py
 
     """
-
-    def __init__(self, capacity):
+    def __init__(self, obs_shape, action_shape, capacity):
         self.capacity = capacity
 
         # the proprioceptive obs is stored as float32, pixels obs as uint8
-        # obs_dtype = np.float32 if len(obs_shape) == 1 else np.uint8
+        obs_dtype = np.float32 if len(obs_shape) == 1 else np.uint8
 
-        # self.obses = np.empty((capacity, *obs_shape), dtype=obs_dtype)
-        # self.next_obses = np.empty((capacity, *obs_shape), dtype=obs_dtype)
-        # self.actions = np.empty((capacity, *action_shape), dtype=np.float32)
-        # self.rewards = np.empty((capacity, 1), dtype=np.float32)
-        # self.not_dones = np.empty((capacity, 1), dtype=np.float32)
+        self.obses = np.empty((capacity, *obs_shape), dtype=obs_dtype)
+        self.next_obses = np.empty((capacity, *obs_shape), dtype=obs_dtype)
+        self.actions = np.empty((capacity, *action_shape), dtype=np.float32)
+        self.rewards = np.empty((capacity, 1), dtype=np.float32)
+        self.not_dones = np.empty((capacity, 1), dtype=np.float32)
         # (chongyi zheng): create 0 size buffer instead of max_size buffer to save memory
         # self.obses = np.empty((0, *obs_shape), dtype=obs_dtype)
         # self.next_obses = np.empty((0, *obs_shape), dtype=obs_dtype)
         # self.actions = np.empty((0, *action_shape), dtype=np.float32)
         # self.rewards = np.empty((0, ), dtype=np.float32)
         # self.not_dones = np.empty((0, ), dtype=np.float32)
-        self._storage = []
+        # self._storage = []
 
         self.idx = 0
         self.full = False
@@ -95,11 +94,11 @@ class ReplayBuffer(object):
         return obses, actions, rewards, next_obses, not_dones
 
     def add(self, obs, action, reward, next_obs, done):
-        # np.copyto(self.obses[self.idx], obs)
-        # np.copyto(self.actions[self.idx], action)
-        # np.copyto(self.rewards[self.idx], reward)
-        # np.copyto(self.next_obses[self.idx], next_obs)
-        # np.copyto(self.not_dones[self.idx], not done)
+        np.copyto(self.obses[self.idx], obs)
+        np.copyto(self.actions[self.idx], action)
+        np.copyto(self.rewards[self.idx], reward)
+        np.copyto(self.next_obses[self.idx], next_obs)
+        np.copyto(self.not_dones[self.idx], not done)
         # (chongyi zheng): append transition to buffer when it is not full, replace the last recent one otherwise
         # if not self.full:
         #     self.obses = np.append(
@@ -118,11 +117,11 @@ class ReplayBuffer(object):
         #     np.copyto(self.rewards[self.idx], reward)
         #     np.copyto(self.next_obses[self.idx], next_obs)
         #     np.copyto(self.not_dones[self.idx], not done)
-        data = (obs, action, reward, next_obs, not done)
-        if self.full:
-            self._storage[self.idx] = data
-        else:
-            self._storage.append(data)
+        # data = (obs, action, reward, next_obs, not done)
+        # if self.full:
+        #     self._storage[self.idx] = data
+        # else:
+        #     self._storage.append(data)
 
         self.idx = (self.idx + 1) % self.capacity
         self.full = self.full or self.idx == 0
@@ -132,13 +131,13 @@ class ReplayBuffer(object):
             0, self.capacity if self.full else self.idx, size=batch_size
         )
 
-        # obses = torch.as_tensor(self.obses[idxs]).float().cuda()
-        # actions = torch.as_tensor(self.actions[idxs]).cuda()
-        # rewards = torch.as_tensor(self.rewards[idxs]).cuda()
-        # next_obses = torch.as_tensor(self.next_obses[idxs]).float().cuda()
-        # not_dones = torch.as_tensor(self.not_dones[idxs]).cuda()
+        obses = torch.as_tensor(self.obses[idxs]).float().cuda()
+        actions = torch.as_tensor(self.actions[idxs]).cuda()
+        rewards = torch.as_tensor(self.rewards[idxs]).cuda()
+        next_obses = torch.as_tensor(self.next_obses[idxs]).float().cuda()
+        not_dones = torch.as_tensor(self.not_dones[idxs]).cuda()
         # (chongyi zheng): internal sample function
-        obses, actions, rewards, next_obses, not_dones = self._sample(idxs)
+        # obses, actions, rewards, next_obses, not_dones = self._sample(idxs)
 
         obses = random_crop(obses)
         next_obses = random_crop(next_obses)
@@ -150,13 +149,13 @@ class ReplayBuffer(object):
             0, self.capacity if self.full else self.idx, size=batch_size
         )
 
-        # obses = torch.as_tensor(self.obses[idxs]).float().cuda()
-        # actions = torch.as_tensor(self.actions[idxs]).cuda()
-        # rewards = torch.as_tensor(self.rewards[idxs]).cuda()
-        # next_obses = torch.as_tensor(self.next_obses[idxs]).float().cuda()
-        # not_dones = torch.as_tensor(self.not_dones[idxs]).cuda()
+        obses = torch.as_tensor(self.obses[idxs]).float().cuda()
+        actions = torch.as_tensor(self.actions[idxs]).cuda()
+        rewards = torch.as_tensor(self.rewards[idxs]).cuda()
+        next_obses = torch.as_tensor(self.next_obses[idxs]).float().cuda()
+        not_dones = torch.as_tensor(self.not_dones[idxs]).cuda()
         # (chongyi zheng): internal sample function
-        obses, actions, rewards, next_obses, not_dones = self._sample(idxs)
+        # obses, actions, rewards, next_obses, not_dones = self._sample(idxs)
 
         pos = obses.clone()
 
