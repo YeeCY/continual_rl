@@ -6,7 +6,9 @@ from arguments import parse_args
 from env.wrappers import make_locomotion_env
 from agent.agent import make_agent
 import utils
+import buffers
 import time
+from env import wrappers
 from logger import Logger
 from video import VideoRecorder
 
@@ -81,12 +83,16 @@ def main(args):
 
 	# Prepare agent
 	assert torch.cuda.is_available(), 'must have cuda enabled'
-	replay_buffer = utils.ReplayBuffer(
-		obs_shape=env.observation_space.shape,
+	frame_stack_env = env
+	while not isinstance(frame_stack_env, wrappers.FrameStack):
+		frame_stack_env = env.env
+	replay_buffer = buffers.FrameStackReplayBuffer(
+		obs_shape=frame_stack_env.unwrapped_obs_space.shape,
 		action_shape=env.action_space.shape,
-		capacity=args.replay_buffer_capacity
+		capacity=args.replay_buffer_capacity,
+		frame_stack=args.frame_stack,
 	)
-	cropped_obs_shape = (3*args.frame_stack, 84, 84)
+	cropped_obs_shape = (3 * args.frame_stack, 84, 84)
 	agent = make_agent(
 		obs_shape=cropped_obs_shape,
 		action_shape=env.action_space.shape,

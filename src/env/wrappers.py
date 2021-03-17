@@ -166,14 +166,18 @@ class FrameStack(gym.Wrapper):
         gym.Wrapper.__init__(self, env)
         self._k = k
         self._frames = deque([], maxlen=k)
-        shp = env.observation_space.shape
+        self._unwrapped_obs_space = env.observation_space
         self.observation_space = gym.spaces.Box(
             low=0,
             high=1,
-            shape=((shp[0] * k,) + shp[1:]),
+            shape=((self._unwrapped_obs_space.shape[0] * k,) + self._unwrapped_obs_space.shape[1:]),
             dtype=env.observation_space.dtype
         )
         self._max_episode_steps = env._max_episode_steps
+
+    @property
+    def unwrapped_obs_space(self):
+        return self._unwrapped_obs_space
 
     def reset(self):
         obs = self.env.reset()
