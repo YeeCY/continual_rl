@@ -14,6 +14,7 @@ from video import VideoRecorder
 def evaluate(env, agent, video, num_episodes, L, step):
 	"""Evaluate agent"""
 	episode_rewards = []
+	episode_fwds_pred_vars = []
 	episode_invs_pred_vars = []
 	for i in range(num_episodes):
 		obs = env.reset()
@@ -35,15 +36,26 @@ def evaluate(env, agent, video, num_episodes, L, step):
 			video.record(env)
 			obs = next_obs
 		episode_rewards.append(episode_reward)
-		episode_invs_pred_vars.append(np.mean(
-			agent.invs_pred_var(
-				np.asarray(obs_buf, dtype=obs.dtype),
-				np.asarray(next_obs_buf, dtype=obs.dtype),
-				np.asarray(action_buf, dtype=action.dtype))
-		))
+		if agent.use_fwd:
+			episode_fwds_pred_vars.append(np.mean(
+				agent.ss_preds_var(
+					np.asarray(obs_buf, dtype=obs.dtype),
+					np.asarray(next_obs_buf, dtype=obs.dtype),
+					np.asarray(action_buf, dtype=action.dtype))
+			))
+		if agent.use_inv:
+			episode_invs_pred_vars.append(np.mean(
+				agent.ss_preds_var(
+					np.asarray(obs_buf, dtype=obs.dtype),
+					np.asarray(next_obs_buf, dtype=obs.dtype),
+					np.asarray(action_buf, dtype=action.dtype))
+			))
 		video.save('%d.mp4' % step)
 	L.log('eval/episode_reward', np.mean(episode_rewards), step)
-	L.log('eval/episode_invs_pred_var', np.mean(episode_invs_pred_vars), step)
+	if agent.use_fwd:
+		L.log('eval/episode_fwds_pred_var', np.mean(episode_fwds_pred_vars), step)
+	if agent.use_inv:
+		L.log('eval/episode_invs_pred_var', np.mean(episode_invs_pred_vars), step)
 	L.dump(step)
 
 

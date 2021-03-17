@@ -50,6 +50,7 @@ def parse_args():
 
 	# self-supervision
 	parser.add_argument('--use_rot', default=False, action='store_true')  # rotation prediction
+	parser.add_argument('--use_fwd', default=False, action='store_true')  # forward dynamics model
 	parser.add_argument('--use_inv', default=False, action='store_true')  # inverse dynamics model
 	parser.add_argument('--use_curl', default=False, action='store_true')  # CURL
 	parser.add_argument('--ss_lr', default=1e-3, type=float)   # self-supervised learning rate
