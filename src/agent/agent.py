@@ -34,6 +34,8 @@ def make_agent(obs_shape, action_shape, args):
             use_inv=args.use_inv,
             ss_lr=args.ss_lr,
             ss_update_freq=args.ss_update_freq,
+            ss_stop_shared_layers_grad=args.ss_stop_shared_layers_grad,
+            batch_size=args.batch_size,
             num_layers=args.num_layers,
             num_shared_layers=args.num_shared_layers,
             num_filters=args.num_filters,
@@ -66,6 +68,7 @@ def make_agent(obs_shape, action_shape, args):
             use_curl=args.use_curl,
             ss_lr=args.ss_lr,
             ss_update_freq=args.ss_update_freq,
+            batch_size=args.batch_size,
             num_layers=args.num_layers,
             num_shared_layers=args.num_shared_layers,
             num_filters=args.num_filters,
@@ -303,6 +306,7 @@ class SacSSAgent(object):
         use_curl=False,
         ss_lr=1e-3,
         ss_update_freq=1,
+        batch_size=128,
         num_layers=4,
         num_shared_layers=4,
         num_filters=32,
@@ -314,6 +318,7 @@ class SacSSAgent(object):
         self.actor_update_freq = actor_update_freq
         self.critic_target_update_freq = critic_target_update_freq
         self.ss_update_freq = ss_update_freq
+        self.batch_size = batch_size
         self.use_rot = use_rot
         self.use_inv = use_inv
         self.use_curl = use_curl
@@ -567,9 +572,9 @@ class SacSSAgent(object):
 
     def update(self, replay_buffer, L, step):
         if self.use_curl:
-            obs, action, reward, next_obs, not_done, curl_kwargs = replay_buffer.sample_curl()
+            obs, action, reward, next_obs, not_done, curl_kwargs = replay_buffer.sample_curl(self.batch_size)
         else:
-            obs, action, reward, next_obs, not_done = replay_buffer.sample()
+            obs, action, reward, next_obs, not_done = replay_buffer.sample(self.batch_size)
         
         L.log('train/batch_reward', reward.mean(), step)
 
@@ -679,6 +684,7 @@ class SacSSEnsembleAgent:
             ss_lr=1e-3,
             ss_update_freq=1,
             ss_stop_shared_layers_grad=False,  # (chongyi zheng)
+            batch_size=128,  # (chongyi zheng)
             num_layers=4,
             num_shared_layers=4,
             num_filters=32,
@@ -692,6 +698,7 @@ class SacSSEnsembleAgent:
         self.critic_target_update_freq = critic_target_update_freq
         self.ss_update_freq = ss_update_freq
         self.ss_stop_shared_layers_grad = ss_stop_shared_layers_grad
+        self.batch_size = batch_size
         self.use_inv = use_inv
         self.curl_latent_dim = curl_latent_dim
         self.num_ensem_comps = num_ensem_comps
@@ -848,8 +855,7 @@ class SacSSEnsembleAgent:
 
         # get current Q estimates
         current_Q1, current_Q2 = self.critic(obs, action)
-        critic_loss = F.mse_loss(current_Q1,
-                                 target_Q) + F.mse_loss(current_Q2, target_Q)
+        critic_loss = F.mse_loss(current_Q1, target_Q) + F.mse_loss(current_Q2, target_Q)
         L.log('train_critic/loss', critic_loss, step)
 
         # Optimize the critic
@@ -887,10 +893,9 @@ class SacSSEnsembleAgent:
             alpha_loss.backward()
             self.log_alpha_optimizer.step()
 
-    def update_inv(self, obs, next_obs, action, L=None, step=None):
+    def update_invs(self, obs, next_obs, action, L=None, step=None):
         assert obs.shape[-1] == 84 and next_obs.shape[-1] == 84
 
-        inv_loss_items = []
         inv_losses = []
         # (chongyi zheng): split transitions for each component of the ensemble
         num_samples_each_slice = obs.shape[0] // self.num_ensem_comps
@@ -913,8 +918,6 @@ class SacSSEnsembleAgent:
 
             if L is not None:
                 L.log('train_inv/inv_loss_{}'.format(idx), inv_loss, step)
-
-            inv_loss_items.append(inv_loss.item())
         mean_inv_loss = torch.mean(torch.stack(inv_losses))
         self.encoder_optimizer.zero_grad()
         self.inv_optimizer.zero_grad()
@@ -923,10 +926,8 @@ class SacSSEnsembleAgent:
         self.encoder_optimizer.step()
         self.inv_optimizer.step()
 
-        return np.asarray(inv_loss_items)
-
     def update(self, replay_buffer, L, step):
-        obs, action, reward, next_obs, not_done = replay_buffer.sample()
+        obs, action, reward, next_obs, not_done = replay_buffer.sample(self.batch_size)
 
         L.log('train/batch_reward', reward.mean(), step)
 
@@ -948,7 +949,7 @@ class SacSSEnsembleAgent:
             )
 
         if len(self.invs) > 0 and step % self.ss_update_freq == 0:
-            self.update_inv(obs, next_obs, action, L, step)
+            self.update_invs(obs, next_obs, action, L, step)
             invs_pred_var = self.invs_pred_var(obs, next_obs, action)
             L.log('train/batch_invs_pred_var', invs_pred_var.mean(), step)
 
