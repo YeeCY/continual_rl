@@ -140,16 +140,24 @@ class FrameStackReplayBuffer(ReplayBuffer):
         super().__init__(obs_shape, action_shape, capacity)
         self.frame_stack = frame_stack
 
+        self.stack_frame_dists = np.empty((capacity, self.frame_stack), dtype=np.int32)
+
         # (chongyi zheng): We need to set the final not_done = 0.0 to make sure the correct stack when the first
         #   observation is sampled. Note that empty array is initialized to be all zeros.
         # self.not_dones[-1] = 0.0
 
-    def add(self, obs, action, reward, next_obs, done):
+    def add(self, obs, action, reward, next_obs, done, stack_frame_dists=np.empty(0)):
+        """
+        (chongyi zheng): other_frame_dists are relative indices of the other frame from the current one
+        """
+        assert len(stack_frame_dists) == self.frame_stack, "Relative indices of stacked frames must be provided!"
+
         np.copyto(self.obses[self.idx], obs[-1 * self.obs_shape[0]:])
         np.copyto(self.actions[self.idx], action)
         np.copyto(self.rewards[self.idx], reward)
         np.copyto(self.next_obses[self.idx], next_obs[-1 * self.obs_shape[0]:])
         np.copyto(self.not_dones[self.idx], not done)
+        np.copyto(self.stack_frame_dists[self.idx], stack_frame_dists)
 
         self.idx = (self.idx + 1) % self.capacity
         self.full = self.full or self.idx == 0
@@ -162,36 +170,20 @@ class FrameStackReplayBuffer(ReplayBuffer):
         # Reconstruct stacked observations:
         #   If the sampled observation is the first frame of an episode, it is stacked with itself.
         #   Otherwise, we stack it with the previous frames.
-        #   The previous not_done indicator must be 0.0 for the first frame of an episode
-        not_first_obs = np.squeeze(self.not_dones[(idxs - 1) % self.capacity]).astype(np.bool)
-        is_first_obs = np.logical_not(not_first_obs)
-        first_obs_idxs = idxs[is_first_obs]
-        not_first_obs_idxs = idxs[not_first_obs]
-        obses = np.empty([batch_size, self.obs_shape[0] * self.frame_stack] + list(self.obs_shape[1:]),
-                         dtype=self.obs_dtype)
-        next_obses = np.empty([batch_size, self.obs_shape[0] * self.frame_stack] + list(self.obs_shape[1:]),
-                              dtype=self.obs_dtype)
-        # TODO (chongyi zheng): need to fix bugs
-        if len(first_obs_idxs) > 0:  # sanity check
-            obses[is_first_obs] = np.concatenate([
-                self.obses[first_obs_idxs],
-                self.obses[first_obs_idxs],
-                self.obses[first_obs_idxs]
-            ], axis=1)
-            next_obses[is_first_obs] = np.concatenate([
-                self.next_obses[first_obs_idxs],
-                self.next_obses[first_obs_idxs],
-                self.next_obses[first_obs_idxs]
-            ], axis=1)
-        if len(not_first_obs_idxs) > 0:  # sanity check
-            obses[not_first_obs] = np.concatenate([
-                self.obses[not_first_obs_idxs - reversed_fs_idx]
-                for reversed_fs_idx in reversed(range(self.frame_stack))
-            ], axis=1)
-            next_obses[not_first_obs] = np.concatenate([
-                self.next_obses[not_first_obs_idxs - reversed_fs_idx]
-                for reversed_fs_idx in reversed(range(self.frame_stack))
-            ], axis=1)
+        #   The most recently not_done indicator must be 0.0 for the first 'frame_stack' frames of an episode
+        #       first_frame: obs = stack([first_frame, first_frame, first_frame])
+        #       second_frame: obs = stack([first_frame, first_frame, second_frame])
+        #       third_frame: obs = stack([first_frame, second_frame, third_frame])
+        #       forth_frame: obs = stack([second_frame, third_frame, forth_frame])
+        #       ...
+        obses = []
+        next_obses = []
+        stack_frame_dists = self.stack_frame_dists[idxs]
+        for sf_idx in range(self.frame_stack):
+            obses.append(self.obses[stack_frame_dists[:, sf_idx] + idxs])
+            next_obses.append(self.next_obses[stack_frame_dists[:, sf_idx] + idxs])
+        obses = np.concatenate(obses, axis=1)
+        next_obses = np.concatenate(next_obses, axis=1)
 
         obses = torch.as_tensor(obses).float().cuda()
         actions = torch.as_tensor(self.actions[idxs]).cuda()

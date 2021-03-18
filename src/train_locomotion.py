@@ -100,7 +100,7 @@ def main(args):
 	)
 
 	L = Logger(args.work_dir, use_tb=args.use_tb)
-	episode, episode_reward, done = 0, 0, True
+	episode, episode_reward, episode_step, done = 0, 0, 0, True
 	start_time = time.time()
 	for step in range(args.train_steps + 1):
 		# (chongyi zheng): we can also evaluate and save model when current episode is not finished
@@ -146,10 +146,20 @@ def main(args):
 		# Take step
 		next_obs, reward, done, _ = env.step(action)
 		done_bool = 0 if episode_step + 1 == env._max_episode_steps else float(done)
-		replay_buffer.add(obs, action, reward, next_obs, done_bool)
+		# (chongyi zheng): example to add transition into FrameStackReplayBuffer
+		# 	frame_stack = 4, repeated_frame_dists + new_frame_dists
+		# 			episode_step = 0, [0, 0, 0] + [0]
+		# 			episode_step = 1, [-1, -1] + [-1, 0]
+		# 			episode_step = 2, [-2] + [-2 ,-1, 0]
+		# 			episode_step = 3, [] + [-3, -2, -1, 0]
+		#			...
+		new_frame_dists = [-idx for idx in reversed(range(0, min(episode_step + 1, args.frame_stack)))]
+		stack_frame_dists = np.array(
+			[-episode_step] * (args.frame_stack - len(new_frame_dists)) + new_frame_dists
+		)
+		replay_buffer.add(obs, action, reward, next_obs, done_bool, stack_frame_dists=stack_frame_dists)
 		episode_reward += reward
 		obs = next_obs
-
 		episode_step += 1
 
 
