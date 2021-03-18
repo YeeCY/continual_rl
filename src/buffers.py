@@ -171,6 +171,7 @@ class FrameStackReplayBuffer(ReplayBuffer):
                          dtype=self.obs_dtype)
         next_obses = np.empty([batch_size, self.obs_shape[0] * self.frame_stack] + list(self.obs_shape[1:]),
                               dtype=self.obs_dtype)
+        # TODO (chongyi zheng): need to fix bugs
         if len(first_obs_idxs) > 0:  # sanity check
             obses[is_first_obs] = np.concatenate([
                 self.obses[first_obs_idxs],
