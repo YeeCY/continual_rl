@@ -131,6 +131,21 @@ class ReplayBuffer(object):
 
         return obses, actions, rewards, next_obses, not_dones, curl_kwargs
 
+    def sample_ensembles(self, batch_size, num_ensembles=1):
+        ensem_obses, ensem_actions, ensem_rewards, ensem_next_obses, ensem_not_dones = \
+            self.sample(batch_size * num_ensembles)
+
+        # TODO (chongyi zheng): do we need to clone here?
+        obses = ensem_obses[:batch_size].detach().clone()
+        actions = ensem_actions[:batch_size].detach().clone()
+        rewards = ensem_rewards[:batch_size].detach().clone()
+        next_obses = ensem_next_obses[:batch_size].detach().clone()
+        not_dones = ensem_not_dones[:batch_size].detach().clone()
+
+        ensem_kwargs = dict(obses=ensem_obses, next_obses=ensem_next_obses, actions=ensem_actions)
+
+        return obses, actions, rewards, next_obses, not_dones, ensem_kwargs
+
 
 class FrameStackReplayBuffer(ReplayBuffer):
     """Only store unique frames to save memory
