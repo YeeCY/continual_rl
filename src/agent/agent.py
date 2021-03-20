@@ -1004,6 +1004,7 @@ class SacSSEnsembleAgent:
     def update(self, replay_buffer, L, step):
         obs, action, reward, next_obs, not_done, ensem_kwargs = replay_buffer.sample_ensembles(
             self.batch_size, num_ensembles=self.num_ensem_comps)
+        # obs, action, reward, next_obs, not_done = replay_buffer.sample(self.batch_size)
 
         L.log('train/batch_reward', reward.mean(), step)
 
@@ -1026,6 +1027,7 @@ class SacSSEnsembleAgent:
 
         if (self.use_fwd or self.use_inv) and step % self.ss_update_freq == 0:
             self.update_ss_preds(ensem_kwargs['obses'], ensem_kwargs['next_obses'], ensem_kwargs['actions'], L, step)
+            # self.update_ss_preds(obs, next_obs, action, L, step)
             with torch.no_grad():
                 ss_preds_var = self.ss_preds_var(obs, next_obs, action)
                 L.log('train/batch_ss_preds_var', ss_preds_var.mean(), step)
