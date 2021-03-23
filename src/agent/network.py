@@ -61,6 +61,8 @@ class Actor(nn.Module):
         )
         self.apply(weight_init)
 
+        self.outputs = dict()  # log placeholder
+
     # TODO (chongyi zheng): delete this version of 'forward'
     # def forward(self, obs, compute_pi=True, compute_log_pi=True, detach_encoder=False):
     #     # detach_encoder allows to stop gradient propogation to encoder
@@ -102,8 +104,8 @@ class Actor(nn.Module):
         log_std = self.log_std_min + 0.5 * (self.log_std_max - self.log_std_min) * (log_std + 1)
         std = log_std.exp()
 
-        self.output['mu'] = mu
-        self.output['std'] = std
+        self.outputs['mu'] = mu
+        self.outputs['std'] = std
 
         dist = SquashedNormal(mu, std)
 
@@ -197,8 +199,8 @@ class FwdFunction(nn.Module):
         super().__init__()
 
         self.trunk = nn.Sequential(
-            nn.Linear(obs_dim + action_dim, hidden_dim), nn.ReLU(),
-            nn.Linear(hidden_dim, hidden_dim), nn.ReLU(),
+            nn.Linear(obs_dim + action_dim, hidden_dim), nn.ReLU(inplace=True),
+            nn.Linear(hidden_dim, hidden_dim), nn.ReLU(inplace=True),
             nn.Linear(hidden_dim, obs_dim)
         )
 
@@ -213,11 +215,177 @@ class InvFunction(nn.Module):
         super().__init__()
 
         self.trunk = nn.Sequential(
-            nn.Linear(2 * obs_dim, hidden_dim), nn.ReLU(),
-            nn.Linear(hidden_dim, hidden_dim), nn.ReLU(),
+            nn.Linear(2 * obs_dim, hidden_dim), nn.ReLU(inplace=True),
+            nn.Linear(hidden_dim, hidden_dim), nn.ReLU(inplace=True),
             nn.Linear(hidden_dim, action_dim)
         )
 
     def forward(self, h, h_next):
         joint_h = torch.cat([h, h_next], dim=1)
         return self.trunk(joint_h)
+
+
+class SelfSupervisedInvPredictor(nn.Module):
+    def __init__(self, obs_shape, action_shape, hidden_dim,
+                 encoder_feature_dim, num_layers, num_filters):
+        super().__init__()
+
+        self.encoder = PixelEncoder(obs_shape, encoder_feature_dim, num_layers, num_filters)
+
+        self.trunk = nn.Sequential(
+            nn.Linear(2 * encoder_feature_dim, hidden_dim),
+            nn.ReLU(inplace=True),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ReLU(inplace=True),
+            nn.Linear(hidden_dim, action_shape[0])
+        )
+        self.apply(weight_init)
+
+        self.outputs = dict()  # log placeholder
+
+    def forward(self, obs, next_obs, detach_encoder=False):
+        # detach_encoder allows to stop gradient propogation to encoder's convolutional layers
+        h = self.encoder(obs, detach=detach_encoder)
+        next_h = self.encoder(next_obs, detach=detach_encoder)
+
+        joint_h = torch.cat([h, next_h], dim=-1)
+        pred_action = self.trunk(joint_h)
+
+        self.outputs['pred_action'] = pred_action
+
+        return pred_action
+
+    def log(self, logger, step):
+        for k, v in self.outputs.items():
+            logger.log_histogram(f'train_ss_inv/{k}_hist', v, step)
+
+        for i, m in enumerate(self.trunk):
+            if type(m) == nn.Linear:
+                logger.log_param(f'train_ss_inv/fc{i}', m, step)
+
+
+class SelfSupervisedInvPredictorEnsem(SelfSupervisedInvPredictor):
+    def __init__(self, obs_shape, action_shape, hidden_dim,
+                 encoder_feature_dim, num_layers, num_filters, num_comps):
+        super().__init__(obs_shape, action_shape, hidden_dim,
+                         encoder_feature_dim, num_layers, num_filters)
+        self.num_comps = num_comps
+
+        self.trunks = [self.trunk]
+        for _ in range(self.num_comps - 1):
+            trunk = nn.Sequential(
+                nn.Linear(2 * encoder_feature_dim, hidden_dim),
+                nn.ReLU(inplace=True),
+                nn.Linear(hidden_dim, hidden_dim),
+                nn.ReLU(inplace=True),
+                nn.Linear(hidden_dim, action_shape[0])
+            )
+            self.trunks.append(trunk)
+        self.apply(weight_init)
+
+    def forward(self, obs, next_obs, detach_encoder=False):
+        # detach_encoder allows to stop gradient propogation to encoder's convolutional layers
+        h = self.encoder(obs, detach=detach_encoder)
+        next_h = self.encoder(next_obs, detach=detach_encoder)
+
+        joint_h = torch.cat([h, next_h], dim=-1)
+        pred_actions = []
+        for i, trunk in enumerate(self.trunks):
+            pred_action = trunk(joint_h)
+            self.outputs[f'pred_action{i}'] = pred_action
+            pred_actions.append(pred_action.unsqueeze(-2))
+
+        pred_actions = torch.stack(pred_actions, dim=-2)
+
+        return pred_actions
+
+    def log(self, logger, step):
+        for k, v in self.outputs.items():
+            logger.log_histogram(f'train_ss_inv/{k}_hist', v, step)
+
+        for i, trunk in enumerate(self.trunks):
+            for j, m in enumerate(trunk):
+                if type(m) == nn.Linear:
+                    logger.log_param(f'train_ss_inv/ensem{i}/fc{j}', m, step)
+
+
+class SelfSupervisedFwdPredictor(nn.Module):
+    def __init__(self, obs_shape, action_shape, hidden_dim,
+                 encoder_feature_dim, num_layers, num_filters):
+        super().__init__()
+
+        self.encoder = PixelEncoder(obs_shape, encoder_feature_dim, num_layers, num_filters)
+
+        self.trunk = nn.Sequential(
+            nn.Linear(encoder_feature_dim + action_shape[0], hidden_dim),
+            nn.ReLU(inplace=True),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ReLU(inplace=True),
+            nn.Linear(hidden_dim, encoder_feature_dim)
+        )
+        self.apply(weight_init)
+
+        self.outputs = dict()  # log placeholder
+
+    def forward(self, obs, action, detach_encoder=False):
+        # detach_encoder allows to stop gradient propogation to encoder's convolutional layers
+        h = self.encoder(obs, detach=detach_encoder)
+
+        joint_h_act = torch.cat([h, action], dim=-1)
+        pred_h_next = self.trunk(joint_h_act)
+
+        self.outputs['pred_h_next'] = pred_h_next
+
+        return pred_h_next
+
+    def log(self, logger, step):
+        for k, v in self.outputs.items():
+            logger.log_histogram(f'train_ss_fwd/{k}_hist', v, step)
+
+        for i, m in enumerate(self.trunk):
+            if type(m) == nn.Linear:
+                logger.log_param(f'train_ss_fwd/fc{i}', m, step)
+
+
+class SelfSupervisedFwdPredictorEnsem(SelfSupervisedFwdPredictor):
+    def __init__(self, obs_shape, action_shape, hidden_dim,
+                 encoder_feature_dim, num_layers, num_filters, num_comps):
+        super().__init__(obs_shape, action_shape, hidden_dim,
+                         encoder_feature_dim, num_layers, num_filters)
+        self.num_comps = num_comps
+
+        self.trunks = [self.trunk]
+        for _ in range(self.num_comps - 1):
+            trunk = nn.Sequential(
+                nn.Linear(encoder_feature_dim + action_shape[0], hidden_dim),
+                nn.ReLU(inplace=True),
+                nn.Linear(hidden_dim, hidden_dim),
+                nn.ReLU(inplace=True),
+                nn.Linear(hidden_dim, encoder_feature_dim)
+            )
+            self.trunks.append(trunk)
+        self.apply(weight_init)
+
+    def forward(self, obs, action, detach_encoder=False):
+        # detach_encoder allows to stop gradient propogation to encoder's convolutional layers
+        h = self.encoder(obs, detach=detach_encoder)
+
+        joint_h_act = torch.cat([h, action], dim=-1)
+        pred_h_nexts = []
+        for i, trunk in enumerate(self.trunks):
+            pred_h_next = trunk(joint_h_act)
+            self.outputs[f'pred_obs_next{i}'] = pred_h_next
+            pred_h_nexts.append(pred_h_next.unsqueeze(-2))
+
+        pred_h_nexts = torch.stack(pred_h_nexts, dim=-2)
+
+        return pred_h_nexts
+
+    def log(self, logger, step):
+        for k, v in self.outputs.items():
+            logger.log_histogram(f'train_ss_fwd/{k}_hist', v, step)
+
+        for i, trunk in enumerate(self.trunks):
+            for j, m in enumerate(trunk):
+                if type(m) == nn.Linear:
+                    logger.log_param(f'train_ss_fwd/ensem{i}/fc{j}', m, step)
