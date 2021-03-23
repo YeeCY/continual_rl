@@ -161,18 +161,16 @@ class ColorWrapper(gym.Wrapper):
 
 class FrameStack(gym.Wrapper):
     """Stack frames as observation"""
-
     def __init__(self, env, k):
         gym.Wrapper.__init__(self, env)
         self._k = k
         self._frames = deque([], maxlen=k)
-        self._unwrapped_obs_space = env.observation_space
+        shp = env.observation_space.shape
         self.observation_space = gym.spaces.Box(
             low=0,
             high=1,
-            shape=((self._unwrapped_obs_space.shape[0] * k,) + self._unwrapped_obs_space.shape[1:]),
-            dtype=env.observation_space.dtype
-        )
+            shape=((shp[0] * k,) + shp[1:]),
+            dtype=env.observation_space.dtype)
         self._max_episode_steps = env._max_episode_steps
 
     def reset(self):
