@@ -94,6 +94,15 @@ def make_dir(dir_path):
     return dir_path
 
 
+def to_np(t):
+    if t is None:
+        return None
+    elif t.nelement() == 0:
+        return np.array([])
+    else:
+        return t.cpu().detach().numpy()
+
+
 def get_curl_pos_neg(obs, replay_buffer):
     """Returns one positive pair + batch of negative samples from buffer"""
     obs = torch.as_tensor(obs).cuda().float().unsqueeze(0)

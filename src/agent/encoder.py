@@ -119,12 +119,13 @@ class PixelEncoder(nn.Module):
 			logger.log_param(f'train_encoder/conv{i}', self.convs[i], step)
 
 
-def make_encoder(obs_shape, feature_dim, num_layers, num_filters, num_shared_layers):
-	assert num_layers in OUT_DIM.keys(), 'invalid number of layers'
-	if num_shared_layers == -1 or num_shared_layers == None:
-		num_shared_layers = num_layers
-	assert num_shared_layers <= num_layers and num_shared_layers > 0, \
-		f'invalid number of shared layers, received {num_shared_layers} layers'
-	return PixelEncoder(
-		obs_shape, feature_dim, num_layers, num_filters, num_shared_layers
-	)
+# TODO (chongyi zheng): delete function 'make_encoder'
+# def make_encoder(obs_shape, feature_dim, num_layers, num_filters, num_shared_layers):
+# 	assert num_layers in OUT_DIM.keys(), 'invalid number of layers'
+# 	if num_shared_layers == -1 or num_shared_layers == None:
+# 		num_shared_layers = num_layers
+# 	assert num_shared_layers <= num_layers and num_shared_layers > 0, \
+# 		f'invalid number of shared layers, received {num_shared_layers} layers'
+# 	return PixelEncoder(
+# 		obs_shape, feature_dim, num_layers, num_filters, num_shared_layers
+# 	)
