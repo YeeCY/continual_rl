@@ -2,8 +2,10 @@ import itertools
 import numpy as np
 import torch
 import torch.nn.functional as F
-
 import utils
+
+from agent.network import Actor, Critic, CURL, FwdFunction, InvFunction, RotFunction
+from agent.encoder import make_encoder
 
 LOG_FREQ = 10000
 
@@ -171,12 +173,12 @@ class SacSSAgent(object):
             # rotation
             if use_rot:
                 self.rot = RotFunction(encoder_feature_dim, hidden_dim).cuda()
-                self.rot.apply(weight_init)
+                self.rot.apply(utils.weight_init)
 
             # inverse dynamics
             if use_inv:
                 self.inv = InvFunction(encoder_feature_dim, action_shape[0], hidden_dim).cuda()
-                self.inv.apply(weight_init)
+                self.inv.apply(utils.weight_init)
             
         # curl
         if use_curl:

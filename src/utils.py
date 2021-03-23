@@ -174,6 +174,11 @@ def view_as_windows_cuda(x, window_shape):
 #
 #     return cropped
 
+def tie_weights(src, trg):
+    assert type(src) == type(trg)
+    trg.weight = src.weight
+    trg.bias = src.bias
+
 
 def gaussian_logprob(noise, log_std):
     """Compute Gaussian log probability."""
