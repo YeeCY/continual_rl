@@ -10,7 +10,7 @@ from agent.network import Actor, Critic, CURL, FwdFunction, InvFunction, RotFunc
 LOG_FREQ = 10000
 
 
-def make_agent(obs_shape, action_shape, args):
+def make_agent(obs_shape, action_shape, action_range, args):
     if args.use_ensemble:
         agent = SacSSEnsembleAgent(
             obs_shape=obs_shape,

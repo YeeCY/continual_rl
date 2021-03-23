@@ -13,14 +13,14 @@ from logger import Logger
 from video import VideoRecorder
 
 
-def evaluate(env, agent, video, num_episodes, L, step):
+def evaluate(env, agent, video, num_episodes, logger, step):
 	"""Evaluate agent"""
 	episode_rewards = []
-	episode_fwds_pred_vars = []
-	episode_invs_pred_vars = []
-	for i in range(num_episodes):
+	episode_fwd_pred_vars = []
+	episode_inv_pred_vars = []
+	for episode in range(num_episodes):
 		obs = env.reset()
-		video.init(enabled=(i == 0))
+		video.init(enabled=(episode == 0))
 		done = False
 		episode_reward = 0
 		obs_buf = []
@@ -28,37 +28,38 @@ def evaluate(env, agent, video, num_episodes, L, step):
 		action_buf = []
 		while not done:
 			with utils.eval_mode(agent):
-				action = agent.select_action(obs)
+				action = agent.act(obs, sample=False)
 			next_obs, reward, done, _ = env.step(action)
 
 			obs_buf.append(obs)
 			next_obs_buf.append(next_obs)
 			action_buf.append(action)
 			episode_reward += reward
+
 			video.record(env)
 			obs = next_obs
 		episode_rewards.append(episode_reward)
 		if agent.use_fwd:
-			episode_fwds_pred_vars.append(np.mean(
+			episode_fwd_pred_vars.append(np.mean(
 				agent.ss_preds_var(
 					np.asarray(obs_buf, dtype=obs.dtype),
 					np.asarray(next_obs_buf, dtype=obs.dtype),
 					np.asarray(action_buf, dtype=action.dtype))
 			))
 		if agent.use_inv:
-			episode_invs_pred_vars.append(np.mean(
+			episode_inv_pred_vars.append(np.mean(
 				agent.ss_preds_var(
 					np.asarray(obs_buf, dtype=obs.dtype),
 					np.asarray(next_obs_buf, dtype=obs.dtype),
 					np.asarray(action_buf, dtype=action.dtype))
 			))
 		video.save('%d.mp4' % step)
-	L.log('eval/episode_reward', np.mean(episode_rewards), step)
+	logger.log('eval/episode_reward', np.mean(episode_rewards), step)
 	if agent.use_fwd:
-		L.log('eval/episode_fwds_pred_var', np.mean(episode_fwds_pred_vars), step)
+		logger.log('eval/episode_fwd_pred_var', np.mean(episode_fwd_pred_vars), step)
 	if agent.use_inv:
-		L.log('eval/episode_invs_pred_var', np.mean(episode_invs_pred_vars), step)
-	L.dump(step)
+		logger.log('eval/episode_inv_pred_var', np.mean(episode_inv_pred_vars), step)
+	logger.dump(step)
 
 
 def main(args):
@@ -83,11 +84,8 @@ def main(args):
 
 	# Prepare agent
 	assert torch.cuda.is_available(), 'must have cuda enabled'
-	frame_stack_env = env
-	while not isinstance(frame_stack_env, wrappers.FrameStack):
-		frame_stack_env = env.env
 	replay_buffer = buffers.FrameStackReplayBuffer(
-		obs_shape=frame_stack_env.unwrapped_obs_space.shape,
+		obs_shape=env.unwrapped.observation_space.shape,
 		action_shape=env.action_space.shape,
 		capacity=args.replay_buffer_capacity,
 		frame_stack=args.frame_stack,
@@ -96,10 +94,14 @@ def main(args):
 	agent = make_agent(
 		obs_shape=cropped_obs_shape,
 		action_shape=env.action_space.shape,
+		action_range=[
+			float(env.action_space.low.min()),
+			float(env.action_space.high.max())
+		],
 		args=args
 	)
 
-	L = Logger(args.work_dir, use_tb=args.use_tb)
+	logger = Logger(args.work_dir, use_tb=args.use_tb)
 	episode, episode_reward, episode_step, done = 0, 0, 0, True
 	start_time = time.time()
 	for step in range(args.train_steps + 1):
@@ -107,8 +109,8 @@ def main(args):
 		# Evaluate agent periodically
 		if step % args.eval_freq == 0:
 			print('Evaluating:', args.work_dir)
-			L.log('eval/episode', episode, step)
-			evaluate(env, agent, video, args.eval_episodes, L, step)
+			logger.log('eval/episode', episode, step)
+			evaluate(env, agent, video, args.eval_episodes, logger, step)
 
 		# Save agent periodically
 		if step % args.save_freq == 0 and step > 0:
@@ -117,31 +119,34 @@ def main(args):
 
 		if done:
 			if step > 0:
-				L.log('train/duration', time.time() - start_time, step)
+				logger.log('train/duration', time.time() - start_time, step)
 				start_time = time.time()
-				L.dump(step)
+				logger.dump(step)
 
-			L.log('train/episode_reward', episode_reward, step)
+			logger.log('train/episode_reward', episode_reward, step)
 
 			obs = env.reset()
 			episode_reward = 0
 			episode_step = 0
 			episode += 1
 
-			L.log('train/episode', episode, step)
+			logger.log('train/episode', episode, step)
 
 		# Sample action for data collection
 		if step < args.init_steps:
 			action = env.action_space.sample()
 		else:
 			with utils.eval_mode(agent):
-				action = agent.sample_action(obs)
+				action = agent.act(obs, sample=True)
 
 		# Run training update
 		if step >= args.init_steps:
-			num_updates = args.init_steps if step == args.init_steps else 1
-			for _ in range(num_updates):
-				agent.update(replay_buffer, L, step)
+			# TODO (chongyi zheng): Do we need multiple updates after initial data collection?
+			# num_updates = args.init_steps if step == args.init_steps else 1
+			# for _ in range(num_updates):
+			# 	agent.update(replay_buffer, logger, step)
+			for _ in range(args.num_train_iters):
+				agent.update(replay_buffer, logger, step)
 
 		# Take step
 		next_obs, reward, done, _ = env.step(action)

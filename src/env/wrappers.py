@@ -175,10 +175,6 @@ class FrameStack(gym.Wrapper):
         )
         self._max_episode_steps = env._max_episode_steps
 
-    @property
-    def unwrapped_obs_space(self):
-        return self._unwrapped_obs_space
-
     def reset(self):
         obs = self.env.reset()
         for _ in range(self._k):
