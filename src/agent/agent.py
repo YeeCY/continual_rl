@@ -1123,7 +1123,7 @@ class DrQSACSSEnsembleAgent:
         if self.use_inv:
             pred_action = self.ss_inv_pred_ensem(obs, next_obs,
                                                  detach_encoder=True, split_hidden=True)
-            inv_loss = F.mse_loss(pred_action, action.unsqueeze(-2))
+            inv_loss = F.mse_loss(pred_action, action)
 
             self.ss_inv_optimizer.zero_grad()
             inv_loss.backward()
@@ -1136,7 +1136,7 @@ class DrQSACSSEnsembleAgent:
             pred_h_next = self.ss_fwd_pred_ensem(obs, action,
                                                  detach_encoder=True, split_hidden=True)
             h_next = self.ss_fwd_pred_ensem.encoder(next_obs).detach()  # stop gradient for the target
-            fwd_loss = F.mse_loss(pred_h_next, h_next.unsqueeze(-2))
+            fwd_loss = F.mse_loss(pred_h_next, h_next)
 
             self.ss_fwd_optimizer.zero_grad()
             fwd_loss.backward()

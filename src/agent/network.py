@@ -305,7 +305,7 @@ class SelfSupervisedInvPredictorEnsem(SelfSupervisedInvPredictor):
             self.outputs[f'pred_action{idx}'] = pred_action
             pred_actions.append(pred_action)
 
-        pred_actions = torch.stack(pred_actions, dim=-2)
+        pred_actions = torch.cat(pred_actions, dim=0)
 
         return pred_actions
 
@@ -397,7 +397,7 @@ class SelfSupervisedFwdPredictorEnsem(SelfSupervisedFwdPredictor):
             self.outputs[f'pred_obs_next{idx}'] = pred_h_next
             pred_h_nexts.append(pred_h_next)
 
-        pred_h_nexts = torch.stack(pred_h_nexts, dim=-2)
+        pred_h_nexts = torch.cat(pred_h_nexts, dim=0)
 
         return pred_h_nexts
 
