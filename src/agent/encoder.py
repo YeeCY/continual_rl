@@ -31,13 +31,14 @@ class NormalizeImg(nn.Module):
 
 class PixelEncoder(nn.Module):
 	"""Convolutional encoder of pixel observations"""
-	def __init__(self, obs_shape, feature_dim, num_layers=4, num_filters=32, num_shared_layers=4):
+	def __init__(self, obs_shape, feature_dim, num_layers=4, num_filters=32):
 		super().__init__()
 		assert len(obs_shape) == 3
 
 		self.feature_dim = feature_dim
 		self.num_layers = num_layers
-		self.num_shared_layers = num_shared_layers
+		# TODO (chongyi zheng): delete this line
+		# self.num_shared_layers = num_shared_layers
 
 		# (chongyi zheng): add shape indicators in the comment
 		self.preprocess = nn.Sequential(
