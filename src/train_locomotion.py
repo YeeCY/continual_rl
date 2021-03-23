@@ -8,7 +8,6 @@ from agent.agent import make_agent
 import utils
 import buffers
 import time
-from env import wrappers
 from logger import Logger
 from video import VideoRecorder
 
@@ -110,7 +109,7 @@ def main(args):
 		if step % args.eval_freq == 0:
 			print('Evaluating:', args.work_dir)
 			logger.log('eval/episode', episode, step)
-			evaluate(env, agent, video, args.eval_episodes, logger, step)
+			evaluate(env, agent, video, args.num_eval_episodes, logger, step)
 
 		# Save agent periodically
 		if step % args.save_freq == 0 and step > 0:

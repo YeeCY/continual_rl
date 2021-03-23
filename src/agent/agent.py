@@ -4,7 +4,7 @@ import torch
 import torch.nn.functional as F
 import utils
 
-from agent.network import Actor, Critic, CURL, FwdFunction, InvFunction, RotFunction, \
+from agent.network import Actor, Critic, CURL, \
     SelfSupervisedInvPredictorEnsem, SelfSupervisedFwdPredictorEnsem
 
 LOG_FREQ = 10000
@@ -12,26 +12,54 @@ LOG_FREQ = 10000
 
 def make_agent(obs_shape, action_shape, action_range, args):
     if args.use_ensemble:
-        agent = SacSSEnsembleAgent(
+        # agent = SacSSEnsembleAgent(
+        #     obs_shape=obs_shape,
+        #     action_shape=action_shape,
+        #     hidden_dim=args.hidden_dim,
+        #     discount=args.discount,
+        #     init_temperature=args.init_temperature,
+        #     alpha_lr=args.alpha_lr,
+        #     alpha_beta=args.alpha_beta,
+        #     actor_lr=args.actor_lr,
+        #     actor_beta=args.actor_beta,
+        #     actor_log_std_min=args.actor_log_std_min,
+        #     actor_log_std_max=args.actor_log_std_max,
+        #     actor_update_freq=args.actor_update_freq,
+        #     critic_lr=args.critic_lr,
+        #     critic_beta=args.critic_beta,
+        #     critic_tau=args.critic_tau,
+        #     critic_target_update_freq=args.critic_target_update_freq,
+        #     encoder_feature_dim=args.encoder_feature_dim,
+        #     encoder_lr=args.encoder_lr,
+        #     encoder_tau=args.encoder_tau,
+        #     use_fwd=args.use_fwd,
+        #     use_inv=args.use_inv,
+        #     ss_lr=args.ss_lr,
+        #     ss_update_freq=args.ss_update_freq,
+        #     ss_stop_shared_layers_grad=args.ss_stop_shared_layers_grad,
+        #     batch_size=args.batch_size,
+        #     num_layers=args.num_layers,
+        #     num_shared_layers=args.num_shared_layers,
+        #     num_filters=args.num_filters,
+        #     curl_latent_dim=args.curl_latent_dim,
+        #     num_ensem_comps=args.num_ensem_comps,
+        # )
+        agent = DrQSACSSEnsembleAgent(
             obs_shape=obs_shape,
             action_shape=action_shape,
+            action_range=action_range,
             hidden_dim=args.hidden_dim,
             discount=args.discount,
             init_temperature=args.init_temperature,
             alpha_lr=args.alpha_lr,
-            alpha_beta=args.alpha_beta,
             actor_lr=args.actor_lr,
-            actor_beta=args.actor_beta,
             actor_log_std_min=args.actor_log_std_min,
             actor_log_std_max=args.actor_log_std_max,
             actor_update_freq=args.actor_update_freq,
             critic_lr=args.critic_lr,
-            critic_beta=args.critic_beta,
             critic_tau=args.critic_tau,
             critic_target_update_freq=args.critic_target_update_freq,
             encoder_feature_dim=args.encoder_feature_dim,
-            encoder_lr=args.encoder_lr,
-            encoder_tau=args.encoder_tau,
             use_fwd=args.use_fwd,
             use_inv=args.use_inv,
             ss_lr=args.ss_lr,
@@ -39,7 +67,6 @@ def make_agent(obs_shape, action_shape, action_range, args):
             ss_stop_shared_layers_grad=args.ss_stop_shared_layers_grad,
             batch_size=args.batch_size,
             num_layers=args.num_layers,
-            num_shared_layers=args.num_shared_layers,
             num_filters=args.num_filters,
             curl_latent_dim=args.curl_latent_dim,
             num_ensem_comps=args.num_ensem_comps,

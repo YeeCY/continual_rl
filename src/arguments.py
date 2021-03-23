@@ -9,8 +9,9 @@ def parse_args():
 	parser.add_argument('--domain_name', default='walker')
 	parser.add_argument('--task_name', default='walk')
 	parser.add_argument('--env_name', default='walker_run')  # (chongyi zheng)
-	parser.add_argument('--obs_height', default=100, type=int)
-	parser.add_argument('--obs_width', default=100, type=int)
+	parser.add_argument('--obs_height', default=84, type=int)
+	parser.add_argument('--obs_width', default=84, type=int)
+	parser.add_argument('--obs_pad', default=4, type=int)
 	parser.add_argument('--env_camera_id', default=0, type=int)  # (chongyi zheng)
 	parser.add_argument('--video_camera_id', default=0, type=int)  # (chongyi zheng)
 	parser.add_argument('--frame_stack', default=3, type=int)
@@ -21,33 +22,32 @@ def parse_args():
 	# agent
 	parser.add_argument('--init_steps', default=1000, type=int)
 	parser.add_argument('--num_train_iters', default=1, type=int)
-	parser.add_argument('--train_steps', default=500000, type=int)
+	parser.add_argument('--train_steps', default=1000000, type=int)
 	parser.add_argument('--batch_size', default=128, type=int)
 	parser.add_argument('--hidden_dim', default=1024, type=int)
+	parser.add_argument('--device', default='cuda', type=str)
 
 	# eval
 	parser.add_argument('--save_freq', default=100000, type=int)
 	parser.add_argument('--eval_freq', default=100000, type=int)
-	parser.add_argument('--eval_episodes', default=10, type=int)
+	parser.add_argument('--num_eval_episodes', default=10, type=int)
 	parser.add_argument('--eval_results', default=False, action='store_true')  # (chongyi zheng): save evalution results or not
 
 	# critic
 	parser.add_argument('--critic_lr', default=1e-3, type=float)
-	parser.add_argument('--critic_beta', default=0.9, type=float)
 	parser.add_argument('--critic_tau', default=0.01, type=float)
 	parser.add_argument('--critic_target_update_freq', default=2, type=int)
 
 	# actor
 	parser.add_argument('--actor_lr', default=1e-3, type=float)
-	parser.add_argument('--actor_beta', default=0.9, type=float)
 	parser.add_argument('--actor_log_std_min', default=-10, type=float)
 	parser.add_argument('--actor_log_std_max', default=2, type=float)
 	parser.add_argument('--actor_update_freq', default=2, type=int)
 
 	# encoder
-	parser.add_argument('--encoder_feature_dim', default=100, type=int)
+	parser.add_argument('--encoder_feature_dim', default=50, type=int)
 	parser.add_argument('--encoder_lr', default=1e-3, type=float)
-	parser.add_argument('--encoder_tau', default=0.05, type=float)
+	# parser.add_argument('--encoder_tau', default=0.05, type=float)  # TODO (chongyi zheng): delete this line
 
 	# self-supervision
 	parser.add_argument('--use_rot', default=False, action='store_true')  # rotation prediction
@@ -70,15 +70,14 @@ def parse_args():
 	parser.add_argument('--discount', default=0.99, type=float)
 	parser.add_argument('--init_temperature', default=0.1, type=float)
 	parser.add_argument('--alpha_lr', default=1e-4, type=float)
-	parser.add_argument('--alpha_beta', default=0.5, type=float)
 
 	# misc
-	parser.add_argument('--seed', default=None, type=int)
+	parser.add_argument('--seed', default=1, type=int)
 	parser.add_argument('--work_dir', default=None, type=str)
 	parser.add_argument('--load_checkpoint', default=None, type=str)
 	parser.add_argument('--save_model', default=False, action='store_true')
 	parser.add_argument('--save_video', default=False, action='store_true')
-	parser.add_argument('--replay_buffer_capacity', default=500000, type=int)  # (chongyi zheng)
+	parser.add_argument('--replay_buffer_capacity', default=100000, type=int)  # (chongyi zheng)
 	parser.add_argument('--use_tb', default=False, action='store_true')  # (chongyi zheng)
 
 	# test

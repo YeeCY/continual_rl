@@ -16,7 +16,7 @@ def evaluate(env, agent, args, video):
 	episode_rewards = []
 	episode_invs_pred_vars = []
 
-	for i in tqdm(range(args.eval_episodes)):
+	for i in tqdm(range(args.num_eval_episodes)):
 		# ep_agent = deepcopy(agent)  # make a new copy
 		video.init(enabled=True)
 
