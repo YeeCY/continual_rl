@@ -3,4 +3,5 @@ __pycache__/
 .idea
 new_logs
 tmp_logs
+drq_logs
 *.egg-info
