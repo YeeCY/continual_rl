@@ -298,8 +298,10 @@ class SelfSupervisedInvPredictorEnsem(SelfSupervisedInvPredictor):
         pred_actions = []
         for idx, trunk in enumerate(self.trunks):
             if split_hidden:
-                joint_h = joint_h[idx * num_samples_each_slice:(idx + 1) * num_samples_each_slice]
-            pred_action = trunk(joint_h)
+                joint_h_slice = joint_h[idx * num_samples_each_slice:(idx + 1) * num_samples_each_slice]
+                pred_action = trunk(joint_h_slice)
+            else:
+                pred_action = trunk(joint_h)
             self.outputs[f'pred_action{idx}'] = pred_action
             pred_actions.append(pred_action)
 
@@ -388,8 +390,10 @@ class SelfSupervisedFwdPredictorEnsem(SelfSupervisedFwdPredictor):
         pred_h_nexts = []
         for idx, trunk in enumerate(self.trunks):
             if split_hidden:
-                joint_h_act = joint_h_act[idx * num_samples_each_slice:(idx + 1) * num_samples_each_slice]
-            pred_h_next = trunk(joint_h_act)
+                joint_h_act_slice = joint_h_act[idx * num_samples_each_slice:(idx + 1) * num_samples_each_slice]
+                pred_h_next = trunk(joint_h_act_slice)
+            else:
+                pred_h_next = trunk(joint_h_act)
             self.outputs[f'pred_obs_next{idx}'] = pred_h_next
             pred_h_nexts.append(pred_h_next)
 
