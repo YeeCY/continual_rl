@@ -1,4 +1,6 @@
 import torch
+from torch import nn
+import torch.nn.functional as F
 import numpy as np
 import os
 import random
@@ -48,8 +50,8 @@ def get_curl_pos_neg(obs, replay_buffer):
     obs = torch.as_tensor(obs).cuda().float().unsqueeze(0)
     pos = obs.clone()
 
-    obs = random_crop(obs)
-    pos = random_crop(pos)
+    obs = random_crop_cuda(obs)
+    pos = random_crop_cuda(pos)
 
     # Sample negatives and insert positive sample
     obs_pos = replay_buffer.sample_curl()[-1]['obs_pos']
@@ -140,34 +142,69 @@ def view_as_windows_cuda(x, window_shape):
     return x.as_strided(new_shape, strides)
 
 
-def random_crop(imgs, size=84, w1=None, h1=None, return_w1_h1=False):
-    """Vectorized random crop, imgs: (B,C,H,W), size: output size"""
-    assert (w1 is None and h1 is None) or (w1 is not None and h1 is not None), \
-        'must either specify both w1 and h1 or neither of them'
+# def random_crop(imgs, size=84, w1=None, h1=None, return_w1_h1=False):
+#     """Vectorized random crop, imgs: (B,C,H,W), size: output size"""
+#     assert (w1 is None and h1 is None) or (w1 is not None and h1 is not None), \
+#         'must either specify both w1 and h1 or neither of them'
+#
+#     is_tensor = isinstance(imgs, torch.Tensor)
+#     if is_tensor:
+#         assert imgs.is_cuda, 'input images are tensors but not cuda!'
+#         return random_crop_cuda(imgs, size=size, w1=w1, h1=h1, return_w1_h1=return_w1_h1)
+#
+#     n = imgs.shape[0]
+#     img_size = imgs.shape[-1]
+#     crop_max = img_size - size
+#
+#     if crop_max <= 0:
+#         if return_w1_h1:
+#             return imgs, None, None
+#         return imgs
+#
+#     imgs = np.transpose(imgs, (0, 2, 3, 1))
+#     if w1 is None:
+#         w1 = np.random.randint(0, crop_max, n)
+#         h1 = np.random.randint(0, crop_max, n)
+#
+#     windows = view_as_windows(imgs, (1, size, size, 1))[..., 0, :, :, 0]
+#     cropped = windows[np.arange(n), w1, h1]
+#
+#     if return_w1_h1:
+#         return cropped, w1, h1
+#
+#     return cropped
 
-    is_tensor = isinstance(imgs, torch.Tensor)
-    if is_tensor:
-        assert imgs.is_cuda, 'input images are tensors but not cuda!'
-        return random_crop_cuda(imgs, size=size, w1=w1, h1=h1, return_w1_h1=return_w1_h1)
 
-    n = imgs.shape[0]
-    img_size = imgs.shape[-1]
-    crop_max = img_size - size
+def gaussian_logprob(noise, log_std):
+    """Compute Gaussian log probability."""
+    residual = (-0.5 * noise.pow(2) - log_std).sum(-1, keepdim=True)
+    return residual - 0.5 * np.log(2 * np.pi) * noise.size(-1)
 
-    if crop_max <= 0:
-        if return_w1_h1:
-            return imgs, None, None
-        return imgs
 
-    imgs = np.transpose(imgs, (0, 2, 3, 1))
-    if w1 is None:
-        w1 = np.random.randint(0, crop_max, n)
-        h1 = np.random.randint(0, crop_max, n)
+def squash(mu, pi, log_pi):
+    """Apply squashing function.
+    See appendix C from https://arxiv.org/pdf/1812.05905.pdf.
+    """
+    mu = torch.tanh(mu)
+    if pi is not None:
+        pi = torch.tanh(pi)
+    if log_pi is not None:
+        log_pi -= torch.log(F.relu(1 - pi.pow(2)) + 1e-6).sum(-1, keepdim=True)
+    return mu, pi, log_pi
 
-    windows = view_as_windows(imgs, (1, size, size, 1))[..., 0, :, :, 0]
-    cropped = windows[np.arange(n), w1, h1]
 
-    if return_w1_h1:
-        return cropped, w1, h1
-
-    return cropped
+def weight_init(m):
+    """Custom weight init for Conv2D and Linear layers."""
+    if isinstance(m, nn.Linear):
+        nn.init.orthogonal_(m.weight.data)
+        if hasattr(m.bias, 'data'):
+            m.bias.data.fill_(0.0)
+    elif isinstance(m, nn.Conv2d) or isinstance(m, nn.ConvTranspose2d):
+        # delta-orthogonal init from https://arxiv.org/pdf/1806.05393.pdf
+        assert m.weight.size(2) == m.weight.size(3)
+        m.weight.data.fill_(0.0)
+        if hasattr(m.bias, 'data'):
+            m.bias.data.fill_(0.0)
+        mid = m.weight.size(2) // 2
+        gain = nn.init.calculate_gain('relu')
+        nn.init.orthogonal_(m.weight.data[:, :, mid, mid], gain)
