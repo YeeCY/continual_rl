@@ -283,16 +283,23 @@ class SelfSupervisedInvPredictorEnsem(SelfSupervisedInvPredictor):
             self.trunks.append(trunk)
         self.apply(weight_init)
 
-    def forward(self, obs, next_obs, detach_encoder=False):
+    def forward(self, obs, next_obs, detach_encoder=False, split_hidden=False):
+        """
+            split_hidden: split encoder outputs uniformly for each components
+        """
+        num_samples_each_slice = obs.shape[0] // self.num_comps if split_hidden else None
+
         # detach_encoder allows to stop gradient propogation to encoder's convolutional layers
         h = self.encoder(obs, detach=detach_encoder)
         next_h = self.encoder(next_obs, detach=detach_encoder)
 
         joint_h = torch.cat([h, next_h], dim=-1)
         pred_actions = []
-        for i, trunk in enumerate(self.trunks):
+        for idx, trunk in enumerate(self.trunks):
+            if split_hidden:
+                joint_h = joint_h[idx * num_samples_each_slice:(idx + 1) * num_samples_each_slice]
             pred_action = trunk(joint_h)
-            self.outputs[f'pred_action{i}'] = pred_action
+            self.outputs[f'pred_action{idx}'] = pred_action
             pred_actions.append(pred_action.unsqueeze(-2))
 
         pred_actions = torch.stack(pred_actions, dim=-2)
@@ -366,15 +373,22 @@ class SelfSupervisedFwdPredictorEnsem(SelfSupervisedFwdPredictor):
             self.trunks.append(trunk)
         self.apply(weight_init)
 
-    def forward(self, obs, action, detach_encoder=False):
+    def forward(self, obs, action, detach_encoder=False, split_hidden=False):
+        """
+            split_hidden: split encoder outputs uniformly for each components
+        """
+        num_samples_each_slice = obs.shape[0] // self.num_comps if split_hidden else None
+
         # detach_encoder allows to stop gradient propogation to encoder's convolutional layers
         h = self.encoder(obs, detach=detach_encoder)
 
         joint_h_act = torch.cat([h, action], dim=-1)
         pred_h_nexts = []
-        for i, trunk in enumerate(self.trunks):
+        for idx, trunk in enumerate(self.trunks):
+            if split_hidden:
+                joint_h_act = joint_h_act[idx * num_samples_each_slice:(idx + 1) * num_samples_each_slice]
             pred_h_next = trunk(joint_h_act)
-            self.outputs[f'pred_obs_next{i}'] = pred_h_next
+            self.outputs[f'pred_obs_next{idx}'] = pred_h_next
             pred_h_nexts.append(pred_h_next.unsqueeze(-2))
 
         pred_h_nexts = torch.stack(pred_h_nexts, dim=-2)

@@ -4,7 +4,8 @@ import torch
 import torch.nn.functional as F
 import utils
 
-from agent.network import Actor, Critic, CURL, FwdFunction, InvFunction, RotFunction
+from agent.network import Actor, Critic, CURL, FwdFunction, InvFunction, RotFunction, \
+    SelfSupervisedInvPredictorEnsem, SelfSupervisedFwdPredictorEnsem
 
 LOG_FREQ = 10000
 
@@ -888,8 +889,6 @@ class DrQSACSSEnsembleAgent:
         critic_tau=0.005,
         critic_target_update_freq=2,
         encoder_feature_dim=50,
-        encoder_lr=1e-3,
-        encoder_tau=0.005,
         use_fwd=False,
         use_inv=False,
         ss_lr=1e-3,
@@ -905,7 +904,6 @@ class DrQSACSSEnsembleAgent:
         self.device = device
         self.discount = discount
         self.critic_tau = critic_tau
-        self.encoder_tau = encoder_tau
         self.actor_update_freq = actor_update_freq
         self.critic_target_update_freq = critic_target_update_freq
         self.ss_update_freq = ss_update_freq
@@ -943,40 +941,21 @@ class DrQSACSSEnsembleAgent:
         self.target_entropy = -np.prod(action_shape)
 
         # self-supervision ensembles
-        self.ss_encoders = []
-        self.fwds = []
-        self.invs = []
-        self.encoder_optimizer = None
-        self.fwd_optimizer = None
-        self.inv_optimizer = None
+        if self.use_inv:
+            self.ss_inv_pred_ensem = SelfSupervisedInvPredictorEnsem(
+                obs_shape, action_shape, hidden_dim, encoder_feature_dim,
+                num_layers, num_filters, num_ensem_comps).to(self.device)
+            self.ss_inv_pred_ensem.encoder.copy_conv_weights_from(self.critic.encoder)
+            self.ss_inv_optimizer = torch.optim.Adam(
+                self.ss_inv_pred_ensem.parameters(), lr=ss_lr)
 
-        # TODO (chongyi zheng): update this code block
-        if self.use_inv or self.use_fwd:
-            # self-supervised encoder ensemble
-            for _ in range(self.num_ensem_comps):
-                ss_encoder = make_encoder(
-                    obs_shape, encoder_feature_dim, num_layers,
-                    num_filters
-                ).to(self.device)
-                ss_encoder.copy_conv_weights_from(self.critic.encoder)
-                self.ss_encoders.append(ss_encoder)
-
-            if self.use_fwd:
-                # forward dynamics predictor ensemble
-                for _ in range(self.num_ensem_comps):
-                    fwd = FwdFunction(encoder_feature_dim, action_shape[0], hidden_dim).cuda()
-                    # fwd.apply(weight_init)
-                    self.fwds.append(fwd)
-
-            if self.use_inv:
-                # inverse dynamics predictor ensemble
-                for _ in range(self.num_ensem_comps):
-                    inv = InvFunction(encoder_feature_dim, action_shape[0], hidden_dim).cuda()
-                    # inv.apply(weight_init)  # different initialization for each component
-                    self.invs.append(inv)
-
-        # ss optimizers
-        self.init_ss_optimizers(encoder_lr, ss_lr)
+        if self.use_fwd:
+            self.ss_fwd_pred_ensem = SelfSupervisedFwdPredictorEnsem(
+                obs_shape, action_shape, hidden_dim, encoder_feature_dim,
+                num_layers, num_filters, num_ensem_comps).to(self.device)
+            self.ss_fwd_pred_ensem.encoder.copy_conv_weights_from(self.critic.encoder)
+            self.ss_fwd_optimizer = torch.optim.Adam(
+                self.ss_fwd_pred_ensem.parameters(), lr=ss_lr)
 
         # sac optimizers
         self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), lr=actor_lr)
@@ -987,39 +966,15 @@ class DrQSACSSEnsembleAgent:
         self.train()
         self.critic_target.train()
 
-    def init_ss_optimizers(self, encoder_lr=1e-3, ss_lr=1e-3):
-        if len(self.ss_encoders) > 0:
-            ss_encoder_params = []
-            for ss_encoder in self.ss_encoders:
-                ss_encoder_params += list(ss_encoder.parameters())
-            self.encoder_optimizer = torch.optim.Adam(ss_encoder_params, lr=encoder_lr)
-        if self.use_fwd:
-            fwd_params = []
-            for fwd in self.fwds:
-                fwd_params += list(fwd.parameters())
-            self.fwd_optimizer = torch.optim.Adam(fwd_params, lr=ss_lr)
-
-        if self.use_inv:
-            inv_params = []
-            for inv in self.invs:
-                inv_params += list(inv.parameters())
-            self.inv_optimizer = torch.optim.Adam(inv_params, lr=ss_lr)
-
     def train(self, training=True):
         self.training = training
         self.actor.train(training)
         self.critic.train(training)
 
-        # TODO (chongyi zheng): update this code block
-        if len(self.ss_encoders) > 0:
-            for ss_encoder in self.ss_encoders:
-                ss_encoder.train(training)
-        if self.use_fwd:
-            for fwd in self.fwds:
-                fwd.train(training)
         if self.use_inv:
-            for inv in self.invs:
-                inv.train(training)
+            self.ss_inv_pred_ensem.train()
+        if self.use_fwd:
+            self.ss_fwd_pred_ensem.train()
 
     @property
     def alpha(self):
@@ -1034,19 +989,22 @@ class DrQSACSSEnsembleAgent:
         assert action.ndim == 2 and action.shape[0] == 1
         return utils.to_np(action[0])
 
-    # TODO (chongyi zheng): update this function
     def ss_preds_var(self, obs, next_obs, action):
         # TODO (chongyi zheng):
         #  do we need next_obs (forward) or action (inverse) - measure the prediction error,
         #  or we just need to predictions - measure the prediction variance?
-        #  task inference: threshold or statistical hypothesis testing like: https://arxiv.org/abs/1902.09434
+        #  task identity inference - threshold or statistical hypothesis testing like: https://arxiv.org/abs/1902.09434
         assert obs.shape == next_obs.shape and obs.shape[0] == next_obs.shape[0] == action.shape[0], \
             "invalid transitions shapes!"
 
+        # TODO (chongyi zheng): Do we need to set agent mode to evaluation before prediction?
         with torch.no_grad():
-            obs = torch.FloatTensor(obs).cuda() if not isinstance(obs, torch.Tensor) else obs.cuda()
-            next_obs = torch.FloatTensor(next_obs).cuda() if not isinstance(next_obs, torch.Tensor) else next_obs.cuda()
-            action = torch.FloatTensor(action).cuda() if not isinstance(action, torch.Tensor) else action.cuda()
+            obs = torch.FloatTensor(obs).to(self.device) \
+                if not isinstance(obs, torch.Tensor) else obs.to(self.device)
+            next_obs = torch.FloatTensor(next_obs).to(self.device) \
+                if not isinstance(next_obs, torch.Tensor) else next_obs.to(self.device)
+            action = torch.FloatTensor(action).to(self.device) \
+                if not isinstance(action, torch.Tensor) else action.to(self.device)
 
             if len(obs.size()) == 3:
                 obs = obs.unsqueeze(0)
@@ -1054,27 +1012,19 @@ class DrQSACSSEnsembleAgent:
                 action = action.unsqueeze(0)
 
             # prediction variances
-            preds = []
-            if self.use_fwd:
-                for ss_encoder, fwd in zip(self.ss_encoders, self.fwds):
-                    h = ss_encoder(obs)
-
-                    preds.append(fwd(h, action))
-
             if self.use_inv:
-                for ss_encoder, inv in zip(self.ss_encoders, self.invs):
-                    h = ss_encoder(obs)
-                    h_next = ss_encoder(next_obs)
+                preds = self.ss_inv_pred_ensem(obs, next_obs)
 
-                    preds.append(inv(h, h_next))
+            if self.use_fwd:
+                preds = self.ss_fwd_pred_ensem(obs, action)
 
             # (chongyi zheng): the same as equation (1) in https://arxiv.org/abs/1906.04161
-            pred_vars = torch.var(torch.stack(preds), dim=0).sum(dim=-1)
+            preds_var = torch.var(preds, dim=-2).sum(dim=-1)
 
-            return pred_vars.cpu().data.numpy()
+            return utils.to_np(preds_var)
 
     def update_critic(self, obs, obs_aug, action, reward, next_obs, next_obs_aug,
-                      not_done, L, step):
+                      not_done, logger, step):
         with torch.no_grad():
             dist = self.actor(next_obs)
             next_action = dist.rsample()
@@ -1098,16 +1048,16 @@ class DrQSACSSEnsembleAgent:
 
         Q1_aug, Q2_aug = self.critic(obs_aug, action)
         critic_loss += F.mse_loss(Q1_aug, target_Q) + F.mse_loss(Q2_aug, target_Q)  # M = 2
-        L.log('train_critic/loss', critic_loss, step)
+        logger.log('train_critic/loss', critic_loss, step)
 
         # Optimize the critic
         self.critic_optimizer.zero_grad()
         critic_loss.backward()
         self.critic_optimizer.step()
 
-        self.critic.log(L, step)
+        self.critic.log(logger, step)
 
-    def update_actor_and_alpha(self, obs, L, step, update_alpha=True):
+    def update_actor_and_alpha(self, obs, logger, step, update_alpha=True):
         # detach conv filters, so we don't update them with the actor loss
         dist = self.actor(obs, detach_encoder=True)
         action = dist.rsample()
@@ -1118,99 +1068,67 @@ class DrQSACSSEnsembleAgent:
         actor_Q = torch.min(actor_Q1, actor_Q2)
         actor_loss = (self.alpha.detach() * log_prob - actor_Q).mean()
 
-        L.log('train_actor/loss', actor_loss, step)
-        L.log('train_actor/target_entropy', self.target_entropy, step)
-        L.log('train_actor/entropy', -log_prob.mean(), step)
+        logger.log('train_actor/loss', actor_loss, step)
+        logger.log('train_actor/target_entropy', self.target_entropy, step)
+        logger.log('train_actor/entropy', -log_prob.mean(), step)
 
         # optimize the actor
         self.actor_optimizer.zero_grad()
         actor_loss.backward()
         self.actor_optimizer.step()
 
-        self.actor.log(L, step)
+        self.actor.log(logger, step)
 
         if update_alpha:
             self.log_alpha_optimizer.zero_grad()
             alpha_loss = (self.alpha * (-log_prob - self.target_entropy).detach()).mean()
 
-            L.log('train_alpha/loss', alpha_loss, step)
-            L.log('train_alpha/value', self.alpha, step)
+            logger.log('train_alpha/loss', alpha_loss, step)
+            logger.log('train_alpha/value', self.alpha, step)
 
             alpha_loss.backward()
             self.log_alpha_optimizer.step()
 
-    # TODO (chongyi zheng): update this function
-    def update_ss_preds(self, obs, next_obs, action, L, step):
+    def update_ss_preds(self, obs, next_obs, action, logger, step):
         assert obs.shape[-1] == 84 and next_obs.shape[-1] == 84
 
-        fwd_losses = []
-        inv_losses = []
-        # (chongyi zheng): split transitions for each component of the ensemble
-        num_samples_each_slice = obs.shape[0] // self.num_ensem_comps
-        for idx, (ss_encoder, fwd, inv) in enumerate(itertools.zip_longest(self.ss_encoders, self.fwds, self.invs)):
-            obs_slice = obs[idx * num_samples_each_slice:(idx + 1) * num_samples_each_slice]
-            next_obs_slice = next_obs[idx * num_samples_each_slice:(idx + 1) * num_samples_each_slice]
-            action_slice = action[idx * num_samples_each_slice:(idx + 1) * num_samples_each_slice]
+        # TODO (chongyi zheng): Do we need to stop the gradients from self-supervision loss?
+        if self.use_inv:
+            pred_action = self.ss_inv_pred_ensem(obs, next_obs,
+                                                 detach_encoder=True, split_hidden=True)
+            inv_loss = F.mse_loss(pred_action, action.unsqueeze(-2))
 
-            if self.use_fwd:
-                # only back propagate the gradients from first predictor in the ensemble to shared encoder
-                if self.ss_stop_shared_layers_grad and idx != 0:
-                    h = ss_encoder(obs_slice, detach=True)
-                else:
-                    h = ss_encoder(obs_slice)
-                h_next = ss_encoder(next_obs_slice).detach()  # stop all gradients
+            self.ss_inv_optimizer.zero_grad()
+            inv_loss.backward()
+            self.ss_inv_optimizer.step()
 
-                pred_h_next = fwd(h, action_slice)
-                fwd_loss = F.mse_loss(pred_h_next, h_next)
-                fwd_losses.append(fwd_loss)
-
-            if self.use_inv:
-                # only back propagate the gradients from first predictor in the ensemble to shared encoder
-                if self.ss_stop_shared_layers_grad and idx != 0:
-                    h = ss_encoder(obs_slice, detach=True)
-                    h_next = ss_encoder(next_obs_slice, detach=True)
-                else:
-                    h = ss_encoder(obs_slice)
-                    h_next = ss_encoder(next_obs_slice)
-
-                pred_action = inv(h, h_next)
-                inv_loss = F.mse_loss(pred_action, action_slice)
-                inv_losses.append(inv_loss)
-
-            if self.use_fwd:
-                L.log('train_fwd_ensem/loss_{}'.format(idx), fwd_loss, step)
-            if self.use_inv:
-                L.log('train_inv_ensem/loss_{}'.format(idx), inv_loss, step)
+            self.ss_inv_pred_ensem.log(logger, step)
+            logger.log('train_ss_inv/loss', inv_loss, step)
 
         if self.use_fwd:
-            mean_fwd_loss = torch.mean(torch.stack(fwd_losses))
-            self.encoder_optimizer.zero_grad()
-            self.fwd_optimizer.zero_grad()
-            mean_fwd_loss.backward()
+            pred_h_next = self.ss_fwd_pred_ensem(obs, action,
+                                                 detach_encoder=True, split_hidden=True)
+            h_next = self.ss_fwd_pred_ensem.encoder(next_obs).detach()  # stop gradient for the target
+            fwd_loss = F.mse_loss(pred_h_next, h_next.unsqueeze(-2))
 
-            self.encoder_optimizer.step()
-            self.fwd_optimizer.step()
+            self.ss_fwd_optimizer.zero_grad()
+            fwd_loss.backward()
+            self.ss_fwd_optimizer.step()
 
-        if self.use_inv:
-            mean_inv_loss = torch.mean(torch.stack(inv_losses))
-            self.encoder_optimizer.zero_grad()
-            self.inv_optimizer.zero_grad()
-            mean_inv_loss.backward()
+            self.ss_fwd_pred_ensem.log(logger, step)
+            logger.log('train_ss_fwd/loss', fwd_loss, step)
 
-            self.encoder_optimizer.step()
-            self.inv_optimizer.step()
-
-    def update(self, replay_buffer, L, step):
+    def update(self, replay_buffer, logger, step):
         # obs, action, reward, next_obs, not_done, ensem_kwargs = replay_buffer.sample_ensembles(
         #     self.batch_size, num_ensembles=self.num_ensem_comps)
         # obs, action, reward, next_obs, not_done = replay_buffer.sample(self.batch_size)
         obs, action, reward, next_obs, not_done, obs_aug, next_obs_aug = replay_buffer.sample(
             self.batch_size)
 
-        L.log('train/batch_reward', reward.mean(), step)
+        logger.log('train/batch_reward', reward.mean(), step)
 
         self.update_critic(obs, obs_aug, action, reward, next_obs,
-                           next_obs_aug, not_done, L, step)
+                           next_obs_aug, not_done, logger, step)
 
         # TODO (chongyi zheng): which version is better?
         # if step % self.actor_update_freq == 0:
@@ -1228,7 +1146,7 @@ class DrQSACSSEnsembleAgent:
         #         self.encoder_tau
         #     )
         if step % self.actor_update_freq == 0:
-            self.update_actor_and_alpha(obs, L, step)
+            self.update_actor_and_alpha(obs, logger, step)
 
         if step % self.critic_target_update_freq == 0:
             utils.soft_update_params(self.critic, self.critic_target,
@@ -1236,9 +1154,9 @@ class DrQSACSSEnsembleAgent:
 
         if (self.use_fwd or self.use_inv) and step % self.ss_update_freq == 0:
             # self.update_ss_preds(ensem_kwargs['obses'], ensem_kwargs['next_obses'], ensem_kwargs['actions'], L, step)
-            self.update_ss_preds(obs, next_obs, action, L, step)
+            self.update_ss_preds(obs, next_obs, action, logger, step)
             ss_preds_var = self.ss_preds_var(obs, next_obs, action)
-            L.log('train/batch_ss_preds_var', ss_preds_var.mean(), step)
+            logger.log('train/batch_ss_preds_var', ss_preds_var.mean(), step)
 
     def save(self, model_dir, step):
         torch.save(
