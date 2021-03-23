@@ -271,7 +271,7 @@ class SelfSupervisedInvPredictorEnsem(SelfSupervisedInvPredictor):
                          encoder_feature_dim, num_layers, num_filters)
         self.num_comps = num_comps
 
-        self.trunks = [self.trunk]
+        trunks = [self.trunk]
         for _ in range(self.num_comps - 1):
             trunk = nn.Sequential(
                 nn.Linear(2 * encoder_feature_dim, hidden_dim),
@@ -280,7 +280,8 @@ class SelfSupervisedInvPredictorEnsem(SelfSupervisedInvPredictor):
                 nn.ReLU(inplace=True),
                 nn.Linear(hidden_dim, action_shape[0])
             )
-            self.trunks.append(trunk)
+            trunks.append(trunk)
+        self.trunks = nn.ModuleList(trunks)
         self.apply(weight_init)
 
     def forward(self, obs, next_obs, detach_encoder=False, split_hidden=False):
@@ -300,7 +301,7 @@ class SelfSupervisedInvPredictorEnsem(SelfSupervisedInvPredictor):
                 joint_h = joint_h[idx * num_samples_each_slice:(idx + 1) * num_samples_each_slice]
             pred_action = trunk(joint_h)
             self.outputs[f'pred_action{idx}'] = pred_action
-            pred_actions.append(pred_action.unsqueeze(-2))
+            pred_actions.append(pred_action)
 
         pred_actions = torch.stack(pred_actions, dim=-2)
 
@@ -361,7 +362,7 @@ class SelfSupervisedFwdPredictorEnsem(SelfSupervisedFwdPredictor):
                          encoder_feature_dim, num_layers, num_filters)
         self.num_comps = num_comps
 
-        self.trunks = [self.trunk]
+        trunks = [self.trunk]
         for _ in range(self.num_comps - 1):
             trunk = nn.Sequential(
                 nn.Linear(encoder_feature_dim + action_shape[0], hidden_dim),
@@ -370,7 +371,8 @@ class SelfSupervisedFwdPredictorEnsem(SelfSupervisedFwdPredictor):
                 nn.ReLU(inplace=True),
                 nn.Linear(hidden_dim, encoder_feature_dim)
             )
-            self.trunks.append(trunk)
+            trunks.append(trunk)
+        self.trunks = nn.ModuleList(trunks)
         self.apply(weight_init)
 
     def forward(self, obs, action, detach_encoder=False, split_hidden=False):
@@ -389,7 +391,7 @@ class SelfSupervisedFwdPredictorEnsem(SelfSupervisedFwdPredictor):
                 joint_h_act = joint_h_act[idx * num_samples_each_slice:(idx + 1) * num_samples_each_slice]
             pred_h_next = trunk(joint_h_act)
             self.outputs[f'pred_obs_next{idx}'] = pred_h_next
-            pred_h_nexts.append(pred_h_next.unsqueeze(-2))
+            pred_h_nexts.append(pred_h_next)
 
         pred_h_nexts = torch.stack(pred_h_nexts, dim=-2)
 

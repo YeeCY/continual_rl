@@ -10,7 +10,7 @@ from agent.network import Actor, Critic, CURL, \
 LOG_FREQ = 10000
 
 
-def make_agent(obs_shape, action_shape, action_range, args):
+def make_agent(obs_shape, action_shape, action_range, device, args):
     if args.use_ensemble:
         # agent = SacSSEnsembleAgent(
         #     obs_shape=obs_shape,
@@ -64,12 +64,12 @@ def make_agent(obs_shape, action_shape, action_range, args):
             use_inv=args.use_inv,
             ss_lr=args.ss_lr,
             ss_update_freq=args.ss_update_freq,
-            ss_stop_shared_layers_grad=args.ss_stop_shared_layers_grad,
             batch_size=args.batch_size,
             num_layers=args.num_layers,
             num_filters=args.num_filters,
             curl_latent_dim=args.curl_latent_dim,
             num_ensem_comps=args.num_ensem_comps,
+            device=device,
         )
     else:
         agent = SacSSAgent(
@@ -1192,24 +1192,16 @@ class DrQSACSSEnsembleAgent:
         torch.save(
             self.critic.state_dict(), '%s/critic_%s.pt' % (model_dir, step)
         )
-        if len(self.ss_encoders) > 0:
-            for idx, ss_encoder in enumerate(self.ss_encoders):
-                torch.save(
-                    ss_encoder.state_dict(),
-                    '%s/ss_encoder_ensem%d_%s.pt' % (model_dir, idx, step)
-                )
-        if self.use_fwd:
-            for idx, fwd in enumerate(self.fwds):
-                torch.save(
-                    fwd.state_dict(),
-                    '%s/fwd_ensem%d_%s.pt' % (model_dir, idx, step)
-                )
         if self.use_inv:
-            for idx, inv in enumerate(self.invs):
-                torch.save(
-                    inv.state_dict(),
-                    '%s/inv_ensem%d_%s.pt' % (model_dir, idx, step)
-                )
+            torch.save(
+                self.ss_inv_pred_ensem.state_dict(),
+                '%s/ss_inv_pred_ensem_%s.pt' % (model_dir, step)
+            )
+        if self.use_fwd:
+            torch.save(
+                self.ss_fwd_pred_ensem.state_dict(),
+                '%s/ss_fwd_pred_ensem_%s.pt' % (model_dir, step)
+            )
 
     def load(self, model_dir, step):
         self.actor.load_state_dict(
@@ -1218,18 +1210,11 @@ class DrQSACSSEnsembleAgent:
         self.critic.load_state_dict(
             torch.load('%s/critic_%s.pt' % (model_dir, step))
         )
-        if len(self.ss_encoders) > 0:
-            for idx, ss_encoder in enumerate(self.ss_encoders):
-                ss_encoder.load_state_dict(
-                    torch.load('%s/ss_encoder_ensem%d_%s.pt' % (model_dir, idx, step))
-                )
-        if self.use_fwd:
-            for idx, fwd in enumerate(self.fwds):
-                fwd.load_state_dict(
-                    torch.load('%s/fwd_ensem%d_%s.pt' % (model_dir, idx, step))
-                )
         if self.use_inv:
-            for idx, inv in enumerate(self.invs):
-                inv.load_state_dict(
-                    torch.load('%s/inv_ensem%d_%s.pt' % (model_dir, idx, step))
-                )
+            self.ss_inv_pred_ensem.load_state_dict(
+                torch.load('%s/ss_inv_pred_ensem_%s.pt' % (model_dir, step))
+            )
+        if self.use_fwd:
+            self.ss_inv_pred_ensem.load_state_dict(
+                torch.load('%s/ss_fwd_pred_ensem_%s.pt' % (model_dir, step))
+           )

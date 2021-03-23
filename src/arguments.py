@@ -46,7 +46,7 @@ def parse_args():
 
 	# encoder
 	parser.add_argument('--encoder_feature_dim', default=50, type=int)
-	parser.add_argument('--encoder_lr', default=1e-3, type=float)
+	# parser.add_argument('--encoder_lr', default=1e-3, type=float)  # TODO (chongyi zheng): delete this line
 	# parser.add_argument('--encoder_tau', default=0.05, type=float)  # TODO (chongyi zheng): delete this line
 
 	# self-supervision
@@ -58,9 +58,9 @@ def parse_args():
 	parser.add_argument('--ss_update_freq', default=2, type=int)  # self-supervised update frequency
 	# (chongyi zheng) stop gradients flow into the shared encoder from self-supervised predictors other than the first
 	# one in the ensemble
-	parser.add_argument('--ss_stop_shared_layers_grad', default=False, action='store_true')
-	parser.add_argument('--num_layers', default=11, type=int)  # number of conv layers
-	parser.add_argument('--num_shared_layers', default=-1, type=int)  # number of shared conv layers
+	# parser.add_argument('--ss_stop_shared_layers_grad', default=False, action='store_true')
+	parser.add_argument('--num_layers', default=4, type=int)  # number of conv layers
+	# parser.add_argument('--num_shared_layers', default=-1, type=int)  # number of shared conv layers
 	parser.add_argument('--num_filters', default=32, type=int)  # number of filters in conv
 	parser.add_argument('--curl_latent_dim', default=128, type=int)  # latent dimension for curl
 	parser.add_argument('--use_ensemble', default=False, action='store_true')  # ensemble
@@ -75,10 +75,10 @@ def parse_args():
 	parser.add_argument('--seed', default=1, type=int)
 	parser.add_argument('--work_dir', default=None, type=str)
 	parser.add_argument('--load_checkpoint', default=None, type=str)
+	parser.add_argument('--replay_buffer_capacity', default=100000, type=int)  # (chongyi zheng)
 	parser.add_argument('--save_model', default=False, action='store_true')
 	parser.add_argument('--save_video', default=False, action='store_true')
-	parser.add_argument('--replay_buffer_capacity', default=100000, type=int)  # (chongyi zheng)
-	parser.add_argument('--use_tb', default=False, action='store_true')  # (chongyi zheng)
+	parser.add_argument('--save_tb', default=False, action='store_true')  # (chongyi zheng)
 
 	# test
 	# parser.add_argument('--pad_checkpoint', default=None, type=str)

@@ -75,7 +75,7 @@ def main(args):
 			if step % args.eval_freq == 0:
 				print('Evaluating:', args.work_dir)
 				L.log('eval/episode', episode, step)
-				evaluate(env, agent, video, args.eval_episodes, L, step)
+				evaluate(env, agent, video, args.num_eval_episodes, L, step)
 			
 			# Save agent periodically
 			if step % args.save_freq == 0 and step > 0:

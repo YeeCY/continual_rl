@@ -40,7 +40,7 @@ class PixelEncoder(nn.Module):
 		# TODO (chongyi zheng): delete this line
 		# self.num_shared_layers = num_shared_layers
 
-		# (chongyi zheng): add shape indicators in the comment
+		# TODO (chongyi zheng): delet CenterCrop module since we don't need it
 		self.preprocess = nn.Sequential(
 			CenterCrop(size=84), NormalizeImg()
 		)  # if x.shape = (N, 9, 100, 100), convert it to (N, 9, 84, 84). Then normalize pixel value to [0, 1].
@@ -52,9 +52,6 @@ class PixelEncoder(nn.Module):
 			self.convs.append(nn.Conv2d(num_filters, num_filters, 3, stride=1))
 
 		out_dim = OUT_DIM[num_layers]
-		self.fc = nn.Linear(num_filters * out_dim * out_dim, self.feature_dim)  # (N, 32 * out_dim * out_dim) -> (N, 100)
-		self.ln = nn.LayerNorm(self.feature_dim)
-
 		self.head = nn.Sequential(
 			nn.Linear(num_filters * out_dim * out_dim, self.feature_dim),
 			nn.LayerNorm(self.feature_dim))

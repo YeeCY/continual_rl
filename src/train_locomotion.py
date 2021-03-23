@@ -83,12 +83,15 @@ def main(args):
 
 	# Prepare agent
 	assert torch.cuda.is_available(), 'must have cuda enabled'
-	replay_buffer = buffers.FrameStackReplayBuffer(
+	device = torch.device(args.device)
+
+	replay_buffer = buffers.AugmentFrameStackReplayBuffer(
 		obs_shape=env.unwrapped.observation_space.shape,
 		action_shape=env.action_space.shape,
 		capacity=args.replay_buffer_capacity,
 		frame_stack=args.frame_stack,
-		device=args.device
+		image_pad=args.obs_pad,
+		device=device
 	)
 	cropped_obs_shape = (3 * args.frame_stack, 84, 84)
 	agent = make_agent(
@@ -98,10 +101,11 @@ def main(args):
 			float(env.action_space.low.min()),
 			float(env.action_space.high.max())
 		],
+		device=device,
 		args=args
 	)
 
-	logger = Logger(args.work_dir, use_tb=args.use_tb)
+	logger = Logger(args.work_dir, use_tb=args.save_tb)
 	episode, episode_reward, episode_step, done = 0, 0, 0, True
 	start_time = time.time()
 	for step in range(args.train_steps + 1):
