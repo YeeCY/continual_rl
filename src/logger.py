@@ -134,11 +134,11 @@ class Logger(object):
         else:
             self._sw = None
         self._train_mg = MetersGroup(
-            os.path.join(log_dir, 'train.log'),
+            os.path.join(log_dir, 'train'),
             formating=FORMAT_CONFIG[config]['train']
         )
         self._eval_mg = MetersGroup(
-            os.path.join(log_dir, 'eval.log'),
+            os.path.join(log_dir, 'eval'),
             formating=FORMAT_CONFIG[config]['eval']
         )
 
