@@ -128,7 +128,7 @@ def main(args):
 			if step > 0:
 				logger.log('train/duration', time.time() - start_time, step)
 				start_time = time.time()
-				logger.dump(step)
+				logger.dump(step, save=(step > args.init_steps))
 
 			logger.log('train/episode_reward', episode_reward, step)
 

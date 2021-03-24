@@ -1,6 +1,6 @@
 import gym
 from gym.envs.registration import register
-from env import locomotion_envs
+from src.env import locomotion_envs
 
 
 def make(

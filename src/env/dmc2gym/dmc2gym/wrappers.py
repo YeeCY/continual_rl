@@ -3,7 +3,7 @@ from dm_control import suite
 from dm_control import composer
 from dm_env import specs
 import numpy as np
-from env import locomotion_envs
+from src.env import locomotion_envs
 
 
 def _spec_to_box(spec):
