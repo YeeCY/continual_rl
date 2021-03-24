@@ -105,7 +105,10 @@ def main(args):
 		args=args
 	)
 
-	logger = Logger(args.work_dir, use_tb=args.save_tb)
+	logger = Logger(args.work_dir,
+					log_frequency=args.log_freq,
+					action_repeat=args.action_repeat,
+					save_tb=args.save_tb)
 	episode, episode_reward, episode_step, done = 0, 0, 0, True
 	start_time = time.time()
 	for step in range(args.train_steps + 1):
