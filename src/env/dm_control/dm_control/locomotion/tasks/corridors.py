@@ -74,6 +74,8 @@ class RunThroughCorridor(composer.Task):
     enabled_observables += self._walker.observables.kinematic_sensors
     enabled_observables += self._walker.observables.dynamic_sensors
     enabled_observables.append(self._walker.observables.sensors_touch)
+    # (chongyi zheng): add ranger finder observations
+    enabled_observables.append(self._walker.observables.sensors_rangefinder)
     enabled_observables.append(self._walker.observables.egocentric_camera)
     for observable in enabled_observables:
       observable.enabled = True

@@ -294,9 +294,10 @@ def main():
 
     # observation_shape:
     #   walker_run = 87
-    #   ant_run_long = 153
+    #   ant_run_long = 153 without range finders, 163 with range finders
+    #   ant_run_walls =
     env = dmc2gym.make_locomotion(
-        env_name='ant_run_long',
+        env_name='ant_run_walls',
         seed=0,
         from_pixels=False,
         episode_length=1000,
