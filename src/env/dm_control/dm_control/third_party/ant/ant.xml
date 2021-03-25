@@ -36,9 +36,17 @@ https://opensource.org/licenses/MIT.
       <site name="torso_site" size="0.05" rgba="1 0 0 1"/>
 
       <site name="rf_xp" class="rangefinder" pos="0.25 0 0.11" zaxis="1 0 0"/>
+      <site name="rf_xpd_30" class="rangefinder" pos="0.25 0 0.11" xyaxes="-1 0 -1.7321 0 1 0"/>  <!-- 30 degree -->
+      <site name="rf_xpd_45" class="rangefinder" pos="0.25 0 0.11" xyaxes="-1 0 -1 0 1 0"/>  <!-- 45 degree -->
       <site name="rf_xn" class="rangefinder" pos="-0.25 0 0.11" zaxis="-1 0 0"/>
+      <site name="rf_xn_30" class="rangefinder" pos="-0.25 0 0.11" xyaxes="1 0 -1.7321 0 -1 0"/>
+      <site name="rf_xn_45" class="rangefinder" pos="-0.25 0 0.11" xyaxes="1 0 -1 0 -1 0"/>
       <site name="rf_yp" class="rangefinder" pos="0 0.25 0.11"  zaxis="0 1 0"/>
+      <site name="rf_ypd_30" class="rangefinder" pos="0 0.25 0.11" xyaxes="0 -1 -1.7321 -1 0 0"/>
+      <site name="rf_ypd_45" class="rangefinder" pos="0 0.25 0.11" xyaxes="0 -1 -1 -1 0 0"/>
       <site name="rf_yn" class="rangefinder" pos="0 -0.25 0.11"  zaxis="0 -1 0"/>
+      <site name="rf_ynd_30" class="rangefinder" pos="0 -0.25 0.11" xyaxes="0 1 -1.7321 1 0 0"/>
+      <site name="rf_ynd_45" class="rangefinder" pos="0 -0.25 0.11" xyaxes="0 1 -1 1 0 0"/>
       <site name="rf_xpyp" class="rangefinder" pos="0.25 0.25 0.11" zaxis="1 1 0"/>
       <site name="rf_xpyn" class="rangefinder" pos="0.25 -0.25 0.11"  zaxis="1 -1 0"/>
       <site name="rf_xnyn" class="rangefinder" pos="-0.25 -0.25 0.11" zaxis="-1 -1 0"/>
@@ -159,9 +167,17 @@ https://opensource.org/licenses/MIT.
     <gyro name="torso_gyro" site="torso_site"/>
     <accelerometer name="torso_accel" site="torso_site"/>
     <rangefinder name="rf_xp" site="rf_xp"/>
+    <rangefinder name="rf_xpd_30" site="rf_xpd_30"/>
+    <rangefinder name="rf_xpd_45" site="rf_xpd_45"/>
     <rangefinder name="rf_yp" site="rf_yp"/>
+    <rangefinder name="rf_ypd_30" site="rf_ypd_30"/>
+    <rangefinder name="rf_ypd_45" site="rf_ypd_45"/>
     <rangefinder name="rf_xn" site="rf_xn"/>
+    <rangefinder name="rf_xn_30" site="rf_xn_30" />
+    <rangefinder name="rf_xn_45" site="rf_xn_45" />
     <rangefinder name="rf_yn" site="rf_yn"/>
+    <rangefinder name="rf_ynd_30" site="rf_ynd_30" />
+    <rangefinder name="rf_ynd_45" site="rf_ynd_45" />
     <rangefinder name="rf_xpyp" site="rf_xpyp"/>
     <rangefinder name="rf_xpyn" site="rf_xpyn"/>
     <rangefinder name="rf_xnyp" site="rf_xnyp"/>
