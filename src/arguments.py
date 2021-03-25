@@ -22,7 +22,7 @@ def parse_args():
 	
 	# agent
 	parser.add_argument('--init_steps', default=1000, type=int)
-	parser.add_argument('--num_train_iters', default=200, type=int)  # (chongyi zheng): 1, rlkit = 1000?
+	parser.add_argument('--num_train_iters', default=1, type=int)
 	parser.add_argument('--train_steps', default=1000000, type=int)
 	parser.add_argument('--batch_size', default=128, type=int)
 	parser.add_argument('--hidden_dim', default=400, type=int)  # 1024
