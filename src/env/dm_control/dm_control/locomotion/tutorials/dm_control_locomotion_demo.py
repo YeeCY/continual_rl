@@ -292,8 +292,11 @@ def main():
     import numpy as np
     import dmc2gym
 
+    # observation_shape:
+    #   walker_run = 87
+    #   ant_run_long = 153
     env = dmc2gym.make_locomotion(
-        env_name='walker_run',
+        env_name='ant_run_long',
         seed=0,
         from_pixels=False,
         episode_length=1000,

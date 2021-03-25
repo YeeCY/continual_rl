@@ -17,7 +17,7 @@ _XML_PATH = os.path.join(os.path.dirname(__file__),
 class PlanarWalker(legacy_base.Walker):
     """A two leg "PlanarWalker" walker."""
 
-    def _build(self, name='planar_walker', marker_rgba=None, initializer=None):
+    def _build(self, name='walker', marker_rgba=None, initializer=None):
         """Build an PlanarWalker walker.
 
         Args:
