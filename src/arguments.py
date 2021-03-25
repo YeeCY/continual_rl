@@ -16,13 +16,13 @@ def parse_args():
 	parser.add_argument('--env_camera_id', default=0, type=int)  # (chongyi zheng)
 	parser.add_argument('--video_camera_id', default=0, type=int)  # (chongyi zheng)
 	parser.add_argument('--frame_stack', default=3, type=int)
-	parser.add_argument('--action_repeat', default=4, type=int)
+	parser.add_argument('--action_repeat', default=1, type=int)  # 1
 	parser.add_argument('--episode_length', default=1000, type=int)
 	parser.add_argument('--mode', default='train', type=str)
 	
 	# agent
 	parser.add_argument('--init_steps', default=1000, type=int)
-	parser.add_argument('--num_train_iters', default=1, type=int)
+	parser.add_argument('--num_train_iters', default=200, type=int)  # (chongyi zheng): 1, rlkit = 1000?
 	parser.add_argument('--train_steps', default=1000000, type=int)
 	parser.add_argument('--batch_size', default=128, type=int)
 	parser.add_argument('--hidden_dim', default=400, type=int)  # 1024
@@ -35,12 +35,12 @@ def parse_args():
 	parser.add_argument('--eval_results', default=False, action='store_true')  # (chongyi zheng): save evalution results or not
 
 	# critic
-	parser.add_argument('--critic_lr', default=1e-3, type=float)  # (chongyi zheng): try 3e-4?
+	parser.add_argument('--critic_lr', default=3e-4, type=float)  # 1e-3
 	parser.add_argument('--critic_tau', default=0.005, type=float)  # 0.01
-	parser.add_argument('--critic_target_update_freq', default=2, type=int)
+	parser.add_argument('--critic_target_update_freq', default=1, type=int)  # 1
 
 	# actor
-	parser.add_argument('--actor_lr', default=1e-3, type=float)  # (chongyi zheng): try 3e-4?
+	parser.add_argument('--actor_lr', default=3e-4, type=float)  # 1e-3
 	parser.add_argument('--actor_log_std_min', default=-20, type=float)  # -10
 	parser.add_argument('--actor_log_std_max', default=2, type=float)
 	parser.add_argument('--actor_update_freq', default=2, type=int)
@@ -55,7 +55,7 @@ def parse_args():
 	parser.add_argument('--use_fwd', default=False, action='store_true')  # forward dynamics model
 	parser.add_argument('--use_inv', default=False, action='store_true')  # inverse dynamics model
 	parser.add_argument('--use_curl', default=False, action='store_true')  # CURL
-	parser.add_argument('--ss_lr', default=1e-3, type=float)   # self-supervised learning rate
+	parser.add_argument('--ss_lr', default=3e-4, type=float)   # self-supervised learning rate, 1e-3
 	parser.add_argument('--ss_update_freq', default=2, type=int)  # self-supervised update frequency
 	# (chongyi zheng) stop gradients flow into the shared encoder from self-supervised predictors other than the first
 	# one in the ensemble

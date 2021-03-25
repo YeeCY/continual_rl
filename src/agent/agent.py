@@ -1371,7 +1371,7 @@ class SacMlpSSEnsembleAgent:
             action = torch.FloatTensor(action).to(self.device) \
                 if not isinstance(action, torch.Tensor) else action.to(self.device)
 
-            if len(obs.size()) == 3:
+            if len(obs.size()) == 3 or len(obs.size()) == 1:
                 obs = obs.unsqueeze(0)
                 next_obs = next_obs.unsqueeze(0)
                 action = action.unsqueeze(0)
@@ -1384,7 +1384,8 @@ class SacMlpSSEnsembleAgent:
                 preds = self.ss_fwd_pred_ensem(obs, action)
 
             # (chongyi zheng): the same as equation (1) in https://arxiv.org/abs/1906.04161
-            preds_var = torch.var(preds, dim=-2).sum(dim=-1)
+            preds = torch.stack(preds.chunk(self.num_ensem_comps, dim=0))
+            preds_var = torch.var(preds, dim=0).sum(dim=-1)
 
             return utils.to_np(preds_var)
 
@@ -1445,7 +1446,7 @@ class SacMlpSSEnsembleAgent:
 
         # TODO (chongyi zheng): Do we need to stop the gradients from self-supervision loss?
         if self.use_inv:
-            pred_action = self.ss_inv_pred_ensem(obs, next_obs, split_hidden=True)
+            pred_action = self.ss_inv_pred_ensem(obs, next_obs, split_input=True)
             inv_loss = F.mse_loss(pred_action, action)
 
             self.ss_inv_optimizer.zero_grad()
@@ -1456,7 +1457,7 @@ class SacMlpSSEnsembleAgent:
             logger.log('train_ss_inv/loss', inv_loss, step)
 
         if self.use_fwd:
-            pred_next_obs = self.ss_fwd_pred_ensem(obs, action, split_hidden=True)
+            pred_next_obs = self.ss_fwd_pred_ensem(obs, action, split_input=True)
             fwd_loss = F.mse_loss(pred_next_obs, next_obs)
 
             self.ss_fwd_optimizer.zero_grad()

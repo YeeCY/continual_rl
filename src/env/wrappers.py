@@ -71,6 +71,8 @@ def make_locomotion_env(
         env = VideoBackground(env, mode)
         env = FrameStack(env, frame_stack)
         env = ColorWrapper(env, mode)
+    else:
+        env = AugmentObs(env, mode)
 
     assert env.action_space.low.min() >= -1
     assert env.action_space.high.max() <= 1
@@ -413,3 +415,13 @@ class VideoBackground(gym.Wrapper):
         if channels_last:
             obs = torch.from_numpy(obs).permute(1, 2, 0).numpy()
         return obs
+
+
+class AugmentObs(gym.Wrapper):
+    """Augment observations with task specific features, i.e. task_id, and pad the dimension"""
+    # TODO (chongyi zheng)
+    def __init__(self, env, mode):
+        gym.Wrapper.__init__(self, env)
+        self._mode = mode
+        self._max_episode_steps = env._max_episode_steps
+        self._current_frame = None

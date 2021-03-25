@@ -177,7 +177,7 @@ def main(args):
         #     [-episode_step] * (args.frame_stack - len(new_frame_dists)) + new_frame_dists
         # )
         # replay_buffer.add(obs, action, reward, next_obs, done_bool, stack_frame_dists=stack_frame_dists)
-        replay_buffer.add(obs, action, reward, next_obs, next_obs)
+        replay_buffer.add(obs, action, reward, next_obs, done)
         episode_reward += reward
         obs = next_obs
         episode_step += 1

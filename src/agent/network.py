@@ -231,8 +231,6 @@ class CriticMlp(nn.Module):
         return q1, q2
 
     def log(self, logger, step):
-        self.encoder.log(logger, step)
-
         for k, v in self.outputs.items():
             logger.log_histogram(f'train_critic/{k}_hist', v, step)
 
@@ -540,18 +538,20 @@ class SelfSupervisedMlpInvPredictorEnsem(SelfSupervisedMlpInvPredictor):
         self.trunks = nn.ModuleList(trunks)
         self.apply(weight_init)
 
-    def forward(self, obs, next_obs, split_hidden=False):
+    def forward(self, obs, next_obs, split_input=False):
         """
-            split_hidden: split encoder outputs uniformly for each components
+            split_input: split inputs uniformly for each components
         """
-        num_samples_each_slice = obs.shape[0] // self.num_comps if split_hidden else None
+        if split_input:
+            assert obs.shape[0] % self.num_comps == 0, 'input is not splitable'
 
         joint_obs = torch.cat([obs, next_obs], dim=-1)
+        if split_input:
+            joint_obs = joint_obs.chunk(self.num_comps, dim=0)
         pred_actions = []
         for idx, trunk in enumerate(self.trunks):
-            if split_hidden:
-                joint_obs_slice = joint_obs[idx * num_samples_each_slice:(idx + 1) * num_samples_each_slice]
-                pred_action = trunk(joint_obs_slice)
+            if split_input:
+                pred_action = trunk(joint_obs[idx])
             else:
                 pred_action = trunk(joint_obs)
             self.outputs[f'pred_action{idx}'] = pred_action
@@ -621,18 +621,20 @@ class SelfSupervisedMlpFwdPredictorEnsem(SelfSupervisedMlpFwdPredictor):
         self.trunks = nn.ModuleList(trunks)
         self.apply(weight_init)
 
-    def forward(self, obs, action, split_hidden=False):
+    def forward(self, obs, action, split_input=False):
         """
-            split_hidden: split encoder outputs uniformly for each components
+            split_input: split inputs uniformly for each components
         """
-        num_samples_each_slice = obs.shape[0] // self.num_comps if split_hidden else None
+        if split_input:
+            assert obs.shape[0] % self.num_comps == 0, 'input is not splitable'
 
         joint_obs_act = torch.cat([obs, action], dim=-1)
+        if split_input:
+            joint_obs_act = joint_obs_act.chunk(self.num_comps, dim=0)
         pred_next_obss = []
         for idx, trunk in enumerate(self.trunks):
             if split_hidden:
-                joint_obs_act_slice = joint_obs_act[idx * num_samples_each_slice:(idx + 1) * num_samples_each_slice]
-                pred_next_obs = trunk(joint_obs_act_slice)
+                pred_next_obs = trunk(joint_obs_act[idx])
             else:
                 pred_next_obs = trunk(joint_obs_act)
             self.outputs[f'pred_next_obs{idx}'] = pred_next_obs
