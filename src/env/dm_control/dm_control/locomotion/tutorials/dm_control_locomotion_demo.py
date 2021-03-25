@@ -285,27 +285,33 @@ def main():
     # viewer.launch(environment_loader=jumping_ball_go_to_target)
     # viewer.launch(environment_loader=basic_cmu_2019.cmu_humanoid_run_walls)
     # viewer.launch(environment_loader=basic_cmu_2019.cmu_humanoid_run_gaps)
-    viewer.launch(environment_loader=walker_run)
+    # viewer.launch(environment_loader=walker_run)
     # viewer.launch(environment_loader=walker_run_gaps)
 
-    # # Build an example environment.
-    # import numpy as np
-    #
-    # env = ant_run_long()
-    #
-    # # Get the `action_spec` describing the control inputs.
-    # action_spec = env.action_spec()
-    #
-    # # Step through the environment for one episode with random actions.
-    # time_step = env.reset()
-    # while not time_step.last():
-    #     action = np.random.uniform(action_spec.minimum, action_spec.maximum,
-    #                                size=action_spec.shape)
-    #     time_step = env.step(action)
-    #     print("reward = {}, discount = {}, observations = {}.".format(
-    #         time_step.reward, time_step.discount, time_step.observation))
-    #
-    # print("done")
+    # Build an example environment.
+    import numpy as np
+    import dmc2gym
+
+    env = dmc2gym.make_locomotion(
+        env_name='walker_run',
+        seed=0,
+        from_pixels=False,
+        episode_length=1000,
+    )
+
+    # Get the `action_spec` describing the control inputs.
+    action_spec = env.action_spec()
+
+    # Step through the environment for one episode with random actions.
+    done = False
+    env.reset()
+    while not done:
+        action = np.random.uniform(action_spec.minimum, action_spec.maximum,
+                                   size=action_spec.shape)
+        obs, reward, done, info = env.step(action)
+        print("obs = {}, reward = {}, done = {}, info = {}".format(obs, reward, done, info))
+
+    print("done")
 
 
 if __name__ == "__main__":

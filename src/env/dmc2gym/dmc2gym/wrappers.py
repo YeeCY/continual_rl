@@ -3,6 +3,7 @@ from dm_control import suite
 from dm_control import composer
 from dm_env import specs
 import numpy as np
+import copy
 from src.env import locomotion_envs
 
 
@@ -29,11 +30,12 @@ def _spec_to_box(spec):
     return spaces.Box(low, high, dtype=np.float32)
 
 
-def _flatten_obs(obs):
+def _flatten_obs(obs, exclude_keys):
     obs_pieces = []
-    for v in obs.values():
-        flat = np.array([v]) if np.isscalar(v) else v.ravel()
-        obs_pieces.append(flat)
+    for k, v in obs.items():
+        if k not in exclude_keys:
+            flat = np.array([v]) if np.isscalar(v) else v.ravel()
+            obs_pieces.append(flat)
     return np.concatenate(obs_pieces, axis=0)
 
 
@@ -48,11 +50,11 @@ class DMCWrapper(core.Env):
         channels_first=True
     ):
         self._from_pixels = from_pixels
-        self._height = height
-        self._width = width
-        self._camera_id = camera_id
-        self._frame_skip = frame_skip
-        self._channels_first = channels_first
+        self._height = height  # ignore this if from_pixels = False
+        self._width = width  # ignore this if from_pixels = False
+        self._camera_id = camera_id  # ignore this if from_pixels = False
+        self._frame_skip = frame_skip  # ignore this if from_pixels = False
+        self._channels_first = channels_first  # ignore this if from_pixels = False
 
         self._env = None
 
@@ -60,6 +62,8 @@ class DMCWrapper(core.Env):
         self._norm_action_space = None
         self._observation_space = None
         self._state_space = None
+
+        self._exclude_obs_keys = None  # used for vector observation
 
         self.current_state = None
 
@@ -76,7 +80,7 @@ class DMCWrapper(core.Env):
             if self._channels_first:
                 obs = obs.transpose(2, 0, 1).copy()
         else:
-            obs = _flatten_obs(time_step.observation)
+            obs = _flatten_obs(time_step.observation, exclude_keys=self._exclude_obs_keys)
         return obs
 
     def _convert_action(self, action):
@@ -131,13 +135,15 @@ class DMCWrapper(core.Env):
             if done:
                 break
         obs = self._get_obs(time_step)
-        self.current_state = _flatten_obs(time_step.observation)
+        self.current_state = _flatten_obs(time_step.observation,
+                                          exclude_keys=self._exclude_obs_keys)
         extra['discount'] = time_step.discount
         return obs, reward, done, extra
 
     def reset(self):
         time_step = self._env.reset()
-        self.current_state = _flatten_obs(time_step.observation)
+        self.current_state = _flatten_obs(time_step.observation,
+                                          exclude_keys=self._exclude_obs_keys)
         obs = self._get_obs(time_step)
         return obs
 
@@ -267,14 +273,25 @@ class DMCLocomotionWrapper(DMCWrapper):
             self._observation_space = spaces.Box(
                 low=0, high=255, shape=shape, dtype=np.uint8
             )
-        else:
-            self._observation_space = _spec_to_box(
+            self._state_space = _spec_to_box(
                 self._env.observation_spec().values()
             )
+        else:
+            # TODO (chongyi zheng): remove egocentric_camera observation?
+            #   Yes in the current version
+            obs_spec = copy.deepcopy(self._env.observation_spec())
+            keys = list(obs_spec.keys())
+            for key in keys:
+                if 'egocentric_camera' in key:
+                    del obs_spec[key]  # 'egocentric_camera' could be a substring of 'key'
+                    self._exclude_obs_keys = [key]
+            self._observation_space = _spec_to_box(
+                obs_spec.values()
+            )
 
-        self._state_space = _spec_to_box(
-            self._env.observation_spec().values()
-        )
+            self._state_space = _spec_to_box(
+                obs_spec.values()
+            )
 
         self.current_state = None
 
