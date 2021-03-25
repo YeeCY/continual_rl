@@ -68,6 +68,7 @@ def main(args):
         env_name=args.env_name,
         seed=args.seed,
         episode_length=args.episode_length,
+        from_pixels=args.pixel_obs,
         action_repeat=args.action_repeat,
         obs_height=args.obs_height,
         obs_width=args.obs_width,
@@ -85,17 +86,23 @@ def main(args):
     assert torch.cuda.is_available(), 'must have cuda enabled'
     device = torch.device(args.device)
 
-    replay_buffer = buffers.AugmentFrameStackReplayBuffer(
-        obs_shape=env.unwrapped.observation_space.shape,
+    replay_buffer = buffers.ReplayBuffer(
+        obs_shape=env.observation_space.shape,
         action_shape=env.action_space.shape,
         capacity=args.replay_buffer_capacity,
-        frame_stack=args.frame_stack,
-        image_pad=args.obs_pad,
         device=device
     )
-    cropped_obs_shape = (3 * args.frame_stack, 84, 84)
+    # replay_buffer = buffers.AugmentFrameStackReplayBuffer(
+    #     obs_shape=env.unwrapped.observation_space.shape,
+    #     action_shape=env.action_space.shape,
+    #     capacity=args.replay_buffer_capacity,
+    #     frame_stack=args.frame_stack,
+    #     image_pad=args.obs_pad,
+    #     device=device
+    # )
+    # cropped_obs_shape = (3 * args.frame_stack, 84, 84)
     agent = make_agent(
-        obs_shape=cropped_obs_shape,
+        obs_shape=env.observation_space.shape,
         action_shape=env.action_space.shape,
         action_range=[
             float(env.action_space.low.min()),
@@ -165,11 +172,12 @@ def main(args):
         # 			episode_step = 2, [-2] + [-2 ,-1, 0]
         # 			episode_step = 3, [] + [-3, -2, -1, 0]
         #			...
-        new_frame_dists = [-idx for idx in reversed(range(0, min(episode_step + 1, args.frame_stack)))]
-        stack_frame_dists = np.array(
-            [-episode_step] * (args.frame_stack - len(new_frame_dists)) + new_frame_dists
-        )
-        replay_buffer.add(obs, action, reward, next_obs, done_bool, stack_frame_dists=stack_frame_dists)
+        # new_frame_dists = [-idx for idx in reversed(range(0, min(episode_step + 1, args.frame_stack)))]
+        # stack_frame_dists = np.array(
+        #     [-episode_step] * (args.frame_stack - len(new_frame_dists)) + new_frame_dists
+        # )
+        # replay_buffer.add(obs, action, reward, next_obs, done_bool, stack_frame_dists=stack_frame_dists)
+        replay_buffer.add(obs, action, reward, next_obs, next_obs)
         episode_reward += reward
         obs = next_obs
         episode_step += 1

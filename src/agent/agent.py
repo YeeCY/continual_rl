@@ -4,8 +4,9 @@ import torch
 import torch.nn.functional as F
 import utils
 
-from agent.network import Actor, Critic, CURL, \
-    SelfSupervisedInvPredictorEnsem, SelfSupervisedFwdPredictorEnsem
+from agent.network import ActorCnn, ActorMlp, CriticCnn, CriticMlp, CURL, \
+    SelfSupervisedCnnInvPredictorEnsem, SelfSupervisedMlpInvPredictorEnsem, \
+    SelfSupervisedCnnFwdPredictorEnsem, SelfSupervisedMlpFwdPredictorEnsem
 
 LOG_FREQ = 10000
 
@@ -44,33 +45,58 @@ def make_agent(obs_shape, action_shape, action_range, device, args):
         #     curl_latent_dim=args.curl_latent_dim,
         #     num_ensem_comps=args.num_ensem_comps,
         # )
-        agent = DrQSACSSEnsembleAgent(
-            obs_shape=obs_shape,
-            action_shape=action_shape,
-            action_range=action_range,
-            hidden_dim=args.hidden_dim,
-            discount=args.discount,
-            init_temperature=args.init_temperature,
-            alpha_lr=args.alpha_lr,
-            actor_lr=args.actor_lr,
-            actor_log_std_min=args.actor_log_std_min,
-            actor_log_std_max=args.actor_log_std_max,
-            actor_update_freq=args.actor_update_freq,
-            critic_lr=args.critic_lr,
-            critic_tau=args.critic_tau,
-            critic_target_update_freq=args.critic_target_update_freq,
-            encoder_feature_dim=args.encoder_feature_dim,
-            use_fwd=args.use_fwd,
-            use_inv=args.use_inv,
-            ss_lr=args.ss_lr,
-            ss_update_freq=args.ss_update_freq,
-            batch_size=args.batch_size,
-            num_layers=args.num_layers,
-            num_filters=args.num_filters,
-            curl_latent_dim=args.curl_latent_dim,
-            num_ensem_comps=args.num_ensem_comps,
-            device=device,
-        )
+        if args.pixel_obs:
+            agent = DrQSacSSEnsembleAgent(
+                obs_shape=obs_shape,
+                action_shape=action_shape,
+                action_range=action_range,
+                hidden_dim=args.hidden_dim,
+                discount=args.discount,
+                init_temperature=args.init_temperature,
+                alpha_lr=args.alpha_lr,
+                actor_lr=args.actor_lr,
+                actor_log_std_min=args.actor_log_std_min,
+                actor_log_std_max=args.actor_log_std_max,
+                actor_update_freq=args.actor_update_freq,
+                critic_lr=args.critic_lr,
+                critic_tau=args.critic_tau,
+                critic_target_update_freq=args.critic_target_update_freq,
+                encoder_feature_dim=args.encoder_feature_dim,
+                use_fwd=args.use_fwd,
+                use_inv=args.use_inv,
+                ss_lr=args.ss_lr,
+                ss_update_freq=args.ss_update_freq,
+                batch_size=args.batch_size,
+                num_layers=args.num_layers,
+                num_filters=args.num_filters,
+                curl_latent_dim=args.curl_latent_dim,
+                num_ensem_comps=args.num_ensem_comps,
+                device=device,
+            )
+        else:
+            agent = SacMlpSSEnsembleAgent(
+                obs_shape=obs_shape,
+                action_shape=action_shape,
+                action_range=action_range,
+                hidden_dim=args.hidden_dim,
+                discount=args.discount,
+                init_temperature=args.init_temperature,
+                alpha_lr=args.alpha_lr,
+                actor_lr=args.actor_lr,
+                actor_log_std_min=args.actor_log_std_min,
+                actor_log_std_max=args.actor_log_std_max,
+                actor_update_freq=args.actor_update_freq,
+                critic_lr=args.critic_lr,
+                critic_tau=args.critic_tau,
+                critic_target_update_freq=args.critic_target_update_freq,
+                use_fwd=args.use_fwd,
+                use_inv=args.use_inv,
+                ss_lr=args.ss_lr,
+                ss_update_freq=args.ss_update_freq,
+                batch_size=args.batch_size,
+                num_ensem_comps=args.num_ensem_comps,
+                device=device,
+            )
     else:
         agent = SacSSAgent(
             obs_shape=obs_shape,
@@ -159,18 +185,18 @@ class SacSSAgent(object):
 
         assert num_layers >= num_shared_layers, 'num shared layers cannot exceed total amount'
 
-        self.actor = Actor(
+        self.actor = ActorCnn(
             obs_shape, action_shape, hidden_dim,
             encoder_feature_dim, actor_log_std_min, actor_log_std_max,
             num_layers, num_filters, num_layers
         ).cuda()
 
-        self.critic = Critic(
+        self.critic = CriticCnn(
             obs_shape, action_shape, hidden_dim,
             encoder_feature_dim, num_layers, num_filters, num_layers
         ).cuda()
 
-        self.critic_target = Critic(
+        self.critic_target = CriticCnn(
             obs_shape, action_shape, hidden_dim,
             encoder_feature_dim, num_layers, num_filters, num_layers
         ).cuda()
@@ -491,7 +517,7 @@ class SacSSAgent(object):
             )
 
 
-class SacSSEnsembleAgent:
+class SacCnnSSEnsembleAgent:
     def __init__(
             self,
             obs_shape,
@@ -540,18 +566,18 @@ class SacSSEnsembleAgent:
 
         assert num_layers >= num_shared_layers, 'num shared layers cannot exceed total amount'
 
-        self.actor = Actor(
+        self.actor = ActorCnn(
             obs_shape, action_shape, hidden_dim,
             encoder_feature_dim, actor_log_std_min, actor_log_std_max,
             num_layers, num_filters, num_layers
         ).cuda()
 
-        self.critic = Critic(
+        self.critic = CriticCnn(
             obs_shape, action_shape, hidden_dim,
             encoder_feature_dim, num_layers, num_filters, num_layers
         ).cuda()
 
-        self.critic_target = Critic(
+        self.critic_target = CriticCnn(
             obs_shape, action_shape, hidden_dim,
             encoder_feature_dim, num_layers, num_filters, num_layers
         ).cuda()
@@ -897,7 +923,7 @@ class SacSSEnsembleAgent:
                 )
 
 
-class DrQSACSSEnsembleAgent:
+class DrQSacSSEnsembleAgent:
     def __init__(
         self,
         obs_shape,
@@ -941,18 +967,18 @@ class DrQSACSSEnsembleAgent:
         self.curl_latent_dim = curl_latent_dim
         self.num_ensem_comps = num_ensem_comps
 
-        self.actor = Actor(
+        self.actor = ActorCnn(
             obs_shape, action_shape, hidden_dim,
             encoder_feature_dim, actor_log_std_min, actor_log_std_max,
             num_layers, num_filters
         ).to(self.device)
 
-        self.critic = Critic(
+        self.critic = CriticCnn(
             obs_shape, action_shape, hidden_dim,
             encoder_feature_dim, num_layers, num_filters
         ).to(self.device)
 
-        self.critic_target = Critic(
+        self.critic_target = CriticCnn(
             obs_shape, action_shape, hidden_dim,
             encoder_feature_dim, num_layers, num_filters
         ).to(self.device)
@@ -969,7 +995,7 @@ class DrQSACSSEnsembleAgent:
 
         # self-supervision ensembles
         if self.use_inv:
-            self.ss_inv_pred_ensem = SelfSupervisedInvPredictorEnsem(
+            self.ss_inv_pred_ensem = SelfSupervisedCnnInvPredictorEnsem(
                 obs_shape, action_shape, hidden_dim, encoder_feature_dim,
                 num_layers, num_filters, num_ensem_comps).to(self.device)
             self.ss_inv_pred_ensem.encoder.copy_conv_weights_from(self.critic.encoder)
@@ -977,7 +1003,7 @@ class DrQSACSSEnsembleAgent:
                 self.ss_inv_pred_ensem.parameters(), lr=ss_lr)
 
         if self.use_fwd:
-            self.ss_fwd_pred_ensem = SelfSupervisedFwdPredictorEnsem(
+            self.ss_fwd_pred_ensem = SelfSupervisedCnnFwdPredictorEnsem(
                 obs_shape, action_shape, hidden_dim, encoder_feature_dim,
                 num_layers, num_filters, num_ensem_comps).to(self.device)
             self.ss_fwd_pred_ensem.encoder.copy_conv_weights_from(self.critic.encoder)
@@ -1218,3 +1244,282 @@ class DrQSACSSEnsembleAgent:
             self.ss_inv_pred_ensem.load_state_dict(
                 torch.load('%s/ss_fwd_pred_ensem_%s.pt' % (model_dir, step))
            )
+
+
+class SacMlpSSEnsembleAgent:
+    def __init__(
+            self,
+            obs_shape,
+            action_shape,
+            action_range,
+            device,
+            hidden_dim=400,
+            discount=0.99,
+            init_temperature=0.01,
+            alpha_lr=1e-3,
+            actor_lr=1e-3,
+            actor_log_std_min=-10,
+            actor_log_std_max=2,
+            actor_update_freq=2,
+            critic_lr=1e-3,
+            critic_tau=0.005,
+            critic_target_update_freq=2,
+            use_fwd=False,
+            use_inv=False,
+            ss_lr=1e-3,
+            ss_update_freq=1,
+            batch_size=128,  # (chongyi zheng)
+            num_ensem_comps=4,  # (chongyi zheng)
+    ):
+        self.action_range = action_range
+        self.device = device
+        self.discount = discount
+        self.critic_tau = critic_tau
+        self.actor_update_freq = actor_update_freq
+        self.critic_target_update_freq = critic_target_update_freq
+        self.ss_update_freq = ss_update_freq
+        self.batch_size = batch_size
+        self.use_fwd = use_fwd
+        self.use_inv = use_inv
+        self.num_ensem_comps = num_ensem_comps
+
+        self.actor = ActorMlp(
+            obs_shape, action_shape, hidden_dim,
+            actor_log_std_min, actor_log_std_max
+        ).to(self.device)
+
+        self.critic = CriticMlp(
+            obs_shape, action_shape, hidden_dim
+        ).to(self.device)
+
+        self.critic_target = CriticMlp(
+            obs_shape, action_shape, hidden_dim
+        ).to(self.device)
+
+        self.critic_target.load_state_dict(self.critic.state_dict())
+
+        # TODO (chongyi zheng): delete this line
+        # tie encoders between actor and criticp
+        # self.actor.encoder.copy_conv_weights_from(self.critic.encoder)
+
+        self.log_alpha = torch.tensor(np.log(init_temperature)).to(self.device)
+        self.log_alpha.requires_grad = True
+        # set target entropy to -|A|
+        self.target_entropy = -np.prod(action_shape)
+
+        # self-supervision ensembles
+        if self.use_inv:
+            self.ss_inv_pred_ensem = SelfSupervisedMlpInvPredictorEnsem(
+                obs_shape, action_shape, hidden_dim, num_ensem_comps).to(self.device)
+            # self.ss_inv_pred_ensem.encoder.copy_conv_weights_from(self.critic.encoder)
+            self.ss_inv_optimizer = torch.optim.Adam(
+                self.ss_inv_pred_ensem.parameters(), lr=ss_lr)
+
+        if self.use_fwd:
+            self.ss_fwd_pred_ensem = SelfSupervisedMlpFwdPredictorEnsem(
+                obs_shape, action_shape, hidden_dim, num_ensem_comps).to(self.device)
+            # self.ss_fwd_pred_ensem.encoder.copy_conv_weights_from(self.critic.encoder)
+            self.ss_fwd_optimizer = torch.optim.Adam(
+                self.ss_fwd_pred_ensem.parameters(), lr=ss_lr)
+
+        # sac optimizers
+        self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), lr=actor_lr)
+        self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), lr=critic_lr)
+
+        self.log_alpha_optimizer = torch.optim.Adam([self.log_alpha], lr=alpha_lr)
+
+        self.train()
+        self.critic_target.train()
+
+    def train(self, training=True):
+        self.training = training
+        self.actor.train(training)
+        self.critic.train(training)
+
+        if self.use_inv:
+            self.ss_inv_pred_ensem.train()
+        if self.use_fwd:
+            self.ss_fwd_pred_ensem.train()
+
+    @property
+    def alpha(self):
+        return self.log_alpha.exp()
+
+    def act(self, obs, sample=False):
+        obs = torch.FloatTensor(obs).to(self.device)
+        obs = obs.unsqueeze(0)
+        dist = self.actor(obs)
+        action = dist.sample() if sample else dist.mean
+        action = action.clamp(*self.action_range)
+        assert action.ndim == 2 and action.shape[0] == 1
+        return utils.to_np(action[0])
+
+    def ss_preds_var(self, obs, next_obs, action):
+        # TODO (chongyi zheng):
+        #  do we need next_obs (forward) or action (inverse) - measure the prediction error,
+        #  or we just need to predictions - measure the prediction variance?
+        #  task identity inference - threshold or statistical hypothesis testing like: https://arxiv.org/abs/1902.09434
+        assert obs.shape == next_obs.shape and obs.shape[0] == next_obs.shape[0] == action.shape[0], \
+            "invalid transitions shapes!"
+
+        # TODO (chongyi zheng): Do we need to set agent mode to evaluation before prediction?
+        with torch.no_grad():
+            obs = torch.FloatTensor(obs).to(self.device) \
+                if not isinstance(obs, torch.Tensor) else obs.to(self.device)
+            next_obs = torch.FloatTensor(next_obs).to(self.device) \
+                if not isinstance(next_obs, torch.Tensor) else next_obs.to(self.device)
+            action = torch.FloatTensor(action).to(self.device) \
+                if not isinstance(action, torch.Tensor) else action.to(self.device)
+
+            if len(obs.size()) == 3:
+                obs = obs.unsqueeze(0)
+                next_obs = next_obs.unsqueeze(0)
+                action = action.unsqueeze(0)
+
+            # prediction variances
+            if self.use_inv:
+                preds = self.ss_inv_pred_ensem(obs, next_obs)
+
+            if self.use_fwd:
+                preds = self.ss_fwd_pred_ensem(obs, action)
+
+            # (chongyi zheng): the same as equation (1) in https://arxiv.org/abs/1906.04161
+            preds_var = torch.var(preds, dim=-2).sum(dim=-1)
+
+            return utils.to_np(preds_var)
+
+    def update_critic(self, obs, action, reward, next_obs, not_done, logger, step):
+        with torch.no_grad():
+            dist = self.actor(next_obs)
+            next_action = dist.rsample()
+            log_prob = dist.log_prob(next_action).sum(-1, keepdim=True)
+            target_Q1, target_Q2 = self.critic_target(next_obs, next_action)
+            target_V = torch.min(target_Q1, target_Q2) - self.alpha.detach() * log_prob
+            target_Q = reward + (not_done * self.discount * target_V)
+
+        # get current Q estimates
+        current_Q1, current_Q2 = self.critic(obs, action)
+        critic_loss = F.mse_loss(current_Q1, target_Q) + F.mse_loss(current_Q2, target_Q)
+        logger.log('train_critic/loss', critic_loss, step)
+
+        # Optimize the critic
+        self.critic_optimizer.zero_grad()
+        critic_loss.backward()
+        self.critic_optimizer.step()
+
+        self.critic.log(logger, step)
+
+    def update_actor_and_alpha(self, obs, logger, step, update_alpha=True):
+        dist = self.actor(obs)
+        action = dist.rsample()
+        log_prob = dist.log_prob(action).sum(-1, keepdim=True)
+        # detach conv filters, so we don't update them with the actor loss
+        actor_Q1, actor_Q2 = self.critic(obs, action)
+
+        actor_Q = torch.min(actor_Q1, actor_Q2)
+        actor_loss = (self.alpha.detach() * log_prob - actor_Q).mean()
+
+        logger.log('train_actor/loss', actor_loss, step)
+        logger.log('train_actor/target_entropy', self.target_entropy, step)
+        logger.log('train_actor/entropy', -log_prob.mean(), step)
+
+        # optimize the actor
+        self.actor_optimizer.zero_grad()
+        actor_loss.backward()
+        self.actor_optimizer.step()
+
+        self.actor.log(logger, step)
+
+        if update_alpha:
+            self.log_alpha_optimizer.zero_grad()
+            alpha_loss = (self.alpha * (-log_prob - self.target_entropy).detach()).mean()
+
+            logger.log('train_alpha/loss', alpha_loss, step)
+            logger.log('train_alpha/value', self.alpha, step)
+
+            alpha_loss.backward()
+            self.log_alpha_optimizer.step()
+
+    def update_ss_preds(self, obs, next_obs, action, logger, step):
+        # assert obs.shape[-1] == 84 and next_obs.shape[-1] == 84
+
+        # TODO (chongyi zheng): Do we need to stop the gradients from self-supervision loss?
+        if self.use_inv:
+            pred_action = self.ss_inv_pred_ensem(obs, next_obs, split_hidden=True)
+            inv_loss = F.mse_loss(pred_action, action)
+
+            self.ss_inv_optimizer.zero_grad()
+            inv_loss.backward()
+            self.ss_inv_optimizer.step()
+
+            self.ss_inv_pred_ensem.log(logger, step)
+            logger.log('train_ss_inv/loss', inv_loss, step)
+
+        if self.use_fwd:
+            pred_next_obs = self.ss_fwd_pred_ensem(obs, action, split_hidden=True)
+            fwd_loss = F.mse_loss(pred_next_obs, next_obs)
+
+            self.ss_fwd_optimizer.zero_grad()
+            fwd_loss.backward()
+            self.ss_fwd_optimizer.step()
+
+            self.ss_fwd_pred_ensem.log(logger, step)
+            logger.log('train_ss_fwd/loss', fwd_loss, step)
+
+    def update(self, replay_buffer, logger, step):
+        # obs, action, reward, next_obs, not_done, ensem_kwargs = replay_buffer.sample_ensembles(
+        #     self.batch_size, num_ensembles=self.num_ensem_comps)
+        obs, action, reward, next_obs, not_done = replay_buffer.sample(self.batch_size)
+        # obs, action, reward, next_obs, not_done, obs_aug, next_obs_aug = replay_buffer.sample(
+        #     self.batch_size)
+
+        logger.log('train/batch_reward', reward.mean(), step)
+
+        self.update_critic(obs, action, reward, next_obs, not_done, logger, step)
+
+        if step % self.actor_update_freq == 0:
+            self.update_actor_and_alpha(obs, logger, step)
+
+        if step % self.critic_target_update_freq == 0:
+            utils.soft_update_params(self.critic, self.critic_target,
+                                     self.critic_tau)
+
+        if (self.use_fwd or self.use_inv) and step % self.ss_update_freq == 0:
+            # self.update_ss_preds(ensem_kwargs['obses'], ensem_kwargs['next_obses'], ensem_kwargs['actions'], L, step)
+            self.update_ss_preds(obs, next_obs, action, logger, step)
+            ss_preds_var = self.ss_preds_var(obs, next_obs, action)
+            logger.log('train/batch_ss_preds_var', ss_preds_var.mean(), step)
+
+    def save(self, model_dir, step):
+        torch.save(
+            self.actor.state_dict(), '%s/actor_%s.pt' % (model_dir, step)
+        )
+        torch.save(
+            self.critic.state_dict(), '%s/critic_%s.pt' % (model_dir, step)
+        )
+        if self.use_inv:
+            torch.save(
+                self.ss_inv_pred_ensem.state_dict(),
+                '%s/ss_inv_pred_ensem_%s.pt' % (model_dir, step)
+            )
+        if self.use_fwd:
+            torch.save(
+                self.ss_fwd_pred_ensem.state_dict(),
+                '%s/ss_fwd_pred_ensem_%s.pt' % (model_dir, step)
+            )
+
+    def load(self, model_dir, step):
+        self.actor.load_state_dict(
+            torch.load('%s/actor_%s.pt' % (model_dir, step))
+        )
+        self.critic.load_state_dict(
+            torch.load('%s/critic_%s.pt' % (model_dir, step))
+        )
+        if self.use_inv:
+            self.ss_inv_pred_ensem.load_state_dict(
+                torch.load('%s/ss_inv_pred_ensem_%s.pt' % (model_dir, step))
+            )
+        if self.use_fwd:
+            self.ss_inv_pred_ensem.load_state_dict(
+                torch.load('%s/ss_fwd_pred_ensem_%s.pt' % (model_dir, step))
+            )

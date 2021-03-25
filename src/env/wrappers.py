@@ -47,6 +47,7 @@ def make_locomotion_env(
         env_name,
         seed=0,
         episode_length=1000,
+        from_pixels=True,
         frame_stack=3,
         action_repeat=4,
         obs_height=100,
@@ -57,7 +58,7 @@ def make_locomotion_env(
     env = dmc2gym.make_locomotion(
         env_name=env_name,
         seed=seed,
-        from_pixels=True,
+        from_pixels=from_pixels,
         height=obs_height,
         width=obs_width,
         camera_id=camera_id,
@@ -65,9 +66,11 @@ def make_locomotion_env(
         frame_skip=action_repeat
     )
     env.seed(seed)
-    env = VideoBackground(env, mode)
-    env = FrameStack(env, frame_stack)
-    env = ColorWrapper(env, mode)
+
+    if from_pixels:
+        env = VideoBackground(env, mode)
+        env = FrameStack(env, frame_stack)
+        env = ColorWrapper(env, mode)
 
     assert env.action_space.low.min() >= -1
     assert env.action_space.high.max() <= 1
