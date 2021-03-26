@@ -228,12 +228,16 @@ def walker_run():
         strip_singleton_obs_buffer_dim=True)
 
 
-def walker_run_long(random_state=None):
-    walker = PlanarWalker(initializer=initializers.RandomJointPositionInitializer())
-    arena = corr_arenas.LongCorridor()
-    task = corr_tasks.PlanarRunThroughCorridor(
+def walker_run_long():
+    walker = PlanarWalker()
+    arena = corr_arenas.EmptyCorridor(
+        corridor_length=250,
+        visible_side_planes=False)
+    task = corr_tasks.RunThroughCorridor(
         walker=walker,
         arena=arena,
+        walker_spawn_position=(1, 0, 0),
+        walker_spawn_rotation=0,
         contact_termination=False,
         physics_timestep=_PHYSICS_TIMESTEP,
         control_timestep=_CONTROL_TIMESTEP)
@@ -241,7 +245,6 @@ def walker_run_long(random_state=None):
     return composer.Environment(
         time_limit=30,
         task=task,
-        random_state=random_state,
         strip_singleton_obs_buffer_dim=True)
 
 
@@ -286,6 +289,7 @@ def main():
     # viewer.launch(environment_loader=basic_cmu_2019.cmu_humanoid_run_walls)
     # viewer.launch(environment_loader=basic_cmu_2019.cmu_humanoid_run_gaps)
     # viewer.launch(environment_loader=walker_run)
+    # viewer.launch(environment_loader=walker_run_long)
     # viewer.launch(environment_loader=walker_run_gaps)
 
     # Build an example environment.

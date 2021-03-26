@@ -29,6 +29,26 @@ def walker_run():
         strip_singleton_obs_buffer_dim=True)
 
 
+def walker_run_long():
+    walker = planar_walker.PlanarWalker()
+    arena = corr_arenas.EmptyCorridor(
+        corridor_length=250,
+        visible_side_planes=False)
+    task = corr_tasks.RunThroughCorridor(
+        walker=walker,
+        arena=arena,
+        walker_spawn_position=(1, 0, 0),
+        walker_spawn_rotation=0,
+        contact_termination=False,
+        physics_timestep=_PHYSICS_TIMESTEP,
+        control_timestep=_CONTROL_TIMESTEP)
+
+    return composer.Environment(
+        time_limit=30,
+        task=task,
+        strip_singleton_obs_buffer_dim=True)
+
+
 def walker_run_gaps(random_state=None):
     walker = planar_walker.PlanarWalker()
 
@@ -55,24 +75,6 @@ def walker_run_gaps(random_state=None):
                                 task=task,
                                 random_state=random_state,
                                 strip_singleton_obs_buffer_dim=True)
-
-
-def ant_run():
-    walker = ant.Ant()
-    arena = corr_arenas.EmptyCorridor()
-    task = corr_tasks.RunThroughCorridor(
-        walker=walker,
-        arena=arena,
-        walker_spawn_position=(5, 0, 0),
-        walker_spawn_rotation=0,
-        contact_termination=False,
-        physics_timestep=_PHYSICS_TIMESTEP,
-        control_timestep=_CONTROL_TIMESTEP)
-
-    return composer.Environment(
-        time_limit=30,
-        task=task,
-        strip_singleton_obs_buffer_dim=True)
 
 
 def ant_run_long():
