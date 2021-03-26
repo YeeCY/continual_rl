@@ -21,6 +21,9 @@
       <geom material="self" type="capsule"/>
       <joint axis="0 -1 0"/>
     </default>
+    <default class="rangefinder">
+      <site type="capsule" size=".05 .5" rgba="1 0 0 .4" group="4"/>
+    </default>
   </default>
 
   <worldbody>
@@ -41,6 +44,13 @@
       <site name="torso_touch" type="box" size="0.08 0.08 0.31" rgba="0 0 1 1" group="4"/>
       <geom name="torso" size="0.07 0.3"/>
       <site name="torso_site" size="0.05" rgba="1 0 0 1"/>
+
+      <site name="rf_xp" class="rangefinder" pos="0.07 0 0.2" zaxis="1 0 0"/>
+      <site name="rf_xpd_30" class="rangefinder" pos="0.07 0 0.2" xyaxes="-1 0 -1.7321 0 1 0"/>  <!-- 30 degree -->
+      <site name="rf_xpyp" class="rangefinder" pos="0.07 0.07 0.2" zaxis="1 1 0"/>
+      <site name="rf_xpypd_30" class="rangefinder" pos="0.07 0.07 0.2" xyaxes="-1 -1 -1.7321 -1 1 0"/>
+      <site name="rf_xpyn" class="rangefinder" pos="0.07 -0.07 0.2"  zaxis="1 -1 0"/>
+      <site name="rf_xpynd_30" class="rangefinder" pos="0.07 -0.07 0.2" xyaxes="-1 1 -1.7321 1 1 0"/>
 
       <body name="right_thigh" pos="0 -.05 -0.3">
         <joint name="right_hip" range="-0.34907 1.74533"/>  <!-- range = [-20 deg, 100 deg] -->
@@ -81,6 +91,12 @@
     <velocimeter name="torso_vel" site="torso_site"/>
     <gyro name="torso_gyro" site="torso_site"/>
     <accelerometer name="torso_accel" site="torso_site"/>
+    <rangefinder name="rf_xp" site="rf_xp"/>
+    <rangefinder name="rf_xpd_30" site="rf_xpd_30"/>
+    <rangefinder name="rf_xpyp" site="rf_xpyp"/>
+    <rangefinder name="rf_xpypd_30" site="rf_xpypd_30"/>
+    <rangefinder name="rf_xpyn" site="rf_xpyn"/>
+    <rangefinder name="rf_xpynd_30" site="rf_xpynd_30"/>
   </sensor>
 
   <actuator>

@@ -277,7 +277,7 @@ def main():
     # viewer.launch(environment_loader=ant_run)
     # viewer.launch(ant_run_long)
     # viewer.launch(environment_loader=ant_run_walls)
-    viewer.launch(environment_loader=ant_run_gaps)
+    # viewer.launch(environment_loader=ant_run_gaps)
     # viewer.launch(environment_loader=ant_escape_bowl)
     # viewer.launch(environment_loader=rolling_ball_with_head_run)
     # viewer.launch(environment_loader=jumping_ball_run)
@@ -288,34 +288,34 @@ def main():
     # viewer.launch(environment_loader=walker_run)
     # viewer.launch(environment_loader=walker_run_gaps)
 
-    # # Build an example environment.
-    # import numpy as np
-    # import dmc2gym
-    #
-    # # observation_shape:
-    # #   walker_run = 87
-    # #   ant_run_long = 153 without range finders, 163 with range finders
-    # #   ant_run_walls =
-    # env = dmc2gym.make_locomotion(
-    #     env_name='ant_run_walls',
-    #     seed=0,
-    #     from_pixels=False,
-    #     episode_length=1000,
-    # )
-    #
-    # # Get the `action_spec` describing the control inputs.
-    # action_spec = env.action_spec()
-    #
-    # # Step through the environment for one episode with random actions.
-    # done = False
-    # env.reset()
-    # while not done:
-    #     action = np.random.uniform(action_spec.minimum, action_spec.maximum,
-    #                                size=action_spec.shape)
-    #     obs, reward, done, info = env.step(action)
-    #     print("obs = {}, reward = {}, done = {}, info = {}".format(obs, reward, done, info))
-    #
-    # print("done")
+    # Build an example environment.
+    import numpy as np
+    import dmc2gym
+
+    # observation_shape:
+    #   walker_run = 87 without range finders, 93 with range finders
+    #   ant_run_long = 153 without range finders, 163 with range finders
+    #   ant_run_walls = 163
+    env = dmc2gym.make_locomotion(
+        env_name='walker_run_gaps',
+        seed=0,
+        from_pixels=False,
+        episode_length=1000,
+    )
+
+    # Get the `action_spec` describing the control inputs.
+    action_spec = env.action_spec()
+
+    # Step through the environment for one episode with random actions.
+    done = False
+    env.reset()
+    while not done:
+        action = np.random.uniform(action_spec.minimum, action_spec.maximum,
+                                   size=action_spec.shape)
+        obs, reward, done, info = env.step(action)
+        print("obs = {}, reward = {}, done = {}, info = {}".format(obs, reward, done, info))
+
+    print("done")
 
 
 if __name__ == "__main__":

@@ -29,6 +29,34 @@ def walker_run():
         strip_singleton_obs_buffer_dim=True)
 
 
+def walker_run_gaps(random_state=None):
+    walker = planar_walker.PlanarWalker()
+
+    # Build a corridor-shaped arena with gaps, where the sizes of the gaps and
+    # platforms are uniformly randomized.
+    arena = corr_arenas.GapsCorridor(
+        platform_length=distributions.Uniform(1.25, 2.5),  # (0.3, 2.5)
+        gap_length=distributions.Uniform(0.3, 0.8),  # (0.5, 1.25)
+        corridor_width=10,
+        corridor_length=250)
+
+    # Build a task that rewards the agent for running down the corridor at a
+    # specific velocity.
+    task = corr_tasks.RunThroughCorridor(
+        walker=walker,
+        arena=arena,
+        walker_spawn_position=(1.0, 0, 0),
+        target_velocity=3.0,
+        contact_termination=False,
+        physics_timestep=_PHYSICS_TIMESTEP,
+        control_timestep=_CONTROL_TIMESTEP)
+
+    return composer.Environment(time_limit=30,
+                                task=task,
+                                random_state=random_state,
+                                strip_singleton_obs_buffer_dim=True)
+
+
 def ant_run():
     walker = ant.Ant()
     arena = corr_arenas.EmptyCorridor()
