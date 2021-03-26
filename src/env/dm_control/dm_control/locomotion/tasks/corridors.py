@@ -170,7 +170,8 @@ class PlanarRunThroughCorridor(RunThroughCorridor):
   def __init__(self,
                walker,
                arena,
-               target_velocity=3.0,
+               target_velocity=8.0,
+               stand_height=1.2,
                contact_termination=True,
                terminate_at_height=-0.5,
                physics_timestep=0.005,
@@ -183,6 +184,8 @@ class PlanarRunThroughCorridor(RunThroughCorridor):
       terminate_at_height=terminate_at_height,
       physics_timestep=physics_timestep,
       control_timestep=control_timestep)
+
+    self._height = stand_height
 
   def initialize_episode(self, physics, random_state):
     self._walker.reinitialize_pose(physics, random_state)
@@ -198,10 +201,19 @@ class PlanarRunThroughCorridor(RunThroughCorridor):
       physics.bind(self._arena.ground_geoms).element_id)
 
   def get_reward(self, physics):
-    walker_xvel = physics.bind(self._walker.root_body).subtree_linvel[0]
-    xvel_term = rewards.tolerance(
-      walker_xvel, (self._vel, float('inf')),
-      margin=self._vel / 2,
-      value_at_margin=0.5,
-      sigmoid='linear')
-    return xvel_term
+    walker_height = physics.bind(self._walker.root_body).xpos[2]  # xpos['z']
+    standing = rewards.tolerance(walker_height,
+                                 bounds=(self._height, float('inf')),
+                                 margin=self._height / 2)
+    walker_upright = physics.bind(self._walker.root_body).xmat[-1]  # xmat['zz']
+
+    upright = (1 + walker_upright) / 2
+    stand_reward = (3 * standing + upright) / 4
+
+    walker_vel = physics.bind(self._walker.root_body).subtree_linvel[0]
+    move_reward = rewards.tolerance(walker_vel,
+                                    bounds=(self._vel, float('inf')),
+                                    margin=self._vel / 2,
+                                    value_at_margin=0.5,
+                                    sigmoid='linear')
+    return stand_reward * (5 * move_reward + 1) / 6
