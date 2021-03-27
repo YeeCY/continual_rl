@@ -39,7 +39,7 @@ def walker_run_long():
         arena=arena,
         walker_spawn_position=(1, 0, 0),
         walker_spawn_rotation=0,
-        # contact_termination=False,
+        contact_termination=False,
         physics_timestep=_PHYSICS_TIMESTEP,
         control_timestep=_CONTROL_TIMESTEP)
 
@@ -67,7 +67,7 @@ def walker_run_gaps(random_state=None):
         arena=arena,
         walker_spawn_position=(1.0, 0, 0),
         target_velocity=3.0,
-        # contact_termination=False,
+        contact_termination=False,
         physics_timestep=_PHYSICS_TIMESTEP,
         control_timestep=_CONTROL_TIMESTEP)
 
@@ -87,7 +87,7 @@ def ant_run_long():
         arena=arena,
         walker_spawn_position=(1, 0, 0),
         walker_spawn_rotation=0,
-        # contact_termination=False,
+        contact_termination=False,
         physics_timestep=_PHYSICS_TIMESTEP,
         control_timestep=_CONTROL_TIMESTEP)
 
@@ -113,7 +113,7 @@ def ant_run_walls():
         arena=arena,
         walker_spawn_position=(0.5, 0, 0),
         walker_spawn_rotation=0,
-        # contact_termination=False,
+        contact_termination=False,
         physics_timestep=_PHYSICS_TIMESTEP,
         control_timestep=_CONTROL_TIMESTEP)
 
@@ -141,7 +141,7 @@ def ant_run_gaps():
         arena=arena,
         walker_spawn_position=(1.0, 0, 0),
         target_velocity=3.0,
-        # contact_termination=False,
+        contact_termination=False,
         physics_timestep=_PHYSICS_TIMESTEP,
         control_timestep=_CONTROL_TIMESTEP)
 
