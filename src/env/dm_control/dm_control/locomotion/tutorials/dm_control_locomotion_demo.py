@@ -300,8 +300,10 @@ def main():
     #   walker_run = 87 without range finders, 93 with range finders
     #   ant_run_long = 153 without range finders, 163 with range finders
     #   ant_run_walls = 163
+    #   jumping_ball_run_long = 18 without range finder, 22 with range finder
+    #   jumping_ball_run_walls = 18 without range finder, 22 with range finder
     env = dmc2gym.make_locomotion(
-        env_name='walker_run',
+        env_name='jumping_ball_run_long',
         seed=0,
         from_pixels=False,
         episode_length=1000,

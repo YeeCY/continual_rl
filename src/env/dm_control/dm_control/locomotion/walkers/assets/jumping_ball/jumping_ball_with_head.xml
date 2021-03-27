@@ -14,6 +14,9 @@
     <default class="head">
       <geom type="cylinder" contype="1" conaffinity="1"/>
     </default>
+    <default class="rangefinder">
+      <site type="capsule" size=".05 .5" rgba="1 0 0 .4" group="4"/>
+    </default>
   </default>
 
   <worldbody>
@@ -37,6 +40,11 @@
 
       <site name="torso_site" pos="0 0 0" size="0.05" rgba="1 0 0 1" group="4"/>
 
+      <site name="rf_xp" class="rangefinder" pos="0 0 -0.07" zaxis="0 1 0"/>
+      <site name="rf_xpd_30" class="rangefinder" pos="0 0 -0.07" xyaxes="0 -1 -1.7321 -1 0 0"/>  <!-- 30 degree -->
+      <site name="rf_xpyp" class="rangefinder" pos="0 0 -0.07" zaxis="-1 1 0"/>
+      <site name="rf_xpyn" class="rangefinder" pos="0 0 -0.07"  zaxis="1 1 0"/>
+
       <body pos="0 0 -.4" name="torso">
         <!-- wheel -->
         <joint name="kick" type="slide" damping="100" limited="true" range="0 .4" axis="0 0 -1" stiffness="0" solimplimit=".95 .99 .001" springref="-.4"/>
@@ -50,6 +58,10 @@
     <velocimeter site="torso_site" name="sensor_torso_vel"/>
     <gyro site="torso_site" name="sensor_torso_gyro"/>
     <accelerometer site="torso_site" name="sensor_torso_accel"/>
+    <rangefinder name="rf_xp" site="rf_xp"/>
+    <rangefinder name="rf_xpd_30" site="rf_xpd_30"/>
+    <rangefinder name="rf_xpyp" site="rf_xpyp"/>
+    <rangefinder name="rf_xpyn" site="rf_xpyn"/>
   </sensor>
 
   <actuator>
