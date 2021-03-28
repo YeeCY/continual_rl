@@ -1346,12 +1346,21 @@ class SacMlpSSEnsembleAgent:
         return self.log_alpha.exp()
 
     def act(self, obs, sample=False):
-        obs = torch.FloatTensor(obs).to(self.device)
-        obs = obs.unsqueeze(0)
-        dist = self.actor(obs)
-        action = dist.sample() if sample else dist.mean
-        action = action.clamp(*self.action_range)
-        assert action.ndim == 2 and action.shape[0] == 1
+        with torch.no_grad():
+            # obs = torch.FloatTensor(obs).to(self.device)
+            # obs = obs.unsqueeze(0)
+            # dist = self.actor(obs)
+            # action = dist.sample() if sample else dist.mean
+            # action = action.clamp(*self.action_range)
+            # assert action.ndim == 2 and action.shape[0] == 1
+
+            obs = torch.FloatTensor(obs).to(self.device)
+            obs = obs.unsqueeze(0)
+            mu, pi, _, _ = self.actor(obs, compute_log_pi=False)
+            action = pi if sample else mu
+            action = action.clamp(*self.action_range)
+            assert action.ndim == 2 and action.shape[0] == 1
+
         return utils.to_np(action[0])
 
     def ss_preds_var(self, obs, next_obs, action):
