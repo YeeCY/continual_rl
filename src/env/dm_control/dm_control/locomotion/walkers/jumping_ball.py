@@ -115,6 +115,9 @@ class JumpingBallWithHead(legacy_base.Walker):
                                                       'egocentric_camera'))
       comp_bodies.xfrc_applied = -gravity * comp_bodies.mass[..., None]
 
+  def _build_observables(self):
+    return JumpingBallWithHeadObservables(self)
+
   @property
   def mjcf_model(self):
     return self._mjcf_root
@@ -133,7 +136,11 @@ class JumpingBallWithHead(legacy_base.Walker):
 
   @composer.cached_property
   def observable_joints(self):
-    return [self._mjcf_root.find('joint', 'kick')]
+    # TODO (chongyi zheng): Do we need all joint?
+    # return [self._mjcf_root.find('joint', 'kick')]
+    return [self._mjcf_root.find('joint', 'roll'),
+            self._mjcf_root.find('joint', 'steer'),
+            self._mjcf_root.find('joint', 'kick')]
 
   @composer.cached_property
   def egocentric_camera(self):
@@ -142,6 +149,18 @@ class JumpingBallWithHead(legacy_base.Walker):
   @composer.cached_property
   def ground_contact_geoms(self):
     return (self._mjcf_root.find('geom', 'shell'),)
+
+
+class JumpingBallWithHeadObservables(legacy_base.WalkerObservables):
+  @property
+  def proprioception(self):
+    # return ([self.joints_pos, self.joints_vel,
+    #          self.body_height, self.end_effectors_pos, self.world_zaxis] +
+    #         self._collect_from_attachments('proprioception'))
+    return ([self.joints_pos, self.joints_vel,
+             self.body_height, self.sensors_velocimeter] +
+            self._collect_from_attachments('proprioception'))
+
 
 
 class RollingBallWithHead(JumpingBallWithHead):
