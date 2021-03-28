@@ -1390,12 +1390,18 @@ class SacMlpSSEnsembleAgent:
             return utils.to_np(preds_var)
 
     def update_critic(self, obs, action, reward, next_obs, not_done, logger, step):
+        # with torch.no_grad():
+        #     dist = self.actor(next_obs)
+        #     next_action = dist.rsample()
+        #     log_prob = dist.log_prob(next_action).sum(-1, keepdim=True)
+        #     target_Q1, target_Q2 = self.critic_target(next_obs, next_action)
+        #     target_V = torch.min(target_Q1, target_Q2) - self.alpha.detach() * log_prob
+        #     target_Q = reward + (not_done * self.discount * target_V)
         with torch.no_grad():
-            dist = self.actor(next_obs)
-            next_action = dist.rsample()
-            log_prob = dist.log_prob(next_action).sum(-1, keepdim=True)
-            target_Q1, target_Q2 = self.critic_target(next_obs, next_action)
-            target_V = torch.min(target_Q1, target_Q2) - self.alpha.detach() * log_prob
+            _, policy_action, log_pi, _ = self.actor(next_obs)
+            target_Q1, target_Q2 = self.critic_target(next_obs, policy_action)
+            target_V = torch.min(target_Q1,
+                                 target_Q2) - self.alpha.detach() * log_pi
             target_Q = reward + (not_done * self.discount * target_V)
 
         # get current Q estimates
@@ -1411,18 +1417,25 @@ class SacMlpSSEnsembleAgent:
         self.critic.log(logger, step)
 
     def update_actor_and_alpha(self, obs, logger, step, update_alpha=True):
-        dist = self.actor(obs)
-        action = dist.rsample()
-        log_prob = dist.log_prob(action).sum(-1, keepdim=True)
-        # detach conv filters, so we don't update them with the actor loss
-        actor_Q1, actor_Q2 = self.critic(obs, action)
+        # dist = self.actor(obs)
+        # action = dist.rsample()
+        # log_prob = dist.log_prob(action).sum(-1, keepdim=True)
+        # # detach conv filters, so we don't update them with the actor loss
+        # actor_Q1, actor_Q2 = self.critic(obs, action)
+
+        # actor_Q = torch.min(actor_Q1, actor_Q2)
+        # actor_loss = (self.alpha.detach() * log_prob - actor_Q).mean()
+
+        # detach encoder, so we don't update it with the actor loss
+        _, pi, log_pi, log_std = self.actor(obs)
+        actor_Q1, actor_Q2 = self.critic(obs, pi)
 
         actor_Q = torch.min(actor_Q1, actor_Q2)
-        actor_loss = (self.alpha.detach() * log_prob - actor_Q).mean()
+        actor_loss = (self.alpha.detach() * log_pi - actor_Q).mean()
 
         logger.log('train_actor/loss', actor_loss, step)
         logger.log('train_actor/target_entropy', self.target_entropy, step)
-        logger.log('train_actor/entropy', -log_prob.mean(), step)
+        logger.log('train_actor/entropy', -log_pi.mean(), step)
 
         # optimize the actor
         self.actor_optimizer.zero_grad()
@@ -1433,7 +1446,7 @@ class SacMlpSSEnsembleAgent:
 
         if update_alpha:
             self.log_alpha_optimizer.zero_grad()
-            alpha_loss = (self.alpha * (-log_prob - self.target_entropy).detach()).mean()
+            alpha_loss = (self.alpha * (-log_pi - self.target_entropy).detach()).mean()
 
             logger.log('train_alpha/loss', alpha_loss, step)
             logger.log('train_alpha/value', self.alpha, step)
