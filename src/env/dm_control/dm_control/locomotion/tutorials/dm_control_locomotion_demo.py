@@ -298,16 +298,27 @@ def main():
 
     # observation_shape:
     #   walker_run = 87 without range finders, 93 with range finders
+    #   walker_run+ = 19 without range finders, 25 with range finders
     #   ant_run_long = 153 without range finders, 163 with range finders
     #   ant_run_walls = 163
     #   jumping_ball_run_long = 18 without range finder, 22 with range finder
     #   jumping_ball_run_walls = 18 without range finder, 22 with range finder
     env = dmc2gym.make_locomotion(
-        env_name='jumping_ball_run_long',
+        env_name='walker_run',
         seed=0,
         from_pixels=False,
         episode_length=1000,
     )
+
+    # observation_shape:
+    #   walker_run = 24
+    # suite_env = dmc2gym.make(
+    #     domain_name='walker',
+    #     task_name='run',
+    #     seed=0,
+    #     from_pixels=False,
+    #     episode_length=1000,
+    # )
 
     # Get the `action_spec` describing the control inputs.
     action_spec = env.action_spec()

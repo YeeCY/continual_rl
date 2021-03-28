@@ -163,10 +163,18 @@ class PlanarWalkerObservables(legacy_base.WalkerObservables):
                 np.dot(bodies_xpos - root_xpos, root_xmat), -1)
         return observable.Generic(bodies_pos_in_egocentric_frame)
 
+    @composer.observable
+    def orientation(self):
+        def bodies_orientation(physics):
+            """Compute relative orientation of the bodies."""
+            # Get the bodies
+            bodies = self._entity.bodies
+            return np.stack(
+                [physics.bind(bodies).xmat[1:, 0], physics.bind(bodies).xmat[1:, 2]]).T.ravel()
+
+        return observable.Generic(bodies_orientation)
+
     @property
     def proprioception(self):
-        return ([self.joints_pos, self.joints_vel,
-                 self.body_height, self.end_effectors_pos,
-                 self.appendages_pos, self.world_zaxis,
-                 self.bodies_quats, self.bodies_pos] +
+        return ([self.orientation, self.body_height, self.joints_vel] +
                 self._collect_from_attachments('proprioception'))
