@@ -1,6 +1,7 @@
 import torch
 import numpy as np
 import os
+import copy
 
 from arguments import parse_args
 from env.wrappers import make_locomotion_env
@@ -75,6 +76,17 @@ def main(args):
         camera_id=args.env_camera_id,
         mode=args.mode
     )
+    eval_env = make_locomotion_env(
+        env_name=args.env_name,
+        seed=args.seed,
+        episode_length=args.episode_length,
+        from_pixels=args.pixel_obs,
+        action_repeat=args.action_repeat,
+        obs_height=args.obs_height,
+        obs_width=args.obs_width,
+        camera_id=args.env_camera_id,
+        mode=args.mode
+    )
 
     utils.make_dir(args.work_dir)
     model_dir = utils.make_dir(os.path.join(args.work_dir, 'model'))
@@ -124,7 +136,7 @@ def main(args):
         if step % args.eval_freq == 0:
             print('Evaluating:', args.work_dir)
             logger.log('eval/episode', episode, step)
-            evaluate(env, agent, video, args.num_eval_episodes, logger, step)
+            evaluate(eval_env, agent, video, args.num_eval_episodes, logger, step)
 
         # Save agent periodically
         if step % args.save_freq == 0 and step > 0:
