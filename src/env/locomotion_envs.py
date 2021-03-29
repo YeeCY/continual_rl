@@ -1,4 +1,6 @@
 from dm_control import composer
+from dm_control.composer.variation import distributions
+
 from dm_control.locomotion.arenas import corridors as corr_arenas
 from dm_control.locomotion.arenas import floors
 from dm_control.locomotion.arenas import bowl
@@ -6,11 +8,46 @@ from dm_control.locomotion.tasks import corridors as corr_tasks
 from dm_control.locomotion.tasks import go_to_target
 from dm_control.locomotion.tasks import escape
 from dm_control.locomotion.walkers import ant, jumping_ball, planar_walker, initializers
-from dm_control.composer.variation import distributions
+
+from dm_control.utils import rewards
 
 
 _CONTROL_TIMESTEP = .02
 _PHYSICS_TIMESTEP = 0.005
+
+
+def _walker_get_reward(self, physics):
+    walker_height = physics.bind(self._walker.root_body).xpos[2]  # xpos['z']
+    stand_reward = rewards.tolerance(walker_height,
+                                     bounds=(self._height, float('inf')),
+                                     margin=self._height / 2)
+
+    walker_vel = physics.bind(self._walker.root_body).subtree_linvel[0]
+    move_reward = rewards.tolerance(walker_vel,
+                                    bounds=(self._vel, float('inf')),
+                                    margin=self._vel / 2,
+                                    value_at_margin=0.5,
+                                    sigmoid='linear')
+    return stand_reward * (5 * move_reward + 1) / 6
+
+
+def _ant_get_reward(self, physics):
+    walker_height = physics.bind(self._walker.root_body).xpos[2]  # xpos['z']
+    standing = rewards.tolerance(walker_height,
+                                 bounds=(self._height, float('inf')),
+                                 margin=self._height / 2)
+    walker_upright = physics.bind(self._walker.root_body).xmat[-1]  # xmat['zz']
+
+    upright = (1 + walker_upright) / 2
+    stand_reward = (3 * standing + upright) / 4
+
+    walker_vel = physics.bind(self._walker.root_body).subtree_linvel[0]
+    move_reward = rewards.tolerance(walker_vel,
+                                    bounds=(self._vel, float('inf')),
+                                    margin=self._vel / 2,
+                                    value_at_margin=0.5,
+                                    sigmoid='linear')
+    return stand_reward * (5 * move_reward + 1) / 6
 
 
 def walker_run():
@@ -19,9 +56,14 @@ def walker_run():
     task = corr_tasks.PlanarRunThroughCorridor(
         walker=walker,
         arena=arena,
+        stand_height=1.2,
         contact_termination=False,
         physics_timestep=_PHYSICS_TIMESTEP,
         control_timestep=_CONTROL_TIMESTEP)
+
+    # (Chongyi Zheng): redefine reward function
+    #   https://stackoverflow.com/questions/50599045/python-replacing-a-function-within-a-class-of-a-module
+    task.get_reward = _walker_get_reward.__get__(task, task.get_reward)
 
     return composer.Environment(
         time_limit=30,
@@ -39,9 +81,13 @@ def walker_run_long():
         arena=arena,
         walker_spawn_position=(1, 0, 0),
         walker_spawn_rotation=0,
+        stand_height=1.2,
         contact_termination=False,
         physics_timestep=_PHYSICS_TIMESTEP,
         control_timestep=_CONTROL_TIMESTEP)
+
+    # (Chongyi Zheng): redefine reward function
+    task.get_reward = _walker_get_reward.__get__(task, task.get_reward)
 
     return composer.Environment(
         time_limit=30,
@@ -66,10 +112,13 @@ def walker_run_gaps(random_state=None):
         walker=walker,
         arena=arena,
         walker_spawn_position=(1.0, 0, 0),
-        target_velocity=3.0,
+        stand_height=1.2,
         contact_termination=False,
         physics_timestep=_PHYSICS_TIMESTEP,
         control_timestep=_CONTROL_TIMESTEP)
+
+    # (Chongyi Zheng): redefine reward function
+    task.get_reward = _walker_get_reward.__get__(task, task.get_reward)
 
     return composer.Environment(time_limit=30,
                                 task=task,
@@ -87,9 +136,13 @@ def ant_run_long():
         arena=arena,
         walker_spawn_position=(1, 0, 0),
         walker_spawn_rotation=0,
+        stand_height=0.2,
         contact_termination=False,
         physics_timestep=_PHYSICS_TIMESTEP,
         control_timestep=_CONTROL_TIMESTEP)
+
+    # (Chongyi Zheng): redefine reward function
+    task.get_reward = _ant_get_reward.__get__(task, task.get_reward)
 
     return composer.Environment(
         time_limit=30,
@@ -113,9 +166,13 @@ def ant_run_walls():
         arena=arena,
         walker_spawn_position=(0.5, 0, 0),
         walker_spawn_rotation=0,
+        stand_height=0.2,
         contact_termination=False,
         physics_timestep=_PHYSICS_TIMESTEP,
         control_timestep=_CONTROL_TIMESTEP)
+
+    # (Chongyi Zheng): redefine reward function
+    task.get_reward = _ant_get_reward.__get__(task, task.get_reward)
 
     return composer.Environment(
         time_limit=30,
@@ -140,10 +197,13 @@ def ant_run_gaps():
         walker=walker,
         arena=arena,
         walker_spawn_position=(1.0, 0, 0),
-        target_velocity=3.0,
+        stand_height=0.2,
         contact_termination=False,
         physics_timestep=_PHYSICS_TIMESTEP,
         control_timestep=_CONTROL_TIMESTEP)
+
+    # (Chongyi Zheng): redefine reward function
+    task.get_reward = _ant_get_reward.__get__(task, task.get_reward)
 
     return composer.Environment(
         time_limit=30,

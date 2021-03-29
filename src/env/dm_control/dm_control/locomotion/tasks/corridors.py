@@ -36,6 +36,7 @@ class RunThroughCorridor(composer.Task):
                walker_spawn_position=(0, 0, 0),
                walker_spawn_rotation=None,
                target_velocity=3.0,
+               stand_height=1.2,
                contact_termination=True,
                terminate_at_height=-0.5,
                physics_timestep=0.005,
@@ -81,6 +82,7 @@ class RunThroughCorridor(composer.Task):
       observable.enabled = True
 
     self._vel = target_velocity
+    self._height = stand_height
     self._contact_termination = contact_termination
     self._terminate_at_height = terminate_at_height
 

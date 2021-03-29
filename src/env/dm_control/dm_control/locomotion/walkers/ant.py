@@ -183,10 +183,36 @@ class AntObservables(legacy_base.WalkerObservables):
           np.dot(bodies_xpos - root_xpos, root_xmat), -1)
     return observable.Generic(bodies_pos_in_egocentric_frame)
 
+  @composer.observable
+  def joints_pos(self):
+    def qpos(physics):
+      return physics.data.qpos.flat.copy()[2:]  # exclude_current_positions_from_observation
+
+    return observable.Generic(qpos)
+
+  @composer.observable
+  def joints_vel(self):
+    def qvel(physics):
+      return physics.data.qvel.flat.copy()
+
+    return observable.Generic(qvel)
+
+  @composer.observable
+  def contact_forces(self):
+    def clipped_contact_forces(physics):
+      raw_contact_forces = physics.data.cfrc_ext
+      contact_forces = np.clip(raw_contact_forces, -1.0, 1.0)
+      return contact_forces.flat.copy()
+
+    return observable.Generic(clipped_contact_forces)
+
   @property
   def proprioception(self):
-    return ([self.joints_pos, self.joints_vel,
-             self.body_height, self.end_effectors_pos,
-             self.appendages_pos, self.world_zaxis,
-             self.bodies_quats, self.bodies_pos] +
+    # TODO (chongyi zheng): Do we need all this observations?
+    # return ([self.joints_pos, self.joints_vel,
+    #          self.body_height, self.end_effectors_pos,
+    #          self.appendages_pos, self.world_zaxis,
+    #          self.bodies_quats, self.bodies_pos] +
+    #         self._collect_from_attachments('proprioception'))
+    return ([self.joints_pos, self.joints_vel, self.body_height] +
             self._collect_from_attachments('proprioception'))

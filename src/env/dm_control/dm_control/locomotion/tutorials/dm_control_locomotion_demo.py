@@ -278,7 +278,7 @@ def walker_run_gaps(random_state=None):
 
 def main():
     # viewer.launch(environment_loader=ant_run)
-    # viewer.launch(ant_run_long)
+    # viewer.launch(environment_loader=ant_run_long)
     # viewer.launch(environment_loader=ant_run_walls)
     # viewer.launch(environment_loader=ant_run_gaps)
     # viewer.launch(environment_loader=ant_escape_bowl)
@@ -295,17 +295,23 @@ def main():
     # Build an example environment.
     import numpy as np
     import dmc2gym
+    import gym
 
     # observation_shape:
     #   walker_run = 19 without range finders, 28 with range finders
-    #   ant_run_long = 153 without range finders, 163 with range finders
+    #   ant_run_long = 26 without range finders, 37 with range finders
     #   jumping_ball_run_long = 10 without range finder, 19 with range finder
     env = dmc2gym.make_locomotion(
-        env_name='walker_run',
+        env_name='ant_run_long',
         seed=0,
         from_pixels=False,
         episode_length=1000,
     )
+
+    gym_env = gym.make('Ant-v3')
+    observation_spec = gym_env.observation_space
+    obs = gym_env.reset()
+    obs, reward, done, info = gym_env.step(gym_env.action_space.sample())
 
     # observation_shape:
     #   walker_run = 24
