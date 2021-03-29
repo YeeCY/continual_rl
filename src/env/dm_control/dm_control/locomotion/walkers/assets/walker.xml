@@ -46,7 +46,12 @@
       <site name="torso_site" size="0.05" rgba="1 0 0 1"/>
 
       <site name="rf_xp" class="rangefinder" pos="0.07 0 0.2" zaxis="1 0 0"/>
+      <site name="rf_xpd_10" class="rangefinder" pos="0.07 0 0.2" xyaxes="-1 0 -5.6713 0 1 0"/>  <!-- 10 degree -->
+      <site name="rf_xpd_20" class="rangefinder" pos="0.07 0 0.2" xyaxes="-1 0 -2.7475 0 1 0"/>  <!-- 20 degree -->
       <site name="rf_xpd_30" class="rangefinder" pos="0.07 0 0.2" xyaxes="-1 0 -1.7321 0 1 0"/>  <!-- 30 degree -->
+      <site name="rf_xpd_40" class="rangefinder" pos="0.07 0 0.2" xyaxes="-1 0 -1.1918 0 1 0"/>  <!-- 40 degree -->
+      <site name="rf_xpd_50" class="rangefinder" pos="0.07 0 0.2" xyaxes="-1 0 -0.8391 0 1 0"/>  <!-- 50 degree -->
+      <site name="rf_xpd_60" class="rangefinder" pos="0.07 0 0.2" xyaxes="-1 0 -0.5774 0 1 0"/>  <!-- 60 degree -->
       <site name="rf_xpyp" class="rangefinder" pos="0.07 0.07 0.2" zaxis="1 1 0"/>
       <site name="rf_xpypd_30" class="rangefinder" pos="0.07 0.07 0.2" xyaxes="-1 -1 -1.7321 -1 1 0"/>
       <site name="rf_xpyn" class="rangefinder" pos="0.07 -0.07 0.2"  zaxis="1 -1 0"/>
@@ -92,11 +97,14 @@
     <gyro name="torso_gyro" site="torso_site"/>
     <accelerometer name="torso_accel" site="torso_site"/>
     <rangefinder name="rf_xp" site="rf_xp"/>
+    <rangefinder name="rf_xpd_10" site="rf_xpd_10"/>
+    <rangefinder name="rf_xpd_20" site="rf_xpd_20"/>
     <rangefinder name="rf_xpd_30" site="rf_xpd_30"/>
+    <rangefinder name="rf_xpd_40" site="rf_xpd_40"/>
+    <rangefinder name="rf_xpd_50" site="rf_xpd_50"/>
+    <rangefinder name="rf_xpd_60" site="rf_xpd_60"/>
     <rangefinder name="rf_xpyp" site="rf_xpyp"/>
-    <rangefinder name="rf_xpypd_30" site="rf_xpypd_30"/>
     <rangefinder name="rf_xpyn" site="rf_xpyn"/>
-    <rangefinder name="rf_xpynd_30" site="rf_xpynd_30"/>
   </sensor>
 
   <actuator>
