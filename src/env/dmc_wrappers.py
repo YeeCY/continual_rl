@@ -4,80 +4,12 @@ import os
 import gym
 import torch
 import torch.nn.functional as F
-import torchvision.transforms.functional as TF
 import dmc2gym
 from dm_control.suite import common
 import cv2
 from collections import deque
 
-
-def make_pad_env(
-        domain_name,
-        task_name,
-        seed=0,
-        episode_length=1000,
-        frame_stack=3,
-        action_repeat=4,
-        mode='train'
-):
-    """Make environment for PAD experiments"""
-    env = dmc2gym.make(
-        domain_name=domain_name,
-        task_name=task_name,
-        seed=seed,
-        visualize_reward=False,
-        from_pixels=True,
-        height=100,
-        width=100,
-        episode_length=episode_length,
-        frame_skip=action_repeat
-    )
-    env.seed(seed)
-    env = GreenScreen(env, mode)
-    env = FrameStack(env, frame_stack)
-    env = ColorWrapper(env, mode)
-
-    assert env.action_space.low.min() >= -1
-    assert env.action_space.high.max() <= 1
-
-    return env
-
-
-def make_locomotion_env(
-        env_name,
-        seed=0,
-        episode_length=1000,
-        from_pixels=True,
-        frame_stack=3,
-        action_repeat=4,
-        obs_height=100,
-        obs_width=100,
-        camera_id=0,
-        mode='train'):
-    """(chongyi zheng) Make dm_control locomotion environments for experiments"""
-    env = dmc2gym.make_locomotion(
-        env_name=env_name,
-        seed=seed,
-        from_pixels=from_pixels,
-        height=obs_height,
-        width=obs_width,
-        camera_id=camera_id,
-        episode_length=episode_length,
-        frame_skip=action_repeat
-    )
-    env.seed(seed)
-
-    if from_pixels:
-        env = VideoBackground(env, mode)
-        env = FrameStack(env, frame_stack)
-        env = ColorWrapper(env, mode)
-    else:
-        env = AugmentObs(env, mode)
-
-    assert env.action_space.low.min() >= -1
-    assert env.action_space.high.max() <= 1
-
-    return env
+from env.utils import do_green_screen, interpolate_bg, replace_bg
 
 
 class ColorWrapper(gym.Wrapper):
@@ -194,60 +126,6 @@ class FrameStack(gym.Wrapper):
         return np.concatenate(list(self._frames), axis=0)
 
 
-def rgb_to_hsv(r, g, b):
-    """Convert RGB color to HSV color"""
-    maxc = max(r, g, b)
-    minc = min(r, g, b)
-    v = maxc
-    if minc == maxc:
-        return 0.0, 0.0, v
-    s = (maxc - minc) / maxc
-    rc = (maxc - r) / (maxc - minc)
-    gc = (maxc - g) / (maxc - minc)
-    bc = (maxc - b) / (maxc - minc)
-    if r == maxc:
-        h = bc - gc
-    elif g == maxc:
-        h = 2.0 + rc - bc
-    else:
-        h = 4.0 + gc - rc
-    h = (h / 6.0) % 1.0
-    return h, s, v
-
-
-def do_green_screen(x, bg):
-    """Removes green background from observation and replaces with bg; not optimized for speed"""
-    assert isinstance(x, np.ndarray) and isinstance(bg, np.ndarray), 'inputs must be numpy arrays'
-    assert x.dtype == np.uint8 and bg.dtype == np.uint8, 'inputs must be uint8 arrays'
-
-    # Get image sizes
-    x_h, x_w = x.shape[1:]
-
-    # Convert to RGBA images
-    im = TF.to_pil_image(torch.ByteTensor(x))
-    im = im.convert('RGBA')
-    pix = im.load()
-    bg = TF.to_pil_image(torch.ByteTensor(bg))
-    bg = bg.convert('RGBA')
-    bg = bg.load()
-
-    # Replace pixels
-    for x in range(x_w):
-        for y in range(x_h):
-            r, g, b, a = pix[x, y]
-            h_ratio, s_ratio, v_ratio = rgb_to_hsv(r / 255., g / 255., b / 255.)
-            h, s, v = (h_ratio * 360, s_ratio * 255, v_ratio * 255)
-
-            min_h, min_s, min_v = (100, 80, 70)
-            max_h, max_s, max_v = (185, 255, 255)
-            if min_h <= h <= max_h and min_s <= s <= max_s and min_v <= v <= max_v:
-                pix[x, y] = bg[x, y]
-
-    x = np.moveaxis(np.array(im).astype(np.uint8), -1, 0)[:3]
-
-    return x
-
-
 class GreenScreen(gym.Wrapper):
     """Green screen for video experiments"""
 
@@ -314,34 +192,6 @@ class GreenScreen(gym.Wrapper):
         if channels_last:
             obs = torch.from_numpy(obs).permute(1, 2, 0).numpy()
         return obs
-
-
-def interpolate_bg(bg, size: tuple):
-    """Interpolate background to size of observation"""
-    bg = torch.from_numpy(bg).float().unsqueeze(0) / 255
-    bg = F.interpolate(bg, size=size, mode='bilinear', align_corners=False)
-    return (bg * 255).byte().squeeze(0).numpy()
-
-
-def replace_bg(img, seg, bg):
-    """Removes original background from observation and replaces with bg using segmentation mask"""
-    assert isinstance(img, np.ndarray) and isinstance(seg, np.ndarray) and isinstance(bg, np.ndarray), \
-        'inputs must be numpy arrays'
-    assert img.dtype == np.uint8 and seg.dtype == np.int32 and bg.dtype == np.uint8, \
-        'image and background must be uint8 arrays, and segmentation must be int32 arrays'
-
-    # Get background mask
-    # dm_control document about segementation:
-    # 	a 2-channel NumPy int32 array of label values where the pixels of each object are labeled with the
-    # 	pair (mjModel ID, mjtObj enum object type).
-    #   https://github.com/deepmind/dm_control/blob/a669634a9bdd5be5d78654b2370f9ef8fd987817/dm_control/mujoco/engine.py#L192
-    #
-    bg_mask = np.bitwise_and(seg[0] == -1, seg[0] == -1)
-
-    # Mask original background with the new one
-    img[:, bg_mask] = bg[:, bg_mask].copy()
-
-    return img
 
 
 class VideoBackground(gym.Wrapper):
