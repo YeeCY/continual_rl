@@ -142,7 +142,7 @@ def ant_run_long():
         control_timestep=_CONTROL_TIMESTEP)
 
     # (Chongyi Zheng): redefine reward function
-    task.get_reward = _ant_get_reward.__get__(task, task.get_reward)
+    # task.get_reward = _ant_get_reward.__get__(task, task.get_reward)
 
     return composer.Environment(
         time_limit=30,
@@ -172,7 +172,7 @@ def ant_run_walls():
         control_timestep=_CONTROL_TIMESTEP)
 
     # (Chongyi Zheng): redefine reward function
-    task.get_reward = _ant_get_reward.__get__(task, task.get_reward)
+    # task.get_reward = _ant_get_reward.__get__(task, task.get_reward)
 
     return composer.Environment(
         time_limit=30,
@@ -203,7 +203,7 @@ def ant_run_gaps():
         control_timestep=_CONTROL_TIMESTEP)
 
     # (Chongyi Zheng): redefine reward function
-    task.get_reward = _ant_get_reward.__get__(task, task.get_reward)
+    # task.get_reward = _ant_get_reward.__get__(task, task.get_reward)
 
     return composer.Environment(
         time_limit=30,
