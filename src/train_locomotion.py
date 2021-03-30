@@ -102,7 +102,8 @@ def main(args):
         obs_shape=env.observation_space.shape,
         action_shape=env.action_space.shape,
         capacity=args.replay_buffer_capacity,
-        device=device
+        device=device,
+        optimize_memory_usage=True,
     )
     # replay_buffer = buffers.AugmentFrameStackReplayBuffer(
     #     obs_shape=env.unwrapped.observation_space.shape,
@@ -110,7 +111,8 @@ def main(args):
     #     capacity=args.replay_buffer_capacity,
     #     frame_stack=args.frame_stack,
     #     image_pad=args.obs_pad,
-    #     device=device
+    #     device=device,
+    #     optimize_memory_usage=True,
     # )
     # cropped_obs_shape = (3 * args.frame_stack, 84, 84)
     agent = make_agent(
