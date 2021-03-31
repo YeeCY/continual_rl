@@ -272,7 +272,7 @@ class GapsCorridor(EmptyCorridor):
             _WALL_THICKNESS,
             ]
         if self._aesthetic != 'default':
-            self._mjcf_root.worldbody.add(
+            self._ground_body.add(
                 'geom',
                 type='box',
                 name='start_floor',
@@ -282,7 +282,7 @@ class GapsCorridor(EmptyCorridor):
                 zaxis=[0, 0, 1],
                 material=self._ground_material)
         else:
-            self._mjcf_root.worldbody.add(
+            self._ground_body.add(
                 'geom',
                 type='box',
                 rgba=variation.evaluate(self._ground_rgba, random_state),
@@ -308,7 +308,7 @@ class GapsCorridor(EmptyCorridor):
                 _WALL_THICKNESS,
                 ]
             if self._aesthetic != 'default':
-                self._mjcf_root.worldbody.add(
+                self._ground_body.add(
                     'geom',
                     type='box',
                     name='floor_{}'.format(platform_id),
@@ -318,7 +318,7 @@ class GapsCorridor(EmptyCorridor):
                     zaxis=[0, 0, 1],
                     material=self._ground_material)
             else:
-                self._mjcf_root.worldbody.add(
+                self._ground_body.add(
                     'geom',
                     type='box',
                     rgba=variation.evaluate(self._ground_rgba, random_state),
