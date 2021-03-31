@@ -234,8 +234,7 @@ class GapsCorridor(EmptyCorridor):
           type='skybox', gridsize=sky_info.gridsize,
           gridlayout=sky_info.gridlayout)
 
-    # self._ground_body = self._mjcf_root.worldbody.add('body', name='ground')
-    self._platform_geoms = []
+    self._ground_body = self._mjcf_root.worldbody.add('body', name='ground')
 
   def regenerate(self, random_state):
     """Regenerates this corridor.
@@ -258,10 +257,10 @@ class GapsCorridor(EmptyCorridor):
     self._ground_plane.rgba = [0, 0, 0, 0]
 
     # Clear the existing platform pieces.
-    # self._ground_body.geom.clear()
-    for geom in self._platform_geoms:
-        geom.clear()
-    self._platform_geoms.clear()
+    self._ground_body.geom.clear()
+    # for geom in self._platform_geoms:
+    #     geom.clear()
+    # self._platform_geoms.clear()
 
     # Make the first platform larger.
     platform_length = 3. * _CORRIDOR_X_PADDING
@@ -276,26 +275,25 @@ class GapsCorridor(EmptyCorridor):
         _WALL_THICKNESS,
     ]
     if self._aesthetic != 'default':
-      start_floor_geom = self._mjcf_root.worldbody.add(
+      self._mjcf_root.worldbody.add(
           'geom',
-          type='plane',
+          type='box',
           name='start_floor',
           conaffinity=1,
           pos=platform_pos,
           size=platform_size,
           zaxis=[0, 0, 1],
           material=self._ground_material)
-      self._platform_geoms.append(start_floor_geom)
     else:
-      start_floor_geom = self._mjcf_root.worldbody.add(
+      self._mjcf_root.worldbody.add(
           'geom',
-          type='plane',
+          type='box',
           rgba=variation.evaluate(self._ground_rgba, random_state),
           name='start_floor',
           conaffinity=1,
           pos=platform_pos,
-          size=platform_size)
-      self._platform_geoms.append(start_floor_geom)
+          size=platform_size,
+          zaxis=[0, 0, 1])
 
     current_x = platform_length
     platform_id = 0
@@ -313,27 +311,25 @@ class GapsCorridor(EmptyCorridor):
           _WALL_THICKNESS,
       ]
       if self._aesthetic != 'default':
-        floor_geom = self._mjcf_root.worldbody.add(
+        self._mjcf_root.worldbody.add(
             'geom',
-            type='plane',
+            type='box',
             name='floor_{}'.format(platform_id),
             conaffinity=1,
             pos=platform_pos,
             size=platform_size,
             zaxis=[0, 0, 1],
             material=self._ground_material)
-        self._platform_geoms.append(floor_geom)
       else:
-        floor_geom = self._mjcf_root.worldbody.add(
+        self._mjcf_root.worldbody.add(
             'geom',
-            type='plane',
+            type='box',
             rgba=variation.evaluate(self._ground_rgba, random_state),
             name='floor_{}'.format(platform_id),
             conaffinity=1,
             pos=platform_pos,
             size=platform_size,
             zaxis=[0, 0, 1])
-        self._platform_geoms.append(floor_geom)
 
       platform_id += 1
 
@@ -343,7 +339,7 @@ class GapsCorridor(EmptyCorridor):
 
   @property
   def ground_geoms(self):
-    return (self._ground_plane,) + tuple(self._platform_geoms)
+    return (self._ground_plane,) + tuple(self._ground_body.find_all('geom'))
 
 
 class WallsCorridor(EmptyCorridor):
@@ -435,7 +431,7 @@ class WallsCorridor(EmptyCorridor):
       wall_size = [_WALL_THICKNESS / 2, wall_width / 2, wall_height / 2]
       self._walls_body.add(
           'geom',
-          type='plane',
+          type='box',
           name='wall_{}'.format(wall_id),
           pos=wall_pos,
           size=wall_size,

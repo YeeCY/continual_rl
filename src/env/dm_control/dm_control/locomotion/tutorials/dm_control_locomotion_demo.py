@@ -87,7 +87,7 @@ def ant_run_gaps(random_state=None):
     # platforms are uniformly randomized.
     arena = corr_arenas.GapsCorridor(
         platform_length=distributions.Uniform(1.25, 2.5),  # (0.3, 2.5)
-        gap_length=distributions.Uniform(0.3, 0.8),  # (0.5, 1.25)
+        gap_length=distributions.Uniform(0.3, 0.7),  # (0.5, 1.25)
         corridor_width=10,
         corridor_length=250)
 
@@ -229,7 +229,7 @@ def walker_run():
 
 
 def walker_run_long():
-    walker = planar_walker.PlanarWalker()
+    walker = PlanarWalker()
     arena = corr_arenas.EmptyCorridor(
         corridor_length=250,
         visible_side_planes=False)
@@ -281,7 +281,7 @@ def main():
     # viewer.launch(environment_loader=ant_run)
     # viewer.launch(environment_loader=ant_run_long)
     # viewer.launch(environment_loader=ant_run_walls)
-    # viewer.launch(environment_loader=ant_run_gaps)
+    viewer.launch(environment_loader=ant_run_gaps)
     # viewer.launch(environment_loader=ant_escape_bowl)
     # viewer.launch(environment_loader=rolling_ball_with_head_run)
     # viewer.launch(environment_loader=jumping_ball_run)
@@ -291,7 +291,7 @@ def main():
     # viewer.launch(environment_loader=basic_cmu_2019.cmu_humanoid_run_gaps)
     # viewer.launch(environment_loader=walker_run)
     # viewer.launch(environment_loader=walker_run_long)
-    viewer.launch(environment_loader=walker_run_gaps)
+    # viewer.launch(environment_loader=walker_run_gaps)
 
     # # Build an example environment.
     # import numpy as np
