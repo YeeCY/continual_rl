@@ -2,6 +2,7 @@ import torch
 from torch import nn
 import kornia
 import numpy as np
+import psutil
 
 from utils import random_crop
 
@@ -15,20 +16,43 @@ class ReplayBuffer(object):
     - https://github.com/hill-a/stable-baselines/blob/master/stable_baselines/common/buffers.py
 
     """
-    def __init__(self, obs_shape, action_shape, capacity, device):
+    def __init__(self, obs_shape, action_shape, capacity, device, optimize_memory_usage=False):
         self.obs_shape = obs_shape
         self.action_shape = action_shape
-        self.device = device
         self.capacity = capacity
+        self.device = device
+        self.optimize_memory_usage = optimize_memory_usage
+
+        # Check that the replay buffer can fit into the memory
+        if psutil is not None:
+            mem_available = psutil.virtual_memory().available
 
         # the proprioceptive obs is stored as float32, pixels obs as uint8
         self.obs_dtype = np.float32 if len(obs_shape) == 1 else np.uint8
 
         self.obses = np.empty((capacity, *obs_shape), dtype=self.obs_dtype)
-        self.next_obses = np.empty((capacity, *obs_shape), dtype=self.obs_dtype)
+        if self.optimize_memory_usage:
+            # `observations` contains also the next observation
+            self.next_obses = None
+        else:
+            self.next_obses = np.empty((capacity, *obs_shape), dtype=self.obs_dtype)
         self.actions = np.empty((capacity, *action_shape), dtype=np.float32)
         self.rewards = np.empty((capacity, 1), dtype=np.float32)
         self.not_dones = np.empty((capacity, 1), dtype=np.float32)
+
+        if psutil is not None:
+            total_memory_usage = self.obses.nbytes + self.actions.nbytes + self.rewards.nbytes + self.not_dones.nbytes
+            if self.next_obses is not None:
+                total_memory_usage += self.next_obses.nbytes
+
+            if total_memory_usage > mem_available:
+                # Convert to GB
+                total_memory_usage /= 1e9
+                mem_available /= 1e9
+                print(
+                    "This system does not have apparently enough memory to store the complete "
+                    f"replay buffer {total_memory_usage:.2f}GB > {mem_available:.2f}GB"
+                )
 
         self.idx = 0
         self.full = False
@@ -60,21 +84,33 @@ class ReplayBuffer(object):
         np.copyto(self.obses[self.idx], obs)
         np.copyto(self.actions[self.idx], action)
         np.copyto(self.rewards[self.idx], reward)
-        np.copyto(self.next_obses[self.idx], next_obs)
+        if self.optimize_memory_usage:
+            np.copyto(self.obses[(self.idx + 1) % self.capacity], next_obs)
+        else:
+            np.copyto(self.next_obses[self.idx], next_obs)
         np.copyto(self.not_dones[self.idx], not done)
 
         self.idx = (self.idx + 1) % self.capacity
         self.full = self.full or self.idx == 0
 
     def sample(self, batch_size):
-        idxs = np.random.randint(
-            0, self.capacity if self.full else self.idx, size=batch_size
-        )
+        if not self.optimize_memory_usage:
+            idxs = np.random.randint(
+                0, self.capacity if self.full else self.idx, size=batch_size
+            )
+
+            next_obses = torch.as_tensor(self.next_obses[idxs], device=self.device).float()
+        else:
+            if self.full:
+                idxs = (np.random.randint(1, self.capacity, size=batch_size) + self.idx) % self.capacity
+            else:
+                idxs = np.random.randint(0, self.idx, size=batch_size)
+
+            next_obses = torch.as_tensor(self.obses[(idxs + 1) % self.capacity], device=self.device).float()
 
         obses = torch.as_tensor(self.obses[idxs], device=self.device).float()
         actions = torch.as_tensor(self.actions[idxs], device=self.device)
         rewards = torch.as_tensor(self.rewards[idxs], device=self.device)
-        next_obses = torch.as_tensor(self.next_obses[idxs], device=self.device).float()
         not_dones = torch.as_tensor(self.not_dones[idxs], device=self.device)
 
         # TODO (chongyi zheng): We don't need to crop image as PAD
@@ -85,17 +121,17 @@ class ReplayBuffer(object):
 
     def sample_curl(self, batch_size):
         # TODO (chongyi zheng): update this function to drq style
-        idxs = np.random.randint(
-            0, self.capacity if self.full else self.idx, size=batch_size
-        )
-
-        obses = torch.as_tensor(self.obses[idxs], device=self.device).float()
-        actions = torch.as_tensor(self.actions[idxs], device=self.device)
-        rewards = torch.as_tensor(self.rewards[idxs], device=self.device)
-        next_obses = torch.as_tensor(self.next_obses[idxs], device=self.device).float()
-        not_dones = torch.as_tensor(self.not_dones[idxs], device=self.device)
+        # idxs = np.random.randint(
+        #     0, self.capacity if self.full else self.idx, size=batch_size
+        # )
+        #
+        # obses = torch.as_tensor(self.obses[idxs], device=self.device).float()
+        # actions = torch.as_tensor(self.actions[idxs], device=self.device)
+        # rewards = torch.as_tensor(self.rewards[idxs], device=self.device)
+        # next_obses = torch.as_tensor(self.next_obses[idxs], device=self.device).float()
+        # not_dones = torch.as_tensor(self.not_dones[idxs], device=self.device)
         # (chongyi zheng): internal sample function
-        # obses, actions, rewards, next_obses, not_dones = self._sample(idxs)
+        obses, actions, rewards, next_obses, not_dones = self.sample(batch_size)
 
         pos = obses.clone()
 
@@ -135,22 +171,9 @@ class AugmentReplayBuffer(ReplayBuffer):
             kornia.augmentation.RandomCrop((obs_shape[-1], obs_shape[-1])))
 
     def sample(self, batch_size):
-        idxs = np.random.randint(
-            0, self.capacity if self.full else self.idx,
-            size=batch_size)
-
-        obses = self.obses[idxs]
-        next_obses = self.next_obses[idxs]
-        obses_aug = obses.copy()
-        next_obses_aug = next_obses.copy()
-
-        obses = torch.as_tensor(obses, device=self.device).float()
-        next_obses = torch.as_tensor(next_obses, device=self.device).float()
-        obses_aug = torch.as_tensor(obses_aug, device=self.device).float()
-        next_obses_aug = torch.as_tensor(next_obses_aug, device=self.device).float()
-        actions = torch.as_tensor(self.actions[idxs], device=self.device)
-        rewards = torch.as_tensor(self.rewards[idxs], device=self.device)
-        not_dones = torch.as_tensor(self.not_dones[idxs], device=self.device)
+        obses, actions, rewards, next_obses, not_dones = super().sample(batch_size)
+        obses_aug = obses.detach().clone()
+        next_obses_aug = obses.detach().clone()
 
         obses = self.aug_trans(obses)
         next_obses = self.aug_trans(next_obses)
@@ -187,58 +210,71 @@ class AugmentReplayBuffer(ReplayBuffer):
 class FrameStackReplayBuffer(ReplayBuffer):
     """Only store unique frames to save memory
 
+    Base on https://github.com/thu-ml/tianshou/blob/master/tianshou/data/buffer/base.py
     """
-    def __init__(self, obs_shape, action_shape, capacity, frame_stack, device):
-        super().__init__(obs_shape, action_shape, capacity, device)
+    def __init__(self, obs_shape, action_shape, capacity, frame_stack, device, optimize_memory_usage=False):
+        super().__init__(obs_shape, action_shape, capacity, device, optimize_memory_usage=optimize_memory_usage)
         self.frame_stack = frame_stack
 
-        self.stack_frame_dists = np.empty((capacity, self.frame_stack), dtype=np.int32)
+        # self.stack_frame_dists = np.empty((capacity, self.frame_stack), dtype=np.int32)
 
         # (chongyi zheng): We need to set the final not_done = 0.0 to make sure the correct stack when the first
         #   observation is sampled. Note that empty array is initialized to be all zeros.
         # self.not_dones[-1] = 0.0
 
-    def add(self, obs, action, reward, next_obs, done, stack_frame_dists=np.empty(0)):
+    def prev(self, index):
+        """Return the index of previous transition.
+        The index won't be modified if it is the beginning of an episode.
         """
-        (chongyi zheng): other_frame_dists are relative indices of the other frame from the current one
-        """
-        assert len(stack_frame_dists) == self.frame_stack, "Relative indices of stacked frames must be provided!"
+        index = (index - 1) % self.capacity
+        end_flag = np.logical_not(self.not_dones[index]) | (index == self.idx)
+        return (index + end_flag) % self.capacity
 
-        np.copyto(self.obses[self.idx], obs[-1 * self.obs_shape[0]:])
+    def add(self, obs, action, reward, next_obs, done):
+        np.copyto(self.obses[self.idx], obs[-1])
         np.copyto(self.actions[self.idx], action)
         np.copyto(self.rewards[self.idx], reward)
-        np.copyto(self.next_obses[self.idx], next_obs[-1 * self.obs_shape[0]:])
+        if self.optimize_memory_usage:
+            np.copyto(self.obses[(self.idx + 1) % self.capacity], next_obs[-1])
+        else:
+            np.copyto(self.next_obses[self.idx], next_obs[-1])
         np.copyto(self.not_dones[self.idx], not done)
-        np.copyto(self.stack_frame_dists[self.idx], stack_frame_dists)
 
         self.idx = (self.idx + 1) % self.capacity
         self.full = self.full or self.idx == 0
 
     def sample(self, batch_size):
-        idxs = np.random.randint(
-            0, self.capacity if self.full else self.idx, size=batch_size
-        )
+        if not self.optimize_memory_usage:
+            prev_idxs = idxs = np.random.randint(
+                0, self.capacity if self.full else self.idx, size=batch_size
+            )
 
-        # Reconstruct stacked observations:
-        #   If the sampled observation is the first frame of an episode, it is stacked with itself.
-        #   Otherwise, we stack it with the previous frames.
-        #   The most recently not_done indicator must be 0.0 for the first 'frame_stack' frames of an episode
-        #       first_frame: obs = stack([first_frame, first_frame, first_frame])
-        #       second_frame: obs = stack([first_frame, first_frame, second_frame])
-        #       third_frame: obs = stack([first_frame, second_frame, third_frame])
-        #       forth_frame: obs = stack([second_frame, third_frame, forth_frame])
-        #       ...
-        obses = []
-        next_obses = []
-        stack_frame_dists = self.stack_frame_dists[idxs]
-        for sf_idx in range(self.frame_stack):
-            obses.append(self.obses[stack_frame_dists[:, sf_idx] + idxs])
-            next_obses.append(self.next_obses[stack_frame_dists[:, sf_idx] + idxs])
-        obses = np.concatenate(obses, axis=1)
-        next_obses = np.concatenate(next_obses, axis=1)
+            obses = []
+            next_obses = []
+            for _ in range(self.frame_stack):
+                obses.append(self.obses[prev_idxs])
+                next_obses.append(self.next_obses[prev_idxs])
+                prev_idxs = self.prev(prev_idxs)
+            obses = np.concatenate(obses, axis=1)
+            next_obses = np.concatenate(next_obses, axis=1)
 
-        obses = torch.as_tensor(obses, device=self.device).float()
-        next_obses = torch.as_tensor(next_obses, device=self.device).float()
+            obses = torch.as_tensor(obses, device=self.device).float()
+            next_obses = torch.as_tensor(next_obses, device=self.device).float()
+        else:
+            if self.full:
+                prev_idxs = idxs = (np.random.randint(1, self.capacity, size=batch_size) + self.idx) % self.capacity
+            else:
+                prev_idxs = idxs = np.random.randint(0, self.idx, size=batch_size)
+
+            obses = []
+            next_obses = []
+            for _ in range(self.frame_stack):
+                obses.append(self.obses[prev_idxs])
+                next_obses.append(self.obses[(prev_idxs + 1) % self.capacity])
+                prev_idxs = self.prev(prev_idxs)
+            obses = np.concatenate(obses, axis=1)
+            next_obses = np.concatenate(next_obses, axis=1)
+
         actions = torch.as_tensor(self.actions[idxs], device=self.device)
         rewards = torch.as_tensor(self.rewards[idxs], device=self.device)
         not_dones = torch.as_tensor(self.not_dones[idxs], device=self.device)
@@ -251,62 +287,18 @@ class FrameStackReplayBuffer(ReplayBuffer):
 
 
 class AugmentFrameStackReplayBuffer(FrameStackReplayBuffer):
-    def __init__(self, obs_shape, action_shape, capacity, frame_stack, image_pad, device):
-        super().__init__(obs_shape, action_shape, capacity, frame_stack, device)
+    def __init__(self, obs_shape, action_shape, capacity, frame_stack, image_pad, device, optimize_memory_usage=False):
+        super().__init__(obs_shape, action_shape, capacity, frame_stack, device, optimize_memory_usage)
         self.image_pad = image_pad
 
         self.aug_trans = nn.Sequential(
             nn.ReplicationPad2d(self.image_pad),
             kornia.augmentation.RandomCrop((obs_shape[-1], obs_shape[-1])))
 
-    def add(self, obs, action, reward, next_obs, done, stack_frame_dists=np.empty(0)):
-        """
-        (chongyi zheng): other_frame_dists are relative indices of the other frame from the current one
-        """
-        assert len(stack_frame_dists) == self.frame_stack, "Relative indices of stacked frames must be provided!"
-
-        np.copyto(self.obses[self.idx], obs[-1 * self.obs_shape[0]:])
-        np.copyto(self.actions[self.idx], action)
-        np.copyto(self.rewards[self.idx], reward)
-        np.copyto(self.next_obses[self.idx], next_obs[-1 * self.obs_shape[0]:])
-        np.copyto(self.not_dones[self.idx], not done)
-        np.copyto(self.stack_frame_dists[self.idx], stack_frame_dists)
-
-        self.idx = (self.idx + 1) % self.capacity
-        self.full = self.full or self.idx == 0
-
     def sample(self, batch_size):
-        idxs = np.random.randint(
-            0, self.capacity if self.full else self.idx, size=batch_size
-        )
-
-        # Reconstruct stacked observations:
-        #   If the sampled observation is the first frame of an episode, it is stacked with itself.
-        #   Otherwise, we stack it with the previous frames.
-        #   The most recently not_done indicator must be 0.0 for the first 'frame_stack' frames of an episode
-        #       first_frame: obs = stack([first_frame, first_frame, first_frame])
-        #       second_frame: obs = stack([first_frame, first_frame, second_frame])
-        #       third_frame: obs = stack([first_frame, second_frame, third_frame])
-        #       forth_frame: obs = stack([second_frame, third_frame, forth_frame])
-        #       ...
-        obses = []
-        next_obses = []
-        stack_frame_dists = self.stack_frame_dists[idxs]
-        for sf_idx in range(self.frame_stack):
-            obses.append(self.obses[stack_frame_dists[:, sf_idx] + idxs])
-            next_obses.append(self.next_obses[stack_frame_dists[:, sf_idx] + idxs])
-        obses = np.concatenate(obses, axis=1)
-        next_obses = np.concatenate(next_obses, axis=1)
-        obses_aug = obses.copy()
-        next_obses_aug = next_obses.copy()
-
-        obses = torch.as_tensor(obses, device=self.device).float()
-        next_obses = torch.as_tensor(next_obses, device=self.device).float()
-        obses_aug = torch.as_tensor(obses_aug, device=self.device).float()
-        next_obses_aug = torch.as_tensor(next_obses_aug, device=self.device).float()
-        actions = torch.as_tensor(self.actions[idxs], device=self.device)
-        rewards = torch.as_tensor(self.rewards[idxs], device=self.device)
-        not_dones = torch.as_tensor(self.not_dones[idxs], device=self.device)
+        obses, actions, rewards, next_obses, not_dones = super().sample(batch_size)
+        obses_aug = obses.detach().clone()
+        next_obses_aug = next_obses.detach().clone()
 
         # TODO (chongyi zheng): We don't need to crop image as PAD
         # obses = random_crop(obses)

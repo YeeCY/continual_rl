@@ -2,7 +2,7 @@ import torch
 import os
 
 from arguments import parse_args
-from env.wrappers import make_pad_env
+from env import make_pad_env
 from agent.agent import make_agent
 import utils
 import time

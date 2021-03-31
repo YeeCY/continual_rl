@@ -7,7 +7,7 @@ import utils
 from video import VideoRecorder
 
 from arguments import parse_args
-from env.wrappers import make_locomotion_env
+from env import make_locomotion_env
 from agent.agent import make_agent
 
 
