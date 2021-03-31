@@ -154,10 +154,11 @@ class DqnCnnSSEnsembleAgent(object):
     #         mu, pi, _, _ = self.actor(obs, compute_log_pi=False)
     #         return pi.cpu().data.numpy().flatten()
 
-    def act(self, obs, explore=False):
+    def act(self, obs, sample=False):
+        # sample = True indicates exploration
         # TODO (chongyi zheng)
-        if explore and np.random.rand() < self.exploration_rate:
-            action = np.random.randint(low=0, high=self.action_shape[0])
+        if sample and np.random.rand() < self.exploration_rate:
+            action = np.random.randint(low=0, high=self.action_shape)
         else:
             with torch.no_grad():
                 obs = torch.FloatTensor(obs).to(self.device)
@@ -170,6 +171,9 @@ class DqnCnnSSEnsembleAgent(object):
                 action = utils.to_np(action[0])
 
         return action
+
+    def schedule_exploration_rate(self, step, total_steps):
+        self.exploration_rate = self.exploration_schedule(1.0 - float(step) / float(total_steps))
 
     def update_q_net(self, obs, action, reward, next_obs, not_done, logger, step):
         with torch.no_grad():
@@ -188,7 +192,7 @@ class DqnCnnSSEnsembleAgent(object):
         current_q_values = self.q_net(obs)
 
         # retrieve the q-values for the actions from the replay buffer
-        current_q_values = torch.gather(current_q_values, dim=1, index=action.long())
+        current_q_values = torch.gather(current_q_values, dim=-1, index=action.long())
 
         # Huber loss (less sensitive to outliers)
         q_net_loss = F.smooth_l1_loss(current_q_values, target_q_values)
@@ -224,7 +228,7 @@ class DqnCnnSSEnsembleAgent(object):
     #
     #     return inv_loss.item()
 
-    def update(self, replay_buffer, logger, step, total_steps):
+    def update(self, replay_buffer, logger, step):
         obs, action, reward, next_obs, not_done = replay_buffer.sample(self.batch_size)
 
         logger.log('train/batch_reward', reward.mean(), step)
@@ -234,8 +238,7 @@ class DqnCnnSSEnsembleAgent(object):
         if step % self.target_update_interval == 0:
             utils.soft_update_params(self.q_net, self.target_q_net, self.q_net_tau)
 
-        self.exploration_rate = self.exploration_schedule(1.0 - float(step) / float(total_steps))
-
+        # log exploration rate after training begins
         logger.log('train/exploration_rate', self.exploration_rate, step)
 
         # if self.inv is not None and step % self.ss_update_freq == 0:

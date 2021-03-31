@@ -1,10 +1,13 @@
 import imageio
 import os
+from PIL import Image
+import numpy as np
 
 
 class VideoRecorder(object):
-    def __init__(self, dir_name, height=100, width=100, camera_id=0, fps=25):
+    def __init__(self, dir_name, env_type, height=100, width=100, camera_id=0, fps=25):
         self.dir_name = dir_name
+        self.env_type = env_type
         self.height = height
         self.width = width
         self.camera_id = camera_id
@@ -17,15 +20,22 @@ class VideoRecorder(object):
 
     def record(self, env, losses=[]):
         if self.enabled:
-            frame = env.render(
-                mode='rgb_array',
-                height=self.height,
-                width=self.width,
-                camera_id=self.camera_id
-            )
-            if 'video' in env._mode:
-                video_background = env.env.env
-                frame = video_background.apply_to(frame, camera_id=self.camera_id)
+            if self.env_type == 'atari':
+                frame = env.render(mode='rgb_array')
+                frame = Image.fromarray(frame).resize([self.width, self.height])
+                frame = np.asarray(frame)
+            elif self.env_type == 'dmc_locomotion':
+                frame = env.render(
+                    mode='rgb_array',
+                    height=self.height,
+                    width=self.width,
+                    camera_id=self.camera_id
+                )
+                if 'video' in env._mode:
+                    video_background = env.env.env
+                    frame = video_background.apply_to(frame, camera_id=self.camera_id)
+            else:
+                raise ValueError(f"Unknown environment type {self.env_type}")
             self.frames.append(frame)
 
     def save(self, file_name):

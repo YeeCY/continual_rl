@@ -8,10 +8,10 @@ ALGOS = [
 ]
 
 
-def make_agent(obs_shape, action_shape, action_range, device, args):
+def make_agent(obs_space, action_space, device, args):
     kwargs = {
-        'obs_shape': obs_shape,
-        'action_shape': action_shape,
+        'obs_shape': obs_space.shape,
+        'action_shape': action_space.n if args.env_type == 'atari' else action_space.shape,
         'discount': args.discount,
         'use_fwd': args.use_fwd,
         'use_inv': args.use_inv,
@@ -61,7 +61,8 @@ def make_agent(obs_shape, action_shape, action_range, device, args):
             kwargs['curl_latent_dim'] = args.curl_latent_dim
             agent = SacCnnSSEnsembleAgent(**kwargs)
         elif args.algo == 'sac_mlp_ss_ensem':
-            kwargs['action_range'] = action_range
+            kwargs['action_range'] = [float(action_space.low.min()),
+                                      float(action_space.high.max())]
             agent = SacMlpSSEnsembleAgent(**kwargs)
         else:
             raise ValueError(f"Unknown algorithm {args.algo}")

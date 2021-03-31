@@ -44,14 +44,14 @@ class RotFunction(nn.Module):
 class DQNCnn(nn.Module):
     def __init__(self, obs_shape, action_shape, feature_dim):
         super().__init__()
-        assert obs_shape.shape == (4, 84, 84), "invalid observation shape"
+        assert obs_shape == (4, 84, 84), "invalid observation shape"
 
         # self.preprocess = nn.Sequential(
         #     NormalizeImg()
         # )
 
         self.encoder = nn.Sequential(
-            nn.Conv2d(obs_shape[1], 32, kernel_size=8, stride=4),
+            nn.Conv2d(obs_shape[0], 32, kernel_size=8, stride=4),
             nn.ReLU(inplace=True),
             nn.Conv2d(32, 64, kernel_size=4, stride=2),
             nn.ReLU(inplace=True),
@@ -67,7 +67,7 @@ class DQNCnn(nn.Module):
         self.trunk = nn.Sequential(
             nn.Linear(flatten_dim, feature_dim),
             nn.ReLU(inplace=True),
-            nn.Linear(feature_dim, action_shape[0])
+            nn.Linear(feature_dim, action_shape)
         )
 
         self.apply(weight_init)
@@ -97,13 +97,13 @@ class DQNCnn(nn.Module):
 class DQNDuelingCnn(nn.Module):
     def __init__(self, obs_shape, action_shape, feature_dim):
         super().__init__()
-        assert obs_shape.shape == (4, 84, 84), "invalid observation shape"
+        assert obs_shape == (4, 84, 84), "invalid observation shape"
 
         # self.preprocess = nn.Sequential(
         #     NormalizeImg()
         # )
         self.encoder = nn.Sequential(
-            nn.Conv2d(obs_shape[1], 32, kernel_size=8, stride=4),
+            nn.Conv2d(obs_shape[0], 32, kernel_size=8, stride=4),
             nn.ReLU(inplace=True),
             nn.Conv2d(32, 64, kernel_size=4, stride=2),
             nn.ReLU(inplace=True),
@@ -125,7 +125,7 @@ class DQNDuelingCnn(nn.Module):
         self.adv_trunk = nn.Sequential(
             nn.Linear(flatten_dim, feature_dim),
             nn.ReLU(inplace=True),
-            nn.Linear(feature_dim, action_shape[0])
+            nn.Linear(feature_dim, action_shape)
         )
 
         self.apply(weight_init)

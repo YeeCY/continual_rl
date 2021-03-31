@@ -36,7 +36,10 @@ class ReplayBuffer(object):
             self.next_obses = None
         else:
             self.next_obses = np.empty((capacity, *obs_shape), dtype=self.obs_dtype)
-        self.actions = np.empty((capacity, *action_shape), dtype=np.float32)
+        if np.isscalar(action_shape):
+            self.actions = np.empty((capacity, 1), dtype=np.float32)
+        else:
+            self.actions = np.empty((capacity, *action_shape), dtype=np.float32)
         self.rewards = np.empty((capacity, 1), dtype=np.float32)
         self.not_dones = np.empty((capacity, 1), dtype=np.float32)
 
@@ -213,6 +216,12 @@ class FrameStackReplayBuffer(ReplayBuffer):
     Base on https://github.com/thu-ml/tianshou/blob/master/tianshou/data/buffer/base.py
     """
     def __init__(self, obs_shape, action_shape, capacity, frame_stack, device, optimize_memory_usage=False):
+        if obs_shape[0] != 1:
+            # convert to single frame
+            obs_shape = list(obs_shape)
+            obs_shape[0] = 1
+            obs_shape = tuple(obs_shape)
+
         super().__init__(obs_shape, action_shape, capacity, device, optimize_memory_usage=optimize_memory_usage)
         self.frame_stack = frame_stack
 
@@ -227,7 +236,7 @@ class FrameStackReplayBuffer(ReplayBuffer):
         The index won't be modified if it is the beginning of an episode.
         """
         index = (index - 1) % self.capacity
-        end_flag = np.logical_not(self.not_dones[index]) | (index == self.idx)
+        end_flag = np.logical_not(self.not_dones[index]).squeeze(-1) | (index == self.idx)
         return (index + end_flag) % self.capacity
 
     def add(self, obs, action, reward, next_obs, done):
@@ -274,6 +283,9 @@ class FrameStackReplayBuffer(ReplayBuffer):
                 prev_idxs = self.prev(prev_idxs)
             obses = np.concatenate(obses, axis=1)
             next_obses = np.concatenate(next_obses, axis=1)
+
+            obses = torch.as_tensor(obses, device=self.device).float()
+            next_obses = torch.as_tensor(next_obses, device=self.device).float()
 
         actions = torch.as_tensor(self.actions[idxs], device=self.device)
         rewards = torch.as_tensor(self.rewards[idxs], device=self.device)

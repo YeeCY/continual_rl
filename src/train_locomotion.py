@@ -102,37 +102,33 @@ def main(args):
     utils.make_dir(args.work_dir)
     model_dir = utils.make_dir(os.path.join(args.work_dir, 'model'))
     video_dir = utils.make_dir(os.path.join(args.work_dir, 'video'))
-    video = VideoRecorder(video_dir if args.save_video else None,
+    video = VideoRecorder(video_dir if args.save_video else None, args.env_type,
                           height=448, width=448, camera_id=args.video_camera_id)
 
     # Prepare agent
     assert torch.cuda.is_available(), 'must have cuda enabled'
     device = torch.device(args.device)
 
-    replay_buffer = buffers.ReplayBuffer(
-        obs_shape=env.observation_space.shape,
-        action_shape=env.action_space.shape,
-        capacity=args.replay_buffer_capacity,
-        device=device,
-        optimize_memory_usage=True,
-    )
-    # replay_buffer = buffers.AugmentFrameStackReplayBuffer(
-    #     obs_shape=env.unwrapped.observation_space.shape,
-    #     action_shape=env.action_space.shape,
-    #     capacity=args.replay_buffer_capacity,
-    #     frame_stack=args.frame_stack,
-    #     image_pad=args.obs_pad,
-    #     device=device,
-    #     optimize_memory_usage=True,
-    # )
-    # cropped_obs_shape = (3 * args.frame_stack, 84, 84)
+    if args.env_type == 'atari':
+        replay_buffer = buffers.FrameStackReplayBuffer(
+            obs_shape=env.observation_space.shape,
+            action_shape=env.action_space.n,
+            capacity=args.replay_buffer_capacity,
+            frame_stack=args.frame_stack,
+            device=device,
+            optimize_memory_usage=True,
+        )
+    elif args.env_type == 'dmc_locomotion':
+        replay_buffer = buffers.ReplayBuffer(
+            obs_shape=env.observation_space.shape,
+            action_shape=env.action_space.shape,
+            capacity=args.replay_buffer_capacity,
+            device=device,
+            optimize_memory_usage=True,
+        )
     agent = make_agent(
-        obs_shape=env.observation_space.shape,
-        action_shape=env.action_space.shape,
-        action_range=[
-            float(env.action_space.low.min()),
-            float(env.action_space.high.max())
-        ],
+        obs_space=env.observation_space,
+        action_space=env.action_space,
         device=device,
         args=args
     )
@@ -178,6 +174,9 @@ def main(args):
             with utils.eval_mode(agent):
                 action = agent.act(obs, sample=True)
 
+        if 'dqn' in args.algo:
+            agent.schedule_exploration_rate(step, args.train_steps)
+
         # Run training update
         if step >= args.init_steps:
             # TODO (chongyi zheng): Do we need multiple updates after initial data collection?
@@ -185,24 +184,11 @@ def main(args):
             # for _ in range(num_updates):
             # 	agent.update(replay_buffer, logger, step)
             for _ in range(args.num_train_iters):
-                agent.update(replay_buffer, logger, step)
+                    agent.update(replay_buffer, logger, step)
 
         # Take step
         next_obs, reward, done, _ = env.step(action)
-        done_bool = 0 if episode_step + 1 == env._max_episode_steps else float(done)
-        # (chongyi zheng): example to add transition into FrameStackReplayBuffer
-        # 	frame_stack = 4, repeated_frame_dists + new_frame_dists
-        # 			episode_step = 0, [0, 0, 0] + [0]
-        # 			episode_step = 1, [-1, -1] + [-1, 0]
-        # 			episode_step = 2, [-2] + [-2 ,-1, 0]
-        # 			episode_step = 3, [] + [-3, -2, -1, 0]
-        #			...
-        # new_frame_dists = [-idx for idx in reversed(range(0, min(episode_step + 1, args.frame_stack)))]
-        # stack_frame_dists = np.array(
-        #     [-episode_step] * (args.frame_stack - len(new_frame_dists)) + new_frame_dists
-        # )
-        # replay_buffer.add(obs, action, reward, next_obs, done_bool, stack_frame_dists=stack_frame_dists)
-        replay_buffer.add(obs, action, reward, next_obs, done_bool)
+        replay_buffer.add(obs, action, reward, next_obs, float(done))
         episode_reward += reward
         obs = next_obs
         episode_step += 1

@@ -88,7 +88,7 @@ def parse_args():
 	parser.add_argument('--dueling', default=True, action='store_false')
 	parser.add_argument('--exploration_fraction', default=0.1, type=float)
 	parser.add_argument('--exploration_initial_eps', default=1.0, type=float)
-	parser.add_argument('--target_update_interval', default=10000, type=int)
+	parser.add_argument('--target_update_interval', default=1000, type=int)
 	parser.add_argument('--max_grad_norm', default=10, type=float)
 	parser.add_argument('--q_net_lr', default=1e-4, type=float)
 	parser.add_argument('--q_net_tau', default=1.0, type=float)
