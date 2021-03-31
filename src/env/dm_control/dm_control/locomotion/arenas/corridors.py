@@ -271,18 +271,6 @@ class GapsCorridor(EmptyCorridor):
             self._current_corridor_width / 2,
             _WALL_THICKNESS,
             ]
-        # Make the first platform larger.
-        platform_length = 3. * _CORRIDOR_X_PADDING
-        platform_pos = [
-            platform_length / 2,
-            0,
-            -_WALL_THICKNESS,
-            ]
-        platform_size = [
-            platform_length / 2,
-            self._current_corridor_width / 2,
-            _WALL_THICKNESS,
-            ]
         if self._aesthetic != 'default':
             self._mjcf_root.worldbody.add(
                 'geom',
@@ -304,7 +292,6 @@ class GapsCorridor(EmptyCorridor):
                 size=platform_size,
                 zaxis=[0, 0, 1])
 
-
         current_x = platform_length
         platform_id = 0
         while current_x < self._current_corridor_length:
@@ -320,43 +307,28 @@ class GapsCorridor(EmptyCorridor):
                 self._current_corridor_width / 2,
                 _WALL_THICKNESS,
                 ]
-            current_x = platform_length
-            platform_id = 0
-            while current_x < self._current_corridor_length:
-                platform_length = variation.evaluate(
-                    self._platform_length, random_state=random_state)
-                platform_pos = [
-                    current_x + platform_length / 2.,
-                    0,
-                    -_WALL_THICKNESS,
-                    ]
-                platform_size = [
-                    platform_length / 2,
-                    self._current_corridor_width / 2,
-                    _WALL_THICKNESS,
-                    ]
-                if self._aesthetic != 'default':
-                    self._mjcf_root.worldbody.add(
-                        'geom',
-                        type='box',
-                        name='floor_{}'.format(platform_id),
-                        conaffinity=1,
-                        pos=platform_pos,
-                        size=platform_size,
-                        zaxis=[0, 0, 1],
-                        material=self._ground_material)
-                else:
-                    self._mjcf_root.worldbody.add(
-                        'geom',
-                        type='box',
-                        rgba=variation.evaluate(self._ground_rgba, random_state),
-                        name='floor_{}'.format(platform_id),
-                        conaffinity=1,
-                        pos=platform_pos,
-                        size=platform_size,
-                        zaxis=[0, 0, 1])
+            if self._aesthetic != 'default':
+                self._mjcf_root.worldbody.add(
+                    'geom',
+                    type='box',
+                    name='floor_{}'.format(platform_id),
+                    conaffinity=1,
+                    pos=platform_pos,
+                    size=platform_size,
+                    zaxis=[0, 0, 1],
+                    material=self._ground_material)
+            else:
+                self._mjcf_root.worldbody.add(
+                    'geom',
+                    type='box',
+                    rgba=variation.evaluate(self._ground_rgba, random_state),
+                    name='floor_{}'.format(platform_id),
+                    conaffinity=1,
+                    pos=platform_pos,
+                    size=platform_size,
+                    zaxis=[0, 0, 1])
 
-                platform_id += 1
+            platform_id += 1
 
             # Move x to start of the next platform.
             current_x += platform_length + variation.evaluate(
