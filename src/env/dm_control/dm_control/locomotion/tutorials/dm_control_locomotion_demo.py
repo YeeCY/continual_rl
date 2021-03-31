@@ -229,7 +229,7 @@ def walker_run():
 
 
 def walker_run_long():
-    walker = PlanarWalker()
+    walker = planar_walker.PlanarWalker()
     arena = corr_arenas.EmptyCorridor(
         corridor_length=250,
         visible_side_planes=False)
@@ -238,6 +238,7 @@ def walker_run_long():
         arena=arena,
         walker_spawn_position=(1, 0, 0),
         walker_spawn_rotation=0,
+        stand_height=1.2,
         contact_termination=False,
         physics_timestep=_PHYSICS_TIMESTEP,
         control_timestep=_CONTROL_TIMESTEP)
@@ -249,15 +250,15 @@ def walker_run_long():
 
 
 def walker_run_gaps(random_state=None):
-    walker = PlanarWalker(initializer=initializers.RandomJointPositionInitializer())
+    walker = PlanarWalker()
 
     # Build a corridor-shaped arena with gaps, where the sizes of the gaps and
     # platforms are uniformly randomized.
     arena = corr_arenas.GapsCorridor(
-        platform_length=distributions.Uniform(.3, 2.5),
-        gap_length=distributions.Uniform(.5, 1.25),
+        platform_length=distributions.Uniform(1.25, 2.5),  # (0.3, 2.5)
+        gap_length=distributions.Uniform(0.3, 0.6),  # (0.5, 1.25)
         corridor_width=10,
-        corridor_length=100)
+        corridor_length=250)
 
     # Build a task that rewards the agent for running down the corridor at a
     # specific velocity.
@@ -265,7 +266,7 @@ def walker_run_gaps(random_state=None):
         walker=walker,
         arena=arena,
         walker_spawn_position=(1.0, 0, 0),
-        target_velocity=3.0,
+        stand_height=1.2,
         contact_termination=False,
         physics_timestep=_PHYSICS_TIMESTEP,
         control_timestep=_CONTROL_TIMESTEP)
@@ -290,52 +291,56 @@ def main():
     # viewer.launch(environment_loader=basic_cmu_2019.cmu_humanoid_run_gaps)
     # viewer.launch(environment_loader=walker_run)
     # viewer.launch(environment_loader=walker_run_long)
-    # viewer.launch(environment_loader=walker_run_gaps)
+    viewer.launch(environment_loader=walker_run_gaps)
 
-    # Build an example environment.
-    import numpy as np
-    import dmc2gym
-    import gym
-
-    # observation_shape:
-    #   walker_run = 19 without range finders, 28 with range finders
-    #   ant_run_long = 26 without range finders, 37 with range finders
-    #   jumping_ball_run_long = 10 without range finder, 19 with range finder
-    env = dmc2gym.make_locomotion(
-        env_name='ant_run_long',
-        seed=0,
-        from_pixels=False,
-        episode_length=1000,
-    )
-
-    gym_env = gym.make('Ant-v3')
-    observation_spec = gym_env.observation_space
-    obs = gym_env.reset()
-    obs, reward, done, info = gym_env.step(gym_env.action_space.sample())
-
-    # observation_shape:
-    #   walker_run = 24
-    # suite_env = dmc2gym.make(
-    #     domain_name='walker',
-    #     task_name='run',
+    # # Build an example environment.
+    # import numpy as np
+    # import dmc2gym
+    # import gym
+    #
+    # # observation_shape:
+    # #   walker_run = 19 without range finders, 28 with range finders
+    # #   ant_run_long = 26 without range finders, 37 with range finders
+    # #   jumping_ball_run_long = 10 without range finder, 19 with range finder
+    # # action_shape:
+    # #   walker_run_long =
+    # #   walker_run_gaps
+    # #   ant_run_long
+    # env = dmc2gym.make_locomotion(
+    #     env_name='walker_run_gaps',
     #     seed=0,
     #     from_pixels=False,
     #     episode_length=1000,
     # )
-
-    # Get the `action_spec` describing the control inputs.
-    action_spec = env.action_spec()
-
-    # Step through the environment for one episode with random actions.
-    done = False
-    env.reset()
-    while not done:
-        action = np.random.uniform(action_spec.minimum, action_spec.maximum,
-                                   size=action_spec.shape)
-        obs, reward, done, info = env.step(action)
-        print("obs = {}, reward = {}, done = {}, info = {}".format(obs, reward, done, info))
-
-    print("done")
+    #
+    # gym_env = gym.make('Ant-v3')
+    # observation_spec = gym_env.observation_space
+    # obs = gym_env.reset()
+    # obs, reward, done, info = gym_env.step(gym_env.action_space.sample())
+    #
+    # # observation_shape:
+    # #   walker_run = 24
+    # # suite_env = dmc2gym.make(
+    # #     domain_name='walker',
+    # #     task_name='run',
+    # #     seed=0,
+    # #     from_pixels=False,
+    # #     episode_length=1000,
+    # # )
+    #
+    # # Get the `action_spec` describing the control inputs.
+    # action_spec = env.action_spec()
+    #
+    # # Step through the environment for one episode with random actions.
+    # done = False
+    # env.reset()
+    # while not done:
+    #     action = np.random.uniform(action_spec.minimum, action_spec.maximum,
+    #                                size=action_spec.shape)
+    #     obs, reward, done, info = env.step(action)
+    #     print("obs = {}, reward = {}, done = {}, info = {}".format(obs, reward, done, info))
+    #
+    # print("done")
 
 
 if __name__ == "__main__":
