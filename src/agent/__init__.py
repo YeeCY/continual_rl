@@ -38,7 +38,6 @@ def make_agent(obs_shape, action_shape, action_range, device, args):
         kwargs['init_temperature'] = args.init_temperature
         kwargs['alpha_lr'] = args.alpha_lr
         kwargs['actor_lr'] = args.actor_lr
-        kwargs['actor_beta'] = args.actor_beta
         kwargs['actor_log_std_min'] = args.actor_log_std_min
         kwargs['actor_log_std_max'] = args.actor_log_std_max
         kwargs['actor_update_freq'] = args.actor_update_freq
