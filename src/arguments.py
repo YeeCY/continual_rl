@@ -3,6 +3,11 @@ import numpy as np
 
 from agent import ALGOS
 
+ENV_TYPES = [
+	'atari',
+	'dmc_locomotion'
+]
+
 
 def parse_args():
 	parser = argparse.ArgumentParser()
@@ -11,24 +16,26 @@ def parse_args():
 	# parser.add_argument('--domain_name', default='walker')
 	# parser.add_argument('--task_name', default='walk')
 	parser.add_argument('--env_name', default='walker_run')  # (chongyi zheng)
+	parser.add_argument('--env_type', default='dmc_locomotion', type=str, choices=ENV_TYPES)
+	parser.add_argument('--algo', default='sac', type=str, choices=list(ALGOS))
+	parser.add_argument('--video_camera_id', default=0, type=int)  # (chongyi zheng)
+	parser.add_argument('--frame_stack', default=3, type=int)
+	parser.add_argument('--action_repeat', default=1, type=int)  # 1
+	parser.add_argument('--mode', default='train', type=str)
+
+	# locomotion tasks
 	parser.add_argument('--pixel_obs', default=False, action='store_true')  # (chongyi zheng)
-	parser.add_argument('--algo', default='sac', type=str, choices=list(ALGOS.keys()))
 	parser.add_argument('--obs_height', default=84, type=int)
 	parser.add_argument('--obs_width', default=84, type=int)
 	parser.add_argument('--obs_pad', default=4, type=int)
 	parser.add_argument('--env_camera_id', default=0, type=int)  # (chongyi zheng)
-	parser.add_argument('--video_camera_id', default=0, type=int)  # (chongyi zheng)
-	parser.add_argument('--frame_stack', default=3, type=int)
-	parser.add_argument('--action_repeat', default=1, type=int)  # 1
 	parser.add_argument('--episode_length', default=1000, type=int)
-	parser.add_argument('--mode', default='train', type=str)
-	
+
 	# agent
 	parser.add_argument('--init_steps', default=1000, type=int)
 	parser.add_argument('--num_train_iters', default=1, type=int)
 	parser.add_argument('--train_steps', default=1000000, type=int)
 	parser.add_argument('--batch_size', default=128, type=int)
-	parser.add_argument('--hidden_dim', default=400, type=int)  # 1024
 	parser.add_argument('--device', default='cuda', type=str)
 
 	# eval
@@ -57,10 +64,11 @@ def parse_args():
 	# parser.add_argument('--num_shared_layers', default=-1, type=int)  # number of shared conv layers
 	# parser.add_argument('--num_filters', default=32, type=int)  # number of filters in conv
 	parser.add_argument('--curl_latent_dim', default=128, type=int)  # latent dimension for curl
-	# parser.add_argument('--use_ensemble', default=False, action='store_true')  # ensemble
+	parser.add_argument('--use_ensemble', default=False, action='store_true')  # ensemble
 	parser.add_argument('--num_ensem_comps', default=4, type=int)  # number of components in ensemble
 	
 	# sac
+	parser.add_argument('--hidden_dim', default=400, type=int)  # 1024
 	parser.add_argument('--init_temperature', default=1.0, type=float)  # 0.1
 	parser.add_argument('--alpha_lr', default=1e-4, type=float)  # (chongyi zheng): try 3e-4?
 
@@ -76,6 +84,8 @@ def parse_args():
 	parser.add_argument('--critic_target_update_freq', default=1, type=int)  # 1
 
 	# dqn
+	parser.add_argument('--double_q', default=True, action='store_false')
+	parser.add_argument('--dueling', default=True, action='store_false')
 	parser.add_argument('--exploration_fraction', default=0.1, type=float)
 	parser.add_argument('--exploration_initial_eps', default=1.0, type=float)
 	parser.add_argument('--target_update_interval', default=10000, type=int)

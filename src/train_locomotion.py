@@ -1,11 +1,10 @@
 import torch
 import numpy as np
 import os
-import copy
 
 from arguments import parse_args
-from env import make_locomotion_env
-from agent.sac_agent import make_agent
+from env import make_atari_env, make_locomotion_env
+from agent import make_agent
 import utils
 import buffers
 import time
@@ -65,28 +64,40 @@ def evaluate(env, agent, video, num_episodes, logger, step):
 def main(args):
     # Initialize environment
     utils.set_seed_everywhere(args.seed)
-    env = make_locomotion_env(
-        env_name=args.env_name,
-        seed=args.seed,
-        episode_length=args.episode_length,
-        from_pixels=args.pixel_obs,
-        action_repeat=args.action_repeat,
-        obs_height=args.obs_height,
-        obs_width=args.obs_width,
-        camera_id=args.env_camera_id,
-        mode=args.mode
-    )
-    eval_env = make_locomotion_env(
-        env_name=args.env_name,
-        seed=args.seed,
-        episode_length=args.episode_length,
-        from_pixels=args.pixel_obs,
-        action_repeat=args.action_repeat,
-        obs_height=args.obs_height,
-        obs_width=args.obs_width,
-        camera_id=args.env_camera_id,
-        mode=args.mode
-    )
+    if args.env_type == 'atari':
+        env = make_atari_env(
+            env_name=args.env_name,
+            action_repeat=args.action_repeat,
+            frame_stack=args.frame_stack
+        )
+        eval_env = make_atari_env(
+            env_name=args.env_name,
+            action_repeat=args.action_repeat,
+            frame_stack=args.frame_stack
+        )
+    elif args.env_type == 'dmc_locomotion':
+        env = make_locomotion_env(
+            env_name=args.env_name,
+            seed=args.seed,
+            episode_length=args.episode_length,
+            from_pixels=args.pixel_obs,
+            action_repeat=args.action_repeat,
+            obs_height=args.obs_height,
+            obs_width=args.obs_width,
+            camera_id=args.env_camera_id,
+            mode=args.mode
+        )
+        eval_env = make_locomotion_env(
+            env_name=args.env_name,
+            seed=args.seed,
+            episode_length=args.episode_length,
+            from_pixels=args.pixel_obs,
+            action_repeat=args.action_repeat,
+            obs_height=args.obs_height,
+            obs_width=args.obs_width,
+            camera_id=args.env_camera_id,
+            mode=args.mode
+        )
 
     utils.make_dir(args.work_dir)
     model_dir = utils.make_dir(os.path.join(args.work_dir, 'model'))

@@ -23,6 +23,8 @@ def make_agent(obs_shape, action_shape, action_range, device, args):
 
     if args.algo == 'dqn_cnn_ss_ensem':
         kwargs['feature_dim'] = args.encoder_feature_dim
+        kwargs['double_q'] = args.double_q
+        kwargs['dueling'] = args.dueling
         kwargs['exploration_fraction'] = args.exploration_fraction
         kwargs['exploration_initial_eps'] = args.exploration_initial_eps
         kwargs['target_update_interval'] = args.target_update_interval

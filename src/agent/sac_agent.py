@@ -8,9 +8,6 @@ from agent.network import ActorCnn, ActorMlp, CriticCnn, CriticMlp, CURL, \
     SelfSupervisedCnnInvPredictorEnsem, SelfSupervisedMlpInvPredictorEnsem, \
     SelfSupervisedCnnFwdPredictorEnsem, SelfSupervisedMlpFwdPredictorEnsem
 
-from agent.dqn_agent import DqnCnnSSEnsembleAgent
-
-
 
 # TODO (chongyi zheng): delete this SAC Agent
 class SacSSAgent(object):

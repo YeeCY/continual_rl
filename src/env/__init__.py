@@ -72,5 +72,9 @@ def make_locomotion_env(
     return env
 
 
-def make_atari_env(args):
-    return atari_wrappers.wrap_deepmind(args.env_name, frame_stack=args.frame_stack)
+def make_atari_env(env_name, action_repeat=4, frame_stack=4):
+    return atari_wrappers.wrap_deepmind(
+        env_id=env_name,
+        frame_skip=action_repeat,
+        frame_stack=frame_stack
+    )
