@@ -5,7 +5,7 @@ import copy
 
 from arguments import parse_args
 from env import make_locomotion_env
-from agent.agent import make_agent
+from agent.sac_agent import make_agent
 import utils
 import buffers
 import time

@@ -3,7 +3,7 @@ import os
 
 from arguments import parse_args
 from env import make_pad_env
-from agent.agent import make_agent
+from agent.sac_agent import make_agent
 import utils
 import time
 from logger import Logger

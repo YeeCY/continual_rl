@@ -1,6 +1,8 @@
 import argparse
 import numpy as np
 
+from agent import ALGOS
+
 
 def parse_args():
 	parser = argparse.ArgumentParser()
@@ -10,6 +12,7 @@ def parse_args():
 	# parser.add_argument('--task_name', default='walk')
 	parser.add_argument('--env_name', default='walker_run')  # (chongyi zheng)
 	parser.add_argument('--pixel_obs', default=False, action='store_true')  # (chongyi zheng)
+	parser.add_argument('--algo', default='sac', type=str, choices=list(ALGOS.keys()))
 	parser.add_argument('--obs_height', default=84, type=int)
 	parser.add_argument('--obs_width', default=84, type=int)
 	parser.add_argument('--obs_pad', default=4, type=int)
@@ -34,18 +37,8 @@ def parse_args():
 	parser.add_argument('--num_eval_episodes', default=3, type=int)
 	parser.add_argument('--eval_results', default=False, action='store_true')  # (chongyi zheng): save evalution results or not
 
-	# critic
-	parser.add_argument('--critic_lr', default=3e-4, type=float)  # 1e-3
-	parser.add_argument('--critic_tau', default=0.005, type=float)  # 0.01
-	parser.add_argument('--critic_target_update_freq', default=1, type=int)  # 1
-
-	# actor
-	parser.add_argument('--actor_lr', default=3e-4, type=float)  # 1e-3
-	parser.add_argument('--actor_log_std_min', default=-20, type=float)  # -10
-	parser.add_argument('--actor_log_std_max', default=2, type=float)
-	parser.add_argument('--actor_update_freq', default=2, type=int)
-
-	# encoder
+	# algorithm common
+	parser.add_argument('--discount', default=0.99, type=float)
 	parser.add_argument('--encoder_feature_dim', default=50, type=int)
 	# parser.add_argument('--encoder_lr', default=1e-3, type=float)  # TODO (chongyi zheng): delete this line
 	# parser.add_argument('--encoder_tau', default=0.05, type=float)  # TODO (chongyi zheng): delete this line
@@ -60,17 +53,35 @@ def parse_args():
 	# (chongyi zheng) stop gradients flow into the shared encoder from self-supervised predictors other than the first
 	# one in the ensemble
 	# parser.add_argument('--ss_stop_shared_layers_grad', default=False, action='store_true')
-	parser.add_argument('--num_layers', default=4, type=int)  # number of conv layers
+	# parser.add_argument('--num_layers', default=4, type=int)  # number of conv layers
 	# parser.add_argument('--num_shared_layers', default=-1, type=int)  # number of shared conv layers
-	parser.add_argument('--num_filters', default=32, type=int)  # number of filters in conv
+	# parser.add_argument('--num_filters', default=32, type=int)  # number of filters in conv
 	parser.add_argument('--curl_latent_dim', default=128, type=int)  # latent dimension for curl
-	parser.add_argument('--use_ensemble', default=False, action='store_true')  # ensemble
+	# parser.add_argument('--use_ensemble', default=False, action='store_true')  # ensemble
 	parser.add_argument('--num_ensem_comps', default=4, type=int)  # number of components in ensemble
 	
 	# sac
-	parser.add_argument('--discount', default=0.99, type=float)
 	parser.add_argument('--init_temperature', default=1.0, type=float)  # 0.1
 	parser.add_argument('--alpha_lr', default=1e-4, type=float)  # (chongyi zheng): try 3e-4?
+
+	# sac actor
+	parser.add_argument('--actor_lr', default=3e-4, type=float)  # 1e-3
+	parser.add_argument('--actor_log_std_min', default=-20, type=float)  # -10
+	parser.add_argument('--actor_log_std_max', default=2, type=float)
+	parser.add_argument('--actor_update_freq', default=2, type=int)
+
+	# sac critic
+	parser.add_argument('--critic_lr', default=3e-4, type=float)  # 1e-3
+	parser.add_argument('--critic_tau', default=0.005, type=float)  # 0.01
+	parser.add_argument('--critic_target_update_freq', default=1, type=int)  # 1
+
+	# dqn
+	parser.add_argument('--exploration_fraction', default=0.1, type=float)
+	parser.add_argument('--exploration_initial_eps', default=1.0, type=float)
+	parser.add_argument('--target_update_interval', default=10000, type=int)
+	parser.add_argument('--max_grad_norm', default=10, type=float)
+	parser.add_argument('--q_net_lr', default=1e-4, type=float)
+	parser.add_argument('--q_net_tau', default=1.0, type=float)
 
 	# misc
 	parser.add_argument('--seed', default=1, type=int)
@@ -82,7 +93,7 @@ def parse_args():
 	parser.add_argument('--log_freq', default=10000, type=int)
 	parser.add_argument('--save_tb', default=False, action='store_true')  # (chongyi zheng)
 
-	# test
+	# pad
 	# parser.add_argument('--pad_checkpoint', default=None, type=str)
 	# parser.add_argument('--pad_batch_size', default=32, type=int)
 	# parser.add_argument('--pad_num_episodes', default=100, type=int)

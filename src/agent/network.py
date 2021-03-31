@@ -74,8 +74,86 @@ class DQNCnn(nn.Module):
 
         self.outputs = dict()  # log placeholder
 
-    def forward(self, h):
-        pass
+    def forward(self, obs):
+        h = self.encoder(obs)
+        q_values = self.trunk(h)
+
+        self.outputs['q_values'] = q_values
+
+        return q_values
+
+    def log(self, logger, step):
+        for k, v in self.outputs.items():
+            logger.log_histogram(f'train_dqn/{k}_hist', v, step)
+
+        for i, m in enumerate(self.encoder):
+            logger.log_param(f'train_dqn/conv{i}', m, step)
+
+        for i, m in enumerate(self.trunk):
+            if type(m) == nn.Linear:
+                logger.log_param(f'train_dqn/fc{i}', m, step)
+
+
+class DQNDuelingCnn(nn.Module):
+    def __init__(self, obs_shape, action_shape, feature_dim):
+        super().__init__()
+        assert obs_shape.shape == (4, 84, 84), "invalid observation shape"
+
+        # self.preprocess = nn.Sequential(
+        #     NormalizeImg()
+        # )
+        self.encoder = nn.Sequential(
+            nn.Conv2d(obs_shape[1], 32, kernel_size=8, stride=4),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(32, 64, kernel_size=4, stride=2),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(64, 64, kernel_size=3, stride=1),
+            nn.Flatten()
+        )  # (N, 4, 84, 84) -> (N, 64, 7, 7)
+
+        # Compute shape by doing one forward pass
+        with torch.no_grad():
+            flatten_dim = np.prod(
+                self.encoder(torch.zeros(1, *obs_shape)).shape[1:])
+
+        self.v_trunk = nn.Sequential(
+            nn.Linear(flatten_dim, feature_dim),
+            nn.ReLU(inplace=True),
+            nn.Linear(feature_dim, 1)
+        )
+
+        self.adv_trunk = nn.Sequential(
+            nn.Linear(flatten_dim, feature_dim),
+            nn.ReLU(inplace=True),
+            nn.Linear(feature_dim, action_shape[0])
+        )
+
+        self.apply(weight_init)
+
+        self.outputs = dict()  # log placeholder
+
+    def forward(self, obs):
+        h = self.encoder(obs)
+        values = self.v_trunk(h)
+        advantages = self.adv_trunk(h)
+        q_values = values.expand_as(advantages) + (
+            advantages - advantages.mean(-1, keepdim=True)
+        )
+
+        self.outputs['q_values'] = q_values
+
+        return q_values
+
+    def log(self, logger, step):
+        for k, v in self.outputs.items():
+            logger.log_histogram(f'train_dueling_dqn/{k}_hist', v, step)
+
+        for i, m in enumerate(self.encoder):
+            logger.log_param(f'train_dueling_dqn/conv{i}', m, step)
+
+        for i, m in enumerate(self.trunk):
+            if type(m) == nn.Linear:
+                logger.log_param(f'train_dueling_dqn/fc{i}', m, step)
 
 
 class ActorCnn(nn.Module):

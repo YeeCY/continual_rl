@@ -7,19 +7,24 @@ from agent.utils import get_linear_fn
 
 from agent.network import ActorCnn, ActorMlp, CriticCnn, CriticMlp, CURL, \
     SelfSupervisedCnnInvPredictorEnsem, SelfSupervisedMlpInvPredictorEnsem, \
-    SelfSupervisedCnnFwdPredictorEnsem, SelfSupervisedMlpFwdPredictorEnsem, DQNCnn
+    SelfSupervisedCnnFwdPredictorEnsem, SelfSupervisedMlpFwdPredictorEnsem, \
+    DQNCnn, DQNDuelingCnn
 
 
 class DqnCnnSSEnsembleAgent(object):
     """
     DQN with an auxiliary self-supervised task.
     Based on https://github.com/DLR-RM/stable-baselines3/blob/master/stable_baselines3/dqn/dqn.py
+    Enable double and dueling q learning
+
     """
     def __init__(
             self,
             obs_shape,
             action_shape,
             device,
+            double_q=True,
+            dueling=True,
             feature_dim=512,
             discount=0.99,
             exploration_fraction=0.1,
@@ -29,7 +34,7 @@ class DqnCnnSSEnsembleAgent(object):
             max_grad_norm=10,
             q_net_lr=1e-4,
             q_net_tau=1.0,
-            use_rot=False,
+            use_fwd=False,
             use_inv=False,
             ss_lr=1e-3,
             ss_update_freq=1,
@@ -38,6 +43,8 @@ class DqnCnnSSEnsembleAgent(object):
         self.obs_shape = obs_shape
         self.action_shape = action_shape
         self.device = device
+        self.double_q = double_q
+        self.dueling = dueling
         self.discount = discount
         self.exploration_fraction = exploration_fraction
         self.exploration_initial_eps = exploration_initial_eps
@@ -56,14 +63,19 @@ class DqnCnnSSEnsembleAgent(object):
         self.ss_lr = ss_lr
         self.ss_update_freq = ss_update_freq
         self.batch_size = batch_size
-        self.use_rot = use_rot
+        self.use_fwd = use_fwd
         self.use_inv = use_inv
 
-        self.q_net = DQNCnn(
-            obs_shape, action_shape, feature_dim).to(self.device)
-
-        self.target_q_net = DQNCnn(
-            obs_shape, action_shape, feature_dim).to(self.device)
+        if self.dueling:
+            self.q_net = DQNDuelingCnn(
+                obs_shape, action_shape, feature_dim).to(self.device)
+            self.target_q_net = DQNDuelingCnn(
+                obs_shape, action_shape, feature_dim).to(self.device)
+        else:
+            self.q_net = DQNCnn(
+                obs_shape, action_shape, feature_dim).to(self.device)
+            self.target_q_net = DQNCnn(
+                obs_shape, action_shape, feature_dim).to(self.device)
 
         self.target_q_net.load_state_dict(self.q_net.state_dict())
 
@@ -164,8 +176,11 @@ class DqnCnnSSEnsembleAgent(object):
             # compute the next Q-values using the target network
             next_q_values = self.target_q_net(next_obs)
             # follow greedy policy: use the one with the highest value
-            next_q_values, _ = next_q_values.max(dim=1)
-            next_q_values = next_q_values.reshape(-1, 1)
+            if self.double_q:
+                best_next_actions = torch.argmax(self.q_net(next_obs), dim=-1)
+                next_q_values = next_q_values.gather(1, best_next_actions.unsqueeze(-1))
+            else:
+                next_q_values = next_q_values.max(dim=1, keepdims=True)[0]
             # 1-step TD target
             target_q_values = reward + not_done * self.discount * next_q_values
 
