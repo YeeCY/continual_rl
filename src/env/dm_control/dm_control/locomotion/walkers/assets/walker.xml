@@ -52,8 +52,6 @@
       <site name="rf_xpd_40" class="rangefinder" pos="0.07 0 0.2" xyaxes="-1 0 -1.1918 0 1 0"/>  <!-- 40 degree -->
       <site name="rf_xpd_50" class="rangefinder" pos="0.07 0 0.2" xyaxes="-1 0 -0.8391 0 1 0"/>  <!-- 50 degree -->
       <site name="rf_xpd_60" class="rangefinder" pos="0.07 0 0.2" xyaxes="-1 0 -0.5774 0 1 0"/>  <!-- 60 degree -->
-      <site name="rf_xpyp" class="rangefinder" pos="0.07 0.07 0.2" zaxis="1 1 0"/>
-      <site name="rf_xpyn" class="rangefinder" pos="0.07 -0.07 0.2"  zaxis="1 -1 0"/>
 
       <body name="right_thigh" pos="0 -.05 -0.3">
         <joint name="right_hip" range="-0.34907 1.74533"/>  <!-- range = [-20 deg, 100 deg] -->
@@ -101,8 +99,6 @@
     <rangefinder name="rf_xpd_40" site="rf_xpd_40"/>
     <rangefinder name="rf_xpd_50" site="rf_xpd_50"/>
     <rangefinder name="rf_xpd_60" site="rf_xpd_60"/>
-    <rangefinder name="rf_xpyp" site="rf_xpyp"/>
-    <rangefinder name="rf_xpyn" site="rf_xpyn"/>
   </sensor>
 
   <actuator>
