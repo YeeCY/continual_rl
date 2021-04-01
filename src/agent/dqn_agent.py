@@ -151,29 +151,11 @@ class DqnCnnAgent:
         torch.save(
             self.q_net.state_dict(), '%s/q_net_%s.pt' % (model_dir, step)
         )
-        # if self.inv is not None:
-        #     torch.save(
-        #         self.inv.state_dict(),
-        #         '%s/inv_%s.pt' % (model_dir, step)
-        #     )
-        # if self.ss_encoder is not None:
-        #     torch.save(
-        #         self.ss_encoder.state_dict(),
-        #         '%s/ss_encoder_%s.pt' % (model_dir, step)
-        #     )
 
     def load(self, model_dir, step):
         self.q_net.load_state_dict(
             torch.load('%s/q_net_%s.pt' % (model_dir, step))
         )
-        # if self.inv is not None:
-        #     self.inv.load_state_dict(
-        #         torch.load('%s/inv_%s.pt' % (model_dir, step))
-        #     )
-        # if self.ss_encoder is not None:
-        #     self.ss_encoder.load_state_dict(
-        #         torch.load('%s/ss_encoder_%s.pt' % (model_dir, step))
-        #     )
 
 
 class DqnCnnSSEnsembleAgent(DqnCnnAgent):
@@ -265,8 +247,8 @@ class DqnCnnSSEnsembleAgent(DqnCnnAgent):
                 preds = self.ss_fwd_pred_ensem(obs, action)
 
             if self.use_inv:
-                logits = self.ss_inv_pred_ensem(obs, next_obs)
-                preds = logits.argmax(dim=-1)
+                # (chongyi zheng): we compute logits variance here
+                preds = self.ss_inv_pred_ensem(obs, next_obs)
 
             # (chongyi zheng): the same as equation (1) in https://arxiv.org/abs/1906.04161
             preds = torch.stack(preds.chunk(self.num_ensem_comps, dim=0))
@@ -295,9 +277,9 @@ class DqnCnnSSEnsembleAgent(DqnCnnAgent):
             logger.log('train_ss_fwd/loss', fwd_loss, step)
 
         if self.use_inv:
-            pred_action = self.ss_inv_pred_ensem(obs, next_obs,
-                                                 detach_encoder=True, split_input=True)
-            inv_loss = F.mse_loss(pred_action, action)
+            pred_logit = self.ss_inv_pred_ensem(obs, next_obs,
+                                                detach_encoder=True, split_input=True)
+            inv_loss = F.cross_entropy(pred_logit, action)
 
             self.ss_inv_optimizer.zero_grad()
             inv_loss.backward()

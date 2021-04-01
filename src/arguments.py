@@ -90,7 +90,7 @@ def parse_args():
 	parser.add_argument('--exploration_initial_eps', default=1.0, type=float)
 	parser.add_argument('--target_update_interval', default=1000, type=int)
 	parser.add_argument('--max_grad_norm', default=10, type=float)
-	parser.add_argument('--q_net_lr', default=1e-4, type=float)
+	parser.add_argument('--q_net_lr', default=3e-4, type=float)  # try 3e-4? 1e-4
 	parser.add_argument('--q_net_tau', default=1.0, type=float)
 
 	# misc

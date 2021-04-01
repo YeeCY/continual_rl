@@ -26,7 +26,7 @@ class CenterCrop(nn.Module):
 class NormalizeImg(nn.Module):
 	"""Normalize observation"""
 	def forward(self, x):
-		return x / 255.
+		return x.float() / 255.
 
 
 class PixelEncoder(nn.Module):
@@ -108,13 +108,60 @@ class PixelEncoder(nn.Module):
 
 	def log(self, logger, step):
 		for k, v in self.outputs.items():
-			logger.log_histogram(f'train_encoder/{k}_hist', v, step)
+			logger.log_histogram(f'train_pixel_encoder/{k}_hist', v, step)
 			if len(v.shape) > 2:
-				logger.log_image(f'train_encoder/{k}_img', v[0], step)
+				logger.log_image(f'train_pixel_encoder/{k}_img', v[0], step)
 
 		for i in range(self.num_layers):
-			logger.log_param(f'train_encoder/conv{i}', self.convs[i], step)
+			logger.log_param(f'train_pixel_encoder/conv{i}', self.convs[i], step)
 
+
+class DqnEncoder(nn.Module):
+	def __init__(self, obs_shape):
+		super().__init__()
+
+		self.preprocess = nn.Sequential(
+			NormalizeImg()
+		)
+
+		self.convs = nn.Sequential(
+			nn.Conv2d(obs_shape[0], 32, kernel_size=8, stride=4),
+			nn.ReLU(inplace=True),
+			nn.Conv2d(32, 64, kernel_size=4, stride=2),
+			nn.ReLU(inplace=True),
+			nn.Conv2d(64, 64, kernel_size=3, stride=1),
+			nn.Flatten()
+		)  # (N, 4, 84, 84) -> (N, 64, 7, 7)
+
+		self.outputs = dict()  # log placeholder
+
+	def forward(self, obs, detach=False):
+		obs = self.preprocess(obs)
+		h = self.convs(obs)
+
+		if detach:
+			h = h.detach()  # stop gradient propagation to convolutional layers
+
+		self.outputs['h'] = h
+
+		return h
+
+	def copy_conv_weights_from(self, source):
+		assert isinstance(source, DqnEncoder), \
+			"Source and target encoder must be the same type!"
+
+		for trg_m, src_m in zip(self.convs, source.convs):
+			if type(trg_m) == type(src_m) == nn.Conv2d:
+				tie_weights(src=src_m, trg=trg_m)
+
+	def log(self):
+		for k, v in self.outputs.items():
+			logger.log_histogram(f'train_dqn_encoder/{k}_hist', v, step)
+			if len(v.shape) > 2:
+				logger.log_image(f'train_dqn_encoder/{k}_img', v[0], step)
+
+		for i, m in enumerate(self.convs):
+			logger.log_param(f'train_dqn_encoder/conv{i}', m, step)
 
 # TODO (chongyi zheng): delete function 'make_encoder'
 # def make_encoder(obs_shape, feature_dim, num_layers, num_filters, num_shared_layers):

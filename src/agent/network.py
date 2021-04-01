@@ -2,7 +2,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from agent.encoder import PixelEncoder
+from agent.encoder import PixelEncoder, DqnEncoder
 from utils import weight_init, SquashedNormal, gaussian_logprob, squash
 
 
@@ -50,14 +50,7 @@ class DQNCnn(nn.Module):
         #     NormalizeImg()
         # )
 
-        self.encoder = nn.Sequential(
-            nn.Conv2d(obs_shape[0], 32, kernel_size=8, stride=4),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(32, 64, kernel_size=4, stride=2),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(64, 64, kernel_size=3, stride=1),
-            nn.Flatten()
-        )  # (N, 4, 84, 84) -> (N, 64, 7, 7)
+        self.encoder = DqnEncoder(obs_shape)
 
         # Compute shape by doing one forward pass
         with torch.no_grad():
@@ -86,9 +79,6 @@ class DQNCnn(nn.Module):
         for k, v in self.outputs.items():
             logger.log_histogram(f'train_dqn/{k}_hist', v, step)
 
-        for i, m in enumerate(self.encoder):
-            logger.log_param(f'train_dqn/conv{i}', m, step)
-
         for i, m in enumerate(self.trunk):
             if type(m) == nn.Linear:
                 logger.log_param(f'train_dqn/fc{i}', m, step)
@@ -99,17 +89,7 @@ class DQNDuelingCnn(nn.Module):
         super().__init__()
         assert obs_shape == (4, 84, 84), "invalid observation shape"
 
-        # self.preprocess = nn.Sequential(
-        #     NormalizeImg()
-        # )
-        self.encoder = nn.Sequential(
-            nn.Conv2d(obs_shape[0], 32, kernel_size=8, stride=4),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(32, 64, kernel_size=4, stride=2),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(64, 64, kernel_size=3, stride=1),
-            nn.Flatten()
-        )  # (N, 4, 84, 84) -> (N, 64, 7, 7)
+        self.encoder = DqnEncoder(obs_shape)
 
         # Compute shape by doing one forward pass
         with torch.no_grad():
@@ -147,9 +127,6 @@ class DQNDuelingCnn(nn.Module):
     def log(self, logger, step):
         for k, v in self.outputs.items():
             logger.log_histogram(f'train_dueling_dqn/{k}_hist', v, step)
-
-        for i, m in enumerate(self.encoder):
-            logger.log_param(f'train_dueling_dqn/conv{i}', m, step)
 
         for i, m in enumerate(self.trunk):
             if type(m) == nn.Linear:
@@ -802,14 +779,7 @@ class DqnCnnSSInvPredictor(nn.Module):
     def __init__(self, obs_shape, action_shape, feature_dim):
         super().__init__()
 
-        self.encoder = nn.Sequential(
-            nn.Conv2d(obs_shape[0], 32, kernel_size=8, stride=4),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(32, 64, kernel_size=4, stride=2),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(64, 64, kernel_size=3, stride=1),
-            nn.Flatten()
-        )  # (N, 4, 84, 84) -> (N, 64, 7, 7)
+        self.encoder = DqnEncoder(obs_shape)
 
         # Compute shape by doing one forward pass
         with torch.no_grad():
@@ -839,6 +809,8 @@ class DqnCnnSSInvPredictor(nn.Module):
         return pred_logit
 
     def log(self, logger, step):
+        self.encoder.log(logger, step)
+
         for k, v in self.outputs.items():
             logger.log_histogram(f'train_ss_inv/{k}_hist', v, step)
 
@@ -860,7 +832,7 @@ class DqnCnnSSInvPredictorEnsem(DqnCnnSSInvPredictor):
         trunks = [self.trunk]
         for _ in range(self.num_comps - 1):
             trunk = nn.Sequential(
-                nn.Linear(flatten_dim, feature_dim),
+                nn.Linear(2 * flatten_dim, feature_dim),
                 nn.ReLU(inplace=True),
                 nn.Linear(feature_dim, action_shape)
             )
@@ -895,6 +867,8 @@ class DqnCnnSSInvPredictorEnsem(DqnCnnSSInvPredictor):
         return pred_logits
 
     def log(self, logger, step):
+        self.encoder.log(logger, step)
+
         for k, v in self.outputs.items():
             logger.log_histogram(f'train_ss_inv/{k}_hist', v, step)
 
@@ -908,14 +882,7 @@ class DqnCnnSSFwdPredictor(nn.Module):
     def __init__(self, obs_shape, feature_dim):
         super().__init__()
 
-        self.encoder = nn.Sequential(
-            nn.Conv2d(obs_shape[0], 32, kernel_size=8, stride=4),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(32, 64, kernel_size=4, stride=2),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(64, 64, kernel_size=3, stride=1),
-            nn.Flatten()
-        )  # (N, 4, 84, 84) -> (N, 64, 7, 7)
+        self.encoder = DqnEncoder(obs_shape)
 
         # Compute shape by doing one forward pass
         with torch.no_grad():
