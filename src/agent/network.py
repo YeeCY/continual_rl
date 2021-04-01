@@ -608,19 +608,19 @@ class SelfSupervisedCnnFwdPredictorEnsem(SelfSupervisedCnnFwdPredictor):
         h = self.encoder(obs, detach=detach_encoder)
 
         joint_h_act = torch.cat([h, action], dim=-1)
-        pred_h_nexts = []
+        pred_next_hs = []
         for idx, trunk in enumerate(self.trunks):
             if split_hidden:
                 joint_h_act_slice = joint_h_act[idx * num_samples_each_slice:(idx + 1) * num_samples_each_slice]
-                pred_h_next = trunk(joint_h_act_slice)
+                pred_next_h = trunk(joint_h_act_slice)
             else:
-                pred_h_next = trunk(joint_h_act)
-            self.outputs[f'pred_next_obs{idx}'] = pred_h_next
-            pred_h_nexts.append(pred_h_next)
+                pred_next_h = trunk(joint_h_act)
+            self.outputs[f'pred_next_h{idx}'] = pred_next_h
+            pred_next_hs.append(pred_next_h)
 
-        pred_h_nexts = torch.cat(pred_h_nexts, dim=0)
+        pred_next_hs = torch.cat(pred_next_hs, dim=0)
 
-        return pred_h_nexts
+        return pred_next_hs
 
     def log(self, logger, step):
         for k, v in self.outputs.items():
@@ -777,7 +777,7 @@ class SelfSupervisedMlpFwdPredictorEnsem(SelfSupervisedMlpFwdPredictor):
             joint_obs_act = joint_obs_act.chunk(self.num_comps, dim=0)
         pred_next_obss = []
         for idx, trunk in enumerate(self.trunks):
-            if split_hidden:
+            if split_input:
                 pred_next_obs = trunk(joint_obs_act[idx])
             else:
                 pred_next_obs = trunk(joint_obs_act)
@@ -787,6 +787,214 @@ class SelfSupervisedMlpFwdPredictorEnsem(SelfSupervisedMlpFwdPredictor):
         pred_next_obss = torch.cat(pred_next_obss, dim=0)
 
         return pred_next_obss
+
+    def log(self, logger, step):
+        for k, v in self.outputs.items():
+            logger.log_histogram(f'train_ss_fwd/{k}_hist', v, step)
+
+        for i, trunk in enumerate(self.trunks):
+            for j, m in enumerate(trunk):
+                if type(m) == nn.Linear:
+                    logger.log_param(f'train_ss_fwd/ensem{i}/fc{j}', m, step)
+
+
+class DqnCnnSSInvPredictor(nn.Module):
+    def __init__(self, obs_shape, action_shape, feature_dim):
+        super().__init__()
+
+        self.encoder = nn.Sequential(
+            nn.Conv2d(obs_shape[0], 32, kernel_size=8, stride=4),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(32, 64, kernel_size=4, stride=2),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(64, 64, kernel_size=3, stride=1),
+            nn.Flatten()
+        )  # (N, 4, 84, 84) -> (N, 64, 7, 7)
+
+        # Compute shape by doing one forward pass
+        with torch.no_grad():
+            flatten_dim = np.prod(
+                self.encoder(torch.zeros(1, *obs_shape)).shape[1:])
+
+        self.trunk = nn.Sequential(
+            nn.Linear(2 * flatten_dim, feature_dim),
+            nn.ReLU(inplace=True),
+            nn.Linear(feature_dim, action_shape)
+        )
+
+        self.apply(weight_init)
+
+        self.outputs = dict()  # log placeholder
+
+    def forward(self, obs, next_obs, detach_encoder=False):
+        # detach_encoder allows to stop gradient propogation to encoder's convolutional layers
+        h = self.encoder(obs, detach=detach_encoder)
+        next_h = self.encoder(next_obs, detach=detach_encoder)
+
+        joint_h = torch.cat([h, next_h], dim=-1)
+        pred_logit = self.trunk(joint_h)
+
+        self.outputs['pred_logit'] = pred_logit
+
+        return pred_logit
+
+    def log(self, logger, step):
+        for k, v in self.outputs.items():
+            logger.log_histogram(f'train_ss_inv/{k}_hist', v, step)
+
+        for i, m in enumerate(self.trunk):
+            if type(m) == nn.Linear:
+                logger.log_param(f'train_ss_inv/fc{i}', m, step)
+
+
+class DqnCnnSSInvPredictorEnsem(DqnCnnSSInvPredictor):
+    def __init__(self, obs_shape, action_shape, feature_dim, num_comps):
+        super().__init__(obs_shape, action_shape, feature_dim)
+        self.num_comps = num_comps
+
+        # Compute shape by doing one forward pass
+        with torch.no_grad():
+            flatten_dim = np.prod(
+                self.encoder(torch.zeros(1, *obs_shape)).shape[1:])
+
+        trunks = [self.trunk]
+        for _ in range(self.num_comps - 1):
+            trunk = nn.Sequential(
+                nn.Linear(flatten_dim, feature_dim),
+                nn.ReLU(inplace=True),
+                nn.Linear(feature_dim, action_shape)
+            )
+            trunks.append(trunk)
+
+        self.trunks = nn.ModuleList(trunks)
+        self.apply(weight_init)
+
+    def forward(self, obs, next_obs, detach_encoder=False, split_hidden=False):
+        """
+            split_hidden: split encoder outputs uniformly for each components
+        """
+        num_samples_each_slice = obs.shape[0] // self.num_comps if split_hidden else None
+
+        # detach_encoder allows to stop gradient propogation to encoder's convolutional layers
+        h = self.encoder(obs, detach=detach_encoder)
+        next_h = self.encoder(next_obs, detach=detach_encoder)
+
+        joint_h = torch.cat([h, next_h], dim=-1)
+        pred_logits = []
+        for idx, trunk in enumerate(self.trunks):
+            if split_hidden:
+                joint_h_slice = joint_h[idx * num_samples_each_slice:(idx + 1) * num_samples_each_slice]
+                pred_logit = trunk(joint_h_slice)
+            else:
+                pred_logit = trunk(joint_h)
+            self.outputs[f'pred_logit{idx}'] = pred_logit
+            pred_logits.append(pred_logit)
+
+        pred_logits = torch.cat(pred_logits, dim=0)
+
+        return pred_logits
+
+    def log(self, logger, step):
+        for k, v in self.outputs.items():
+            logger.log_histogram(f'train_ss_inv/{k}_hist', v, step)
+
+        for i, trunk in enumerate(self.trunks):
+            for j, m in enumerate(trunk):
+                if type(m) == nn.Linear:
+                    logger.log_param(f'train_ss_inv/ensem{i}/fc{j}', m, step)
+
+
+class DqnCnnSSFwdPredictor(nn.Module):
+    def __init__(self, obs_shape, feature_dim):
+        super().__init__()
+
+        self.encoder = nn.Sequential(
+            nn.Conv2d(obs_shape[0], 32, kernel_size=8, stride=4),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(32, 64, kernel_size=4, stride=2),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(64, 64, kernel_size=3, stride=1),
+            nn.Flatten()
+        )  # (N, 4, 84, 84) -> (N, 64, 7, 7)
+
+        # Compute shape by doing one forward pass
+        with torch.no_grad():
+            flatten_dim = np.prod(
+                self.encoder(torch.zeros(1, *obs_shape)).shape[1:])
+
+        self.trunk = nn.Sequential(
+            nn.Linear(flatten_dim + 1, feature_dim),
+            nn.ReLU(inplace=True),
+            nn.Linear(feature_dim, flatten_dim)
+        )
+        self.apply(weight_init)
+
+        self.outputs = dict()  # log placeholder
+
+    def forward(self, obs, action, detach_encoder=False):
+        # detach_encoder allows to stop gradient propogation to encoder's convolutional layers
+        h = self.encoder(obs, detach=detach_encoder)
+
+        joint_h_act = torch.cat([h, action], dim=-1)
+        pred_next_h = self.trunk(joint_h_act)
+
+        self.outputs['pred_next_h'] = pred_next_h
+
+        return pred_next_h
+
+    def log(self, logger, step):
+        for k, v in self.outputs.items():
+            logger.log_histogram(f'train_ss_fwd/{k}_hist', v, step)
+
+        for i, m in enumerate(self.trunk):
+            if type(m) == nn.Linear:
+                logger.log_param(f'train_ss_fwd/fc{i}', m, step)
+
+
+class DqnCnnSSFwdPredictorEnsem(SelfSupervisedCnnFwdPredictor):
+    def __init__(self, obs_shape, feature_dim, num_comps):
+        super().__init__(obs_shape, feature_dim)
+        self.num_comps = num_comps
+
+        # Compute shape by doing one forward pass
+        with torch.no_grad():
+            flatten_dim = np.prod(
+                self.encoder(torch.zeros(1, *obs_shape)).shape[1:])
+
+        trunks = [self.trunk]
+        for _ in range(self.num_comps - 1):
+            trunk = nn.Sequential(
+                nn.Linear(flatten_dim + 1, feature_dim),
+                nn.ReLU(inplace=True),
+                nn.Linear(feature_dim, flatten_dim)
+            )
+            trunks.append(trunk)
+        self.trunks = nn.ModuleList(trunks)
+        self.apply(weight_init)
+
+    def forward(self, obs, action, detach_encoder=False, split_hidden=False):
+        """
+            split_hidden: split encoder outputs uniformly for each components
+        """
+        num_samples_each_slice = obs.shape[0] // self.num_comps if split_hidden else None
+
+        # detach_encoder allows to stop gradient propogation to encoder's convolutional layers
+        h = self.encoder(obs, detach=detach_encoder)
+
+        joint_h_act = torch.cat([h, action], dim=-1)
+        pred_next_hs = []
+        for idx, trunk in enumerate(self.trunks):
+            if split_hidden:
+                joint_h_act_slice = joint_h_act[idx * num_samples_each_slice:(idx + 1) * num_samples_each_slice]
+                pred_next_h = trunk(joint_h_act_slice)
+            else:
+                pred_next_h = trunk(joint_h_act)
+            self.outputs[f'pred_next_h{idx}'] = pred_next_h
+            pred_next_hs.append(pred_next_h)
+
+        pred_next_hs = torch.cat(pred_next_hs, dim=0)
+
+        return pred_next_hs
 
     def log(self, logger, step):
         for k, v in self.outputs.items():

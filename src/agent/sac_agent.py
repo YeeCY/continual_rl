@@ -10,7 +10,7 @@ from agent.network import ActorCnn, ActorMlp, CriticCnn, CriticMlp, CURL, \
 
 
 # TODO (chongyi zheng): delete this SAC Agent
-class SacSSAgent(object):
+class SacSSAgent:
     """
     SAC with an auxiliary self-supervised task.
     Based on https://github.com/denisyarats/pytorch_sac_ae
