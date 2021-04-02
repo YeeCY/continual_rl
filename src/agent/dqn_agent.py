@@ -102,6 +102,9 @@ class DqnCnnAgent:
     def schedule_exploration_rate(self, step, total_steps):
         self.exploration_rate = self.exploration_schedule(1.0 - float(step) / float(total_steps))
 
+        # log exploration rate after training begins
+        logger.log('train/exploration_rate', self.exploration_rate, step)
+
     def update_q_net(self, obs, action, reward, next_obs, not_done, logger, step):
         with torch.no_grad():
             # compute the next Q-values using the target network
@@ -124,7 +127,7 @@ class DqnCnnAgent:
         # Huber loss (less sensitive to outliers)
         q_net_loss = F.smooth_l1_loss(current_q_values, target_q_values)
 
-        logger.log('train_q_net/loss', q_net_loss, step)
+        logger.log('train/q_net_loss', q_net_loss, step)
 
         # optimize the Q network
         self.q_net_optimizer.zero_grad()
@@ -143,9 +146,6 @@ class DqnCnnAgent:
 
         if step % self.target_update_interval == 0:
             utils.soft_update_params(self.q_net, self.target_q_net, self.q_net_tau)
-
-        # log exploration rate after training begins
-        logger.log('train/exploration_rate', self.exploration_rate, step)
 
     def save(self, model_dir, step):
         torch.save(
@@ -274,7 +274,7 @@ class DqnCnnSSEnsembleAgent(DqnCnnAgent):
             self.ss_fwd_optimizer.step()
 
             self.ss_fwd_pred_ensem.log(logger, step)
-            logger.log('train_ss_fwd/loss', fwd_loss, step)
+            logger.log('train/ss_fwd_loss', fwd_loss, step)
 
         if self.use_inv:
             pred_logit = self.ss_inv_pred_ensem(obs, next_obs,
@@ -289,7 +289,7 @@ class DqnCnnSSEnsembleAgent(DqnCnnAgent):
             self.ss_inv_optimizer.step()
 
             self.ss_inv_pred_ensem.log(logger, step)
-            logger.log('train_ss_inv/loss', inv_loss, step)
+            logger.log('train/ss_inv_loss', inv_loss, step)
 
     def update(self, replay_buffer, logger, step):
         # TODO (chongyi zheng): fix duplication
