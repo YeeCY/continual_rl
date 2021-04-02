@@ -154,14 +154,15 @@ class DqnEncoder(nn.Module):
 			if type(trg_m) == type(src_m) == nn.Conv2d:
 				tie_weights(src=src_m, trg=trg_m)
 
-	def log(self):
+	def log(self, logger, step):
 		for k, v in self.outputs.items():
 			logger.log_histogram(f'train_dqn_encoder/{k}_hist', v, step)
 			if len(v.shape) > 2:
 				logger.log_image(f'train_dqn_encoder/{k}_img', v[0], step)
 
 		for i, m in enumerate(self.convs):
-			logger.log_param(f'train_dqn_encoder/conv{i}', m, step)
+			if type(m) == nn.Conv2d:
+				logger.log_param(f'train_dqn_encoder/conv{i}', m, step)
 
 # TODO (chongyi zheng): delete function 'make_encoder'
 # def make_encoder(obs_shape, feature_dim, num_layers, num_filters, num_shared_layers):

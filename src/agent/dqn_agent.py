@@ -278,14 +278,14 @@ class DqnCnnSSEnsembleAgent(DqnCnnAgent):
 
         if self.use_inv:
             pred_logit = self.ss_inv_pred_ensem(obs, next_obs,
-                                                detach_encoder=True, split_input=True)
-            inv_loss = F.cross_entropy(pred_logit, action)
+                                                detach_encoder=True, split_hidden=True)
+            inv_loss = F.cross_entropy(pred_logit, action.squeeze(-1).long())
 
             self.ss_inv_optimizer.zero_grad()
             inv_loss.backward()
             # TODO (chongyi zheng): Do we need to clip gradient norm?
             # clip gradient norm
-            torch.nn.utils.clip_grad_norm_(self.ss_fwd_pred_ensem.parameters(), self.max_grad_norm)
+            torch.nn.utils.clip_grad_norm_(self.ss_inv_pred_ensem.parameters(), self.max_grad_norm)
             self.ss_inv_optimizer.step()
 
             self.ss_inv_pred_ensem.log(logger, step)
