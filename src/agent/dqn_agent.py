@@ -95,7 +95,7 @@ class DqnCnnAgent:
                 action = q_values.argmax(dim=1).reshape(-1)
                 assert action.shape[0] == 1
 
-                action = utils.to_np(action[0])
+            action = utils.to_np(action[0])
 
         return action
 

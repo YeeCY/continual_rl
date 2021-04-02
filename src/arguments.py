@@ -34,8 +34,9 @@ def parse_args():
 	# agent
 	parser.add_argument('--init_steps', default=1000, type=int)
 	parser.add_argument('--num_train_iters', default=1, type=int)
+	parser.add_argument('--train_freq', default=1, type=int)  # 4 for dqn?
 	parser.add_argument('--train_steps', default=1000000, type=int)
-	parser.add_argument('--batch_size', default=128, type=int)
+	parser.add_argument('--batch_size', default=128, type=int)  # 32 for dqn?
 	parser.add_argument('--device', default='cuda', type=str)
 
 	# eval
@@ -88,9 +89,10 @@ def parse_args():
 	parser.add_argument('--dueling', default=True, action='store_false')
 	parser.add_argument('--exploration_fraction', default=0.1, type=float)
 	parser.add_argument('--exploration_initial_eps', default=1.0, type=float)
+	parser.add_argument('--exploration_final_eps', default=0.01, type=float)
 	parser.add_argument('--target_update_interval', default=1000, type=int)
 	parser.add_argument('--max_grad_norm', default=10, type=float)
-	parser.add_argument('--q_net_lr', default=3e-4, type=float)  # try 3e-4? 1e-4
+	parser.add_argument('--q_net_lr', default=1e-4, type=float)  # try 3e-4?
 	parser.add_argument('--q_net_tau', default=1.0, type=float)
 
 	# misc

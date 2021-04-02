@@ -27,6 +27,7 @@ def make_agent(obs_space, action_space, device, args):
         kwargs['dueling'] = args.dueling
         kwargs['exploration_fraction'] = args.exploration_fraction
         kwargs['exploration_initial_eps'] = args.exploration_initial_eps
+        kwargs['exploration_final_eps'] = args.exploration_final_eps
         kwargs['target_update_interval'] = args.target_update_interval
         kwargs['max_grad_norm'] = args.max_grad_norm
         kwargs['q_net_lr'] = args.q_net_lr

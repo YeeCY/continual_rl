@@ -178,7 +178,7 @@ def main(args):
             agent.schedule_exploration_rate(step, args.train_steps)
 
         # Run training update
-        if step >= args.init_steps:
+        if step >= args.init_steps and step % args.train_freq == 0:
             # TODO (chongyi zheng): Do we need multiple updates after initial data collection?
             # num_updates = args.init_steps if step == args.init_steps else 1
             # for _ in range(num_updates):

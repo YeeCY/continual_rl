@@ -72,10 +72,11 @@ class SquashedNormal(pyd.transformed_distribution.TransformedDistribution):
 
 
 def soft_update_params(net, target_net, tau):
-    for param, target_param in zip(net.parameters(), target_net.parameters()):
-        target_param.data.copy_(
-            tau * param.data + (1 - tau) * target_param.data
-        )
+    with torch.no_grad():
+        for param, target_param in zip(net.parameters(), target_net.parameters()):
+            target_param.data.copy_(
+                tau * param.data + (1 - tau) * target_param.data
+            )
 
 
 def set_seed_everywhere(seed):

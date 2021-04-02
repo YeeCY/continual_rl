@@ -131,7 +131,7 @@ class DqnEncoder(nn.Module):
 			nn.ReLU(inplace=True),
 			nn.Conv2d(64, 64, kernel_size=3, stride=1),
 			nn.Flatten()
-		)  # (N, 4, 84, 84) -> (N, 64, 7, 7)
+		)  # (N, 4, 84, 84) -> (N, 64 * 7 * 7)
 
 		self.outputs = dict()  # log placeholder
 
