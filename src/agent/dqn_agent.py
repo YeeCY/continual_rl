@@ -99,7 +99,7 @@ class DqnCnnAgent:
 
         return action
 
-    def schedule_exploration_rate(self, step, total_steps):
+    def schedule_exploration_rate(self, step, total_steps, logger):
         self.exploration_rate = self.exploration_schedule(1.0 - float(step) / float(total_steps))
 
         # log exploration rate after training begins

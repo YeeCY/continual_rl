@@ -175,7 +175,7 @@ def main(args):
                 action = agent.act(obs, sample=True)
 
         if 'dqn' in args.algo:
-            agent.schedule_exploration_rate(step, args.train_steps)
+            agent.schedule_exploration_rate(step, args.train_steps, logger)
 
         # Run training update
         if step >= args.init_steps and step % args.train_freq == 0:
