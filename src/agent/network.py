@@ -13,9 +13,9 @@ class QFunction(nn.Module):
 
         self.trunk = nn.Sequential(
             nn.Linear(obs_dim + action_dim, hidden_dim),
-            nn.ReLU(inplace=True),
+            nn.ReLU(),
             nn.Linear(hidden_dim, hidden_dim),
-            nn.ReLU(inplace=True),
+            nn.ReLU(),
             nn.Linear(hidden_dim, 1)
         )
 
@@ -59,7 +59,7 @@ class DQNCnn(nn.Module):
 
         self.trunk = nn.Sequential(
             nn.Linear(flatten_dim, feature_dim),
-            nn.ReLU(inplace=True),
+            nn.ReLU(),
             nn.Linear(feature_dim, action_shape)
         )
 
@@ -98,13 +98,13 @@ class DQNDuelingCnn(nn.Module):
 
         self.v_trunk = nn.Sequential(
             nn.Linear(flatten_dim, feature_dim),
-            nn.ReLU(inplace=True),
+            nn.ReLU(),
             nn.Linear(feature_dim, 1)
         )
 
         self.adv_trunk = nn.Sequential(
             nn.Linear(flatten_dim, feature_dim),
-            nn.ReLU(inplace=True),
+            nn.ReLU(),
             nn.Linear(feature_dim, action_shape)
         )
 
@@ -150,8 +150,8 @@ class ActorCnn(nn.Module):
         self.log_std_max = log_std_max
 
         self.trunk = nn.Sequential(
-            nn.Linear(self.encoder.feature_dim, hidden_dim), nn.ReLU(inplace=True),
-            nn.Linear(hidden_dim, hidden_dim), nn.ReLU(inplace=True),
+            nn.Linear(self.encoder.feature_dim, hidden_dim), nn.ReLU(),
+            nn.Linear(hidden_dim, hidden_dim), nn.ReLU(),
             nn.Linear(hidden_dim, 2 * action_shape[0])
         )
         self.apply(weight_init)
@@ -270,9 +270,9 @@ class ActorMlp(nn.Module):
 
         self.trunk = nn.Sequential(
             nn.Linear(obs_shape[0], hidden_dim),
-            nn.ReLU(inplace=True),
+            nn.ReLU(),
             nn.Linear(hidden_dim, hidden_dim),
-            nn.ReLU(inplace=True),
+            nn.ReLU(),
             nn.Linear(hidden_dim, 2 * action_shape[0])
         )
         self.apply(weight_init)
@@ -397,8 +397,8 @@ class FwdFunction(nn.Module):
         super().__init__()
 
         self.trunk = nn.Sequential(
-            nn.Linear(obs_dim + action_dim, hidden_dim), nn.ReLU(inplace=True),
-            nn.Linear(hidden_dim, hidden_dim), nn.ReLU(inplace=True),
+            nn.Linear(obs_dim + action_dim, hidden_dim), nn.ReLU(),
+            nn.Linear(hidden_dim, hidden_dim), nn.ReLU(),
             nn.Linear(hidden_dim, obs_dim)
         )
 
@@ -413,8 +413,8 @@ class InvFunction(nn.Module):
         super().__init__()
 
         self.trunk = nn.Sequential(
-            nn.Linear(2 * obs_dim, hidden_dim), nn.ReLU(inplace=True),
-            nn.Linear(hidden_dim, hidden_dim), nn.ReLU(inplace=True),
+            nn.Linear(2 * obs_dim, hidden_dim), nn.ReLU(),
+            nn.Linear(hidden_dim, hidden_dim), nn.ReLU(),
             nn.Linear(hidden_dim, action_dim)
         )
 
@@ -432,9 +432,9 @@ class SelfSupervisedCnnInvPredictor(nn.Module):
 
         self.trunk = nn.Sequential(
             nn.Linear(2 * encoder_feature_dim, hidden_dim),
-            nn.ReLU(inplace=True),
+            nn.ReLU(),
             nn.Linear(hidden_dim, hidden_dim),
-            nn.ReLU(inplace=True),
+            nn.ReLU(),
             nn.Linear(hidden_dim, action_shape[0])
         )
         self.apply(weight_init)
@@ -473,9 +473,9 @@ class SelfSupervisedCnnInvPredictorEnsem(SelfSupervisedCnnInvPredictor):
         for _ in range(self.num_comps - 1):
             trunk = nn.Sequential(
                 nn.Linear(2 * encoder_feature_dim, hidden_dim),
-                nn.ReLU(inplace=True),
+                nn.ReLU(),
                 nn.Linear(hidden_dim, hidden_dim),
-                nn.ReLU(inplace=True),
+                nn.ReLU(),
                 nn.Linear(hidden_dim, action_shape[0])
             )
             trunks.append(trunk)
@@ -526,9 +526,9 @@ class SelfSupervisedCnnFwdPredictor(nn.Module):
 
         self.trunk = nn.Sequential(
             nn.Linear(encoder_feature_dim + action_shape[0], hidden_dim),
-            nn.ReLU(inplace=True),
+            nn.ReLU(),
             nn.Linear(hidden_dim, hidden_dim),
-            nn.ReLU(inplace=True),
+            nn.ReLU(),
             nn.Linear(hidden_dim, encoder_feature_dim)
         )
         self.apply(weight_init)
@@ -566,9 +566,9 @@ class SelfSupervisedCnnFwdPredictorEnsem(SelfSupervisedCnnFwdPredictor):
         for _ in range(self.num_comps - 1):
             trunk = nn.Sequential(
                 nn.Linear(encoder_feature_dim + action_shape[0], hidden_dim),
-                nn.ReLU(inplace=True),
+                nn.ReLU(),
                 nn.Linear(hidden_dim, hidden_dim),
-                nn.ReLU(inplace=True),
+                nn.ReLU(),
                 nn.Linear(hidden_dim, encoder_feature_dim)
             )
             trunks.append(trunk)
@@ -615,9 +615,9 @@ class SelfSupervisedMlpInvPredictor(nn.Module):
 
         self.trunk = nn.Sequential(
             nn.Linear(2 * obs_shape[0], hidden_dim),
-            nn.ReLU(inplace=True),
+            nn.ReLU(),
             nn.Linear(hidden_dim, hidden_dim),
-            nn.ReLU(inplace=True),
+            nn.ReLU(),
             nn.Linear(hidden_dim, action_shape[0])
         )
         self.apply(weight_init)
@@ -650,9 +650,9 @@ class SelfSupervisedMlpInvPredictorEnsem(SelfSupervisedMlpInvPredictor):
         for _ in range(self.num_comps - 1):
             trunk = nn.Sequential(
                 nn.Linear(2 * obs_shape[0], hidden_dim),
-                nn.ReLU(inplace=True),
+                nn.ReLU(),
                 nn.Linear(hidden_dim, hidden_dim),
-                nn.ReLU(inplace=True),
+                nn.ReLU(),
                 nn.Linear(hidden_dim, action_shape[0])
             )
             trunks.append(trunk)
@@ -698,9 +698,9 @@ class SelfSupervisedMlpFwdPredictor(nn.Module):
 
         self.trunk = nn.Sequential(
             nn.Linear(obs_shape[0] + action_shape[0], hidden_dim),
-            nn.ReLU(inplace=True),
+            nn.ReLU(),
             nn.Linear(hidden_dim, hidden_dim),
-            nn.ReLU(inplace=True),
+            nn.ReLU(),
             nn.Linear(hidden_dim, obs_shape[0])
         )
         self.apply(weight_init)
@@ -733,9 +733,9 @@ class SelfSupervisedMlpFwdPredictorEnsem(SelfSupervisedMlpFwdPredictor):
         for _ in range(self.num_comps - 1):
             trunk = nn.Sequential(
                 nn.Linear(obs_shape[0] + action_shape[0], hidden_dim),
-                nn.ReLU(inplace=True),
+                nn.ReLU(),
                 nn.Linear(hidden_dim, hidden_dim),
-                nn.ReLU(inplace=True),
+                nn.ReLU(),
                 nn.Linear(hidden_dim, obs_shape[0])
             )
             trunks.append(trunk)
@@ -788,7 +788,7 @@ class DqnCnnSSInvPredictor(nn.Module):
 
         self.trunk = nn.Sequential(
             nn.Linear(2 * flatten_dim, feature_dim),
-            nn.ReLU(inplace=True),
+            nn.ReLU(),
             nn.Linear(feature_dim, action_shape)
         )
 
@@ -833,7 +833,7 @@ class DqnCnnSSInvPredictorEnsem(DqnCnnSSInvPredictor):
         for _ in range(self.num_comps - 1):
             trunk = nn.Sequential(
                 nn.Linear(2 * flatten_dim, feature_dim),
-                nn.ReLU(inplace=True),
+                nn.ReLU(),
                 nn.Linear(feature_dim, action_shape)
             )
             trunks.append(trunk)
@@ -891,7 +891,7 @@ class DqnCnnSSFwdPredictor(nn.Module):
 
         self.trunk = nn.Sequential(
             nn.Linear(flatten_dim + 1, feature_dim),
-            nn.ReLU(inplace=True),
+            nn.ReLU(),
             nn.Linear(feature_dim, flatten_dim)
         )
         self.apply(weight_init)
@@ -932,7 +932,7 @@ class DqnCnnSSFwdPredictorEnsem(SelfSupervisedCnnFwdPredictor):
         for _ in range(self.num_comps - 1):
             trunk = nn.Sequential(
                 nn.Linear(flatten_dim + 1, feature_dim),
-                nn.ReLU(inplace=True),
+                nn.ReLU(),
                 nn.Linear(feature_dim, flatten_dim)
             )
             trunks.append(trunk)
