@@ -101,8 +101,6 @@ class DqnCnnAgent:
 
     def schedule_exploration_rate(self, step, total_steps, logger):
         self.exploration_rate = self.exploration_schedule(1.0 - float(step) / float(total_steps))
-
-        # log exploration rate after training begins
         logger.log('train/exploration_rate', self.exploration_rate, step)
 
     def update_q_net(self, obs, action, reward, next_obs, not_done, logger, step):
@@ -303,7 +301,7 @@ class DqnCnnSSEnsembleAgent(DqnCnnAgent):
             utils.soft_update_params(self.q_net, self.target_q_net, self.q_net_tau)
 
         # log exploration rate after training begins
-        logger.log('train/exploration_rate', self.exploration_rate, step)
+        # logger.log('train/exploration_rate', self.exploration_rate, step)
 
         if (self.use_fwd or self.use_inv) and step % self.ss_update_freq == 0:
             self.update_ss_preds(obs, next_obs, action, logger, step)

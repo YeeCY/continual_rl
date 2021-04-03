@@ -58,12 +58,10 @@ def evaluate(env, agent, video, num_episodes, logger, step):
         logger.log('eval/episode_fwd_pred_var', np.mean(episode_fwd_pred_vars), step)
     if agent.use_inv:
         logger.log('eval/episode_inv_pred_var', np.mean(episode_inv_pred_vars), step)
-    logger.dump(step)
+    logger.dump(step, ty='eval')
 
 
 def main(args):
-    # Initialize environment
-    utils.set_seed_everywhere(args.seed)
     if args.env_type == 'atari':
         env = make_atari_env(
             env_name=args.env_name,
@@ -98,7 +96,8 @@ def main(args):
             camera_id=args.env_camera_id,
             mode=args.mode
         )
-
+    # Initialize environment
+    utils.set_seed_everywhere(args.seed, env=env, eval_env=eval_env)
     utils.make_dir(args.work_dir)
     model_dir = utils.make_dir(os.path.join(args.work_dir, 'model'))
     video_dir = utils.make_dir(os.path.join(args.work_dir, 'video'))
@@ -156,7 +155,7 @@ def main(args):
             if step > 0:
                 logger.log('train/duration', time.time() - start_time, step)
                 start_time = time.time()
-                logger.dump(step, save=(step > args.init_steps))
+                logger.dump(step, ty='train', save=(step > args.init_steps))
 
             logger.log('train/episode_reward', episode_reward, step)
 

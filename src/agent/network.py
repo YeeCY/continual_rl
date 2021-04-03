@@ -63,7 +63,7 @@ class DQNCnn(nn.Module):
             nn.Linear(feature_dim, action_shape)
         )
 
-        self.apply(weight_init)
+        # self.apply(weight_init)
 
         self.outputs = dict()  # log placeholder
 
@@ -108,7 +108,7 @@ class DQNDuelingCnn(nn.Module):
             nn.Linear(feature_dim, action_shape)
         )
 
-        self.apply(weight_init)
+        # self.apply(weight_init)
 
         self.outputs = dict()  # log placeholder
 
