@@ -294,7 +294,13 @@ class DqnCnnSSEnsembleAgent(DqnCnnAgent):
 
     def update(self, replay_buffer, logger, step):
         # TODO (chongyi zheng): fix duplication
-        obs, action, reward, next_obs, not_done = replay_buffer.sample(self.batch_size)
+        # obs, action, reward, next_obs, not_done = replay_buffer.sample(self.batch_size)
+        samples = replay_buffer.sample(self.batch_size)
+        obs = samples.observations
+        action = samples.actions
+        next_obs = samples.next_observations
+        not_done = 1.0 - samples.dones
+        reward = samples.rewards
 
         logger.log('train/batch_reward', reward.mean(), step)
 

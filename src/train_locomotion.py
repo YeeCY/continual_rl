@@ -109,12 +109,20 @@ def main(args):
     device = torch.device(args.device)
 
     if args.env_type == 'atari':
-        replay_buffer = buffers.FrameStackReplayBuffer(
-            obs_shape=env.observation_space.shape,
-            action_shape=env.action_space.n,
-            capacity=args.replay_buffer_capacity,
-            frame_stack=args.frame_stack,
-            device=device,
+        # replay_buffer = buffers.FrameStackReplayBuffer(
+        #     obs_shape=env.observation_space.shape,
+        #     action_shape=env.action_space.n,
+        #     capacity=args.replay_buffer_capacity,
+        #     frame_stack=args.frame_stack,
+        #     device=device,
+        #     optimize_memory_usage=True,
+        # )
+        from stable_baselines3.common.buffers import ReplayBuffer
+        replay_buffer = ReplayBuffer(
+            args.replay_buffer_capacity,
+            env.observation_space,
+            env.action_space,
+            device,
             optimize_memory_usage=True,
         )
     elif args.env_type == 'dmc_locomotion':
@@ -137,6 +145,7 @@ def main(args):
                     action_repeat=args.action_repeat,
                     save_tb=args.save_tb)
     episode, episode_reward, episode_step, done = 0, 0, 0, True
+    obs = env.reset()
     start_time = time.time()
     for step in range(args.train_steps + 1):
         # (chongyi zheng): we can also evaluate and save model when current episode is not finished
@@ -187,7 +196,12 @@ def main(args):
 
         # Take step
         next_obs, reward, done, _ = env.step(action)
-        replay_buffer.add(obs, action, reward, next_obs, float(done))
+        # replay_buffer.add(obs, action, reward, next_obs, done)
+        replay_buffer.add(np.expand_dims(obs, axis=0),
+                          np.expand_dims(next_obs, axis=0),
+                          np.expand_dims(action, axis=0),
+                          np.expand_dims(reward, axis=0),
+                          np.expand_dims(done, axis=0))
         episode_reward += reward
         obs = next_obs
         episode_step += 1
