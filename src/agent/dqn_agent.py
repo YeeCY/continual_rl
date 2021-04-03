@@ -99,7 +99,10 @@ class DqnCnnAgent:
 
         return action
 
-    def schedule_exploration_rate(self, step, total_steps, logger):
+    def on_step(self, step, total_steps, logger):
+        if step % self.target_update_interval == 0:
+            utils.soft_update_params(self.q_net, self.target_q_net, self.q_net_tau)
+
         self.exploration_rate = self.exploration_schedule(1.0 - float(step) / float(total_steps))
         logger.log('train/exploration_rate', self.exploration_rate, step)
 
@@ -120,7 +123,7 @@ class DqnCnnAgent:
         current_q_values = self.q_net(obs)
 
         # retrieve the q-values for the actions from the replay buffer
-        current_q_values = torch.gather(current_q_values, dim=-1, index=action.long())
+        current_q_values = torch.gather(current_q_values, dim=1, index=action.long())
 
         # Huber loss (less sensitive to outliers)
         q_net_loss = F.smooth_l1_loss(current_q_values, target_q_values)

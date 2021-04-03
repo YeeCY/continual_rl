@@ -174,7 +174,7 @@ def main(args):
                 action = agent.act(obs, sample=True)
 
         if 'dqn' in args.algo:
-            agent.schedule_exploration_rate(step, args.train_steps, logger)
+            agent.on_step(step, args.train_steps, logger)
 
         # Run training update
         if step >= args.init_steps and step % args.train_freq == 0:
@@ -183,7 +183,7 @@ def main(args):
             # for _ in range(num_updates):
             # 	agent.update(replay_buffer, logger, step)
             for _ in range(args.num_train_iters):
-                    agent.update(replay_buffer, logger, step)
+                agent.update(replay_buffer, logger, step)
 
         # Take step
         next_obs, reward, done, _ = env.step(action)
