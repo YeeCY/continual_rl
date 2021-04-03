@@ -79,13 +79,23 @@ def soft_update_params(net, target_net, tau):
             )
 
 
-def set_seed_everywhere(seed):
+def set_seed_everywhere(seed, env=None, eval_env=None):
+    # Seed python RNG
+    random.seed(seed)
+    # Seed numpy RNG
+    np.random.seed(seed)
+    # Seed torch
     torch.manual_seed(seed)
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(seed)
-    np.random.seed(seed)
-    random.seed(seed)
-
+    # Seed train env
+    if env is not None:
+        env.seed(seed)
+        env.action_space(seed)
+    # Seed evaluation env
+    if eval_env is not None:
+        eval_env.seed(seed)
+        eval_env.action_space(seed)
 
 def make_dir(dir_path):
     try:
