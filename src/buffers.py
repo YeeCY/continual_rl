@@ -37,7 +37,7 @@ class ReplayBuffer(object):
         else:
             self.next_obses = np.empty((capacity, *obs_shape), dtype=self.obs_dtype)
         if np.isscalar(action_shape):
-            self.actions = np.empty((capacity, 1), dtype=np.float32)
+            self.actions = np.empty((capacity, 1), dtype=np.int32)
         else:
             self.actions = np.empty((capacity, *action_shape), dtype=np.float32)
         self.rewards = np.empty((capacity, 1), dtype=np.float32)
@@ -112,7 +112,7 @@ class ReplayBuffer(object):
             next_obses = torch.as_tensor(self.obses[(idxs + 1) % self.capacity], device=self.device).float()
 
         obses = torch.as_tensor(self.obses[idxs], device=self.device).float()
-        actions = torch.as_tensor(self.actions[idxs], device=self.device)
+        actions = torch.as_tensor(self.actions[idxs], device=self.device).float()
         rewards = torch.as_tensor(self.rewards[idxs], device=self.device)
         not_dones = torch.as_tensor(self.not_dones[idxs], device=self.device)
 
@@ -287,7 +287,7 @@ class FrameStackReplayBuffer(ReplayBuffer):
             obses = torch.as_tensor(obses, device=self.device).float()
             next_obses = torch.as_tensor(next_obses, device=self.device).float()
 
-        actions = torch.as_tensor(self.actions[idxs], device=self.device)
+        actions = torch.as_tensor(self.actions[idxs], device=self.device).float()
         rewards = torch.as_tensor(self.rewards[idxs], device=self.device)
         not_dones = torch.as_tensor(self.not_dones[idxs], device=self.device)
 
