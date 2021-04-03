@@ -2,6 +2,7 @@ import torch
 from torch import nn
 import kornia
 import numpy as np
+import gym
 import psutil
 
 from utils import random_crop
@@ -16,9 +17,9 @@ class ReplayBuffer(object):
     - https://github.com/hill-a/stable-baselines/blob/master/stable_baselines/common/buffers.py
 
     """
-    def __init__(self, obs_shape, action_shape, capacity, device, optimize_memory_usage=False):
-        self.obs_shape = obs_shape
-        self.action_shape = action_shape
+    def __init__(self, obs_space, action_space, capacity, device, optimize_memory_usage=False):
+        self.obs_space = obs_space
+        self.action_space = action_space
         self.capacity = capacity
         self.device = device
         self.optimize_memory_usage = optimize_memory_usage
@@ -28,18 +29,23 @@ class ReplayBuffer(object):
             mem_available = psutil.virtual_memory().available
 
         # the proprioceptive obs is stored as float32, pixels obs as uint8
-        self.obs_dtype = np.float32 if len(obs_shape) == 1 else np.uint8
+        obs_shape = obs_space.shape
+        action_shape = action_space.shape
+        obs_type = obs_space.dtype
+        action_type = action_space.dtype
 
-        self.obses = np.empty((capacity, *obs_shape), dtype=self.obs_dtype)
+        self.obses = np.empty((capacity, *obs_shape), dtype=obs_type)
         if self.optimize_memory_usage:
             # `observations` contains also the next observation
             self.next_obses = None
         else:
-            self.next_obses = np.empty((capacity, *obs_shape), dtype=self.obs_dtype)
-        if np.isscalar(action_shape):
+            self.next_obses = np.empty((capacity, *obs_shape), dtype=obs_type)
+        if isinstance(action_space, gym.spaces.Discrete):
             self.actions = np.empty((capacity, 1), dtype=np.int32)
-        else:
+        elif isinstance(action_space, gym.spaces.Box):
             self.actions = np.empty((capacity, *action_shape), dtype=np.float32)
+        else:
+            raise TypeError(f"Unknown action space type: {type(action_space)}")
         self.rewards = np.empty((capacity, 1), dtype=np.float32)
         self.not_dones = np.empty((capacity, 1), dtype=np.float32)
 
