@@ -91,11 +91,9 @@ def set_seed_everywhere(seed, env=None, eval_env=None):
     # Seed train env
     if env is not None:
         env.seed(seed)
-        env.action_space(seed)
     # Seed evaluation env
     if eval_env is not None:
         eval_env.seed(seed)
-        eval_env.action_space(seed)
 
 def make_dir(dir_path):
     try:
