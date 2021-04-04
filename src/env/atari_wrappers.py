@@ -190,7 +190,8 @@ class WarpFrame(gym.ObservationWrapper):
         self.width = width
         self.height = height
         self.observation_space = spaces.Box(
-            low=0, high=255, shape=(self.height, self.width, 1), dtype=env.observation_space.dtype
+            low=0, high=255, shape=(self.height, self.width),
+            dtype=env.observation_space.dtype
         )
 
     def observation(self, frame: np.ndarray) -> np.ndarray:
@@ -202,7 +203,7 @@ class WarpFrame(gym.ObservationWrapper):
         """
         frame = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
         frame = cv2.resize(frame, (self.width, self.height), interpolation=cv2.INTER_AREA)
-        return frame[:, :, None]
+        return frame
 
 
 class AtariWrapper(gym.Wrapper):
