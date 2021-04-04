@@ -292,8 +292,6 @@ def wrap_deepmind(env_id,
     env = gym.make(env_id)
     env = NoopResetEnv(env, noop_max=noop_max)
     env = MaxAndSkipEnv(env, skip=frame_skip)
-    if episode_life:
-        env = EpisodicLifeEnv(env)
     if terminal_on_life_loss:
         env = EpisodicLifeEnv(env)
     if "FIRE" in env.unwrapped.get_action_meanings():
