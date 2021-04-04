@@ -1,6 +1,9 @@
+# (chongyi zheng): adapt from https://github.com/DLR-RM/stable-baselines3/blob/master/stable_baselines3/common/atari_wrappers.py
+
 import gym
 import numpy as np
 from gym import spaces
+from collections import deque
 
 try:
     import cv2  # pytype:disable=import-error
@@ -8,8 +11,6 @@ try:
     cv2.ocl.setUseOpenCL(False)
 except ImportError:
     cv2 = None
-
-from stable_baselines3.common.type_aliases import GymObs, GymStepReturn
 
 
 class NoopResetEnv(gym.Wrapper):
@@ -79,7 +80,7 @@ class EpisodicLifeEnv(gym.Wrapper):
         self.lives = 0
         self.was_real_done = True
 
-    def step(self, action: int) -> GymStepReturn:
+    def step(self, action: int):
         obs, reward, done, info = self.env.step(action)
         self.was_real_done = done
         # check current lives, make loss of life terminal,
@@ -150,7 +151,7 @@ class MaxAndSkipEnv(gym.Wrapper):
 
         return max_frame, total_reward, done, info
 
-    def reset(self, **kwargs) -> GymObs:
+    def reset(self, **kwargs):
         return self.env.reset(**kwargs)
 
 
