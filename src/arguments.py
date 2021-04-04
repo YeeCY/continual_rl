@@ -102,7 +102,7 @@ def parse_args():
 	parser.add_argument('--replay_buffer_capacity', default=1000000, type=int)  # (chongyi zheng), 100000
 	parser.add_argument('--save_model', default=False, action='store_true')
 	parser.add_argument('--save_video', default=False, action='store_true')
-	parser.add_argument('--log_freq', default=10000, type=int)
+	parser.add_argument('--log_freq', default=20000, type=int)
 	parser.add_argument('--save_tb', default=False, action='store_true')  # (chongyi zheng)
 
 	# pad
