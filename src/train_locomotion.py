@@ -110,8 +110,8 @@ def main(args):
 
     if args.env_type == 'atari':
         # replay_buffer = buffers.FrameStackReplayBuffer(
-        #     obs_shape=env.observation_space.shape,
-        #     action_shape=env.action_space.n,
+        #     obs_space=env.observation_space,
+        #     action_space=env.action_space,
         #     capacity=args.replay_buffer_capacity,
         #     frame_stack=args.frame_stack,
         #     device=device,

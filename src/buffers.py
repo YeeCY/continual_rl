@@ -3,6 +3,7 @@ from torch import nn
 import kornia
 import numpy as np
 import gym
+import copy
 import psutil
 
 from utils import random_crop
@@ -221,14 +222,16 @@ class FrameStackReplayBuffer(ReplayBuffer):
 
     Base on https://github.com/thu-ml/tianshou/blob/master/tianshou/data/buffer/base.py
     """
-    def __init__(self, obs_shape, action_shape, capacity, frame_stack, device, optimize_memory_usage=False):
-        if obs_shape[0] != 1:
+    def __init__(self, obs_space, action_space, capacity, frame_stack, device, optimize_memory_usage=False):
+        single_frame_obs_space = copy.deepcopy(obs_space)
+        if single_frame_obs_space.shape[0] != 1:
             # convert to single frame
-            obs_shape = list(obs_shape)
+            obs_shape = list(single_frame_obs_space.shape)
             obs_shape[0] = 1
-            obs_shape = tuple(obs_shape)
+            single_frame_obs_space.shape = tuple(obs_shape)
 
-        super().__init__(obs_shape, action_shape, capacity, device, optimize_memory_usage=optimize_memory_usage)
+        super().__init__(single_frame_obs_space, action_space, capacity, device,
+                         optimize_memory_usage=optimize_memory_usage)
         self.frame_stack = frame_stack
 
         # self.stack_frame_dists = np.empty((capacity, self.frame_stack), dtype=np.int32)
