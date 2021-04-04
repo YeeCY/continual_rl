@@ -218,6 +218,7 @@ class AugmentReplayBuffer(ReplayBuffer):
 
 
 class FrameStackReplayBuffer(ReplayBuffer):
+    # TODO (chongyi zheng): FrameStackReplayBuffer has bugs
     """Only store unique frames to save memory
 
     Base on https://github.com/thu-ml/tianshou/blob/master/tianshou/data/buffer/base.py
