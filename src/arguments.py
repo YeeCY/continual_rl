@@ -36,7 +36,7 @@ def parse_args():
 	parser.add_argument('--num_train_iters', default=1, type=int)
 	parser.add_argument('--train_freq', default=1, type=int)  # sac: 1, dqn: 4
 	parser.add_argument('--train_steps', default=1000000, type=int)
-	parser.add_argument('--batch_size', default=128, type=int)  # 32 for dqn?
+	parser.add_argument('--batch_size', default=128, type=int)  # sac: 128, dqn: 32
 	parser.add_argument('--device', default='cuda', type=str)
 
 	# eval
