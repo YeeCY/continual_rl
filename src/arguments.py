@@ -5,7 +5,8 @@ from agent import ALGOS
 
 ENV_TYPES = [
 	'atari',
-	'dmc_locomotion'
+	'dmc_locomotion',
+	'metaworld'
 ]
 
 

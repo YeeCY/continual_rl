@@ -3,7 +3,7 @@ import numpy as np
 import os
 
 from arguments import parse_args
-from env import make_atari_env, make_locomotion_env
+from env import make_atari_env, make_locomotion_env, make_single_metaworld_env
 from agent import make_agent
 import utils
 import buffers
@@ -96,6 +96,14 @@ def main(args):
             camera_id=args.env_camera_id,
             mode=args.mode
         )
+    elif args.env_type == 'metaworld':
+        env = make_single_metaworld_env(
+            env_name=args.env_name
+        )
+        eval_env = make_single_metaworld_env(
+            env_name=args.env_name
+        )
+
     # Initialize environment
     utils.set_seed_everywhere(args.seed, env=env, eval_env=eval_env)
     utils.make_dir(args.work_dir)
@@ -134,8 +142,8 @@ def main(args):
         # )
     elif args.env_type == 'dmc_locomotion':
         replay_buffer = buffers.ReplayBuffer(
-            obs_shape=env.observation_space.shape,
-            action_shape=env.action_space.shape,
+            obs_space=env.observation_space,
+            action_space=env.action_space,
             capacity=args.replay_buffer_capacity,
             device=device,
             optimize_memory_usage=True,

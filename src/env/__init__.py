@@ -1,4 +1,7 @@
 import dmc2gym
+import metaworld
+import random
+
 from env import dmc_wrappers
 from env import atari_wrappers
 
@@ -78,3 +81,11 @@ def make_atari_env(env_name, action_repeat=4, frame_stack=4):
         frame_skip=action_repeat,
         frame_stack=frame_stack
     )
+
+
+def make_single_metaworld_env(env_name):
+    mt1 = metaworld.MT1(env_name)
+    env = mt1.train_classes[env_name]()
+    task = random.choice(mt1.train_tasks)
+    env.set_task(task)
+    return env
