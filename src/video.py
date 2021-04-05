@@ -24,6 +24,10 @@ class VideoRecorder(object):
                 frame = env.render(mode='rgb_array')
                 frame = Image.fromarray(frame).resize([self.width, self.height])
                 frame = np.asarray(frame)
+            elif self.env_type == 'metaworld':
+                frame = env.render(mode='rgb_array')
+                frame = Image.fromarray(frame[:, :, ::-1]).resize([self.width, self.height])
+                frame = np.asarray(frame)
             elif self.env_type == 'dmc_locomotion':
                 frame = env.render(
                     mode='rgb_array',

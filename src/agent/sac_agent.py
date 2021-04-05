@@ -1085,7 +1085,7 @@ class DrQSacSSEnsembleAgent:
             # self.update_ss_preds(ensem_kwargs['obses'], ensem_kwargs['next_obses'], ensem_kwargs['actions'], L, step)
             self.update_ss_preds(obs, next_obs, action, logger, step)
             ss_preds_var = self.ss_preds_var(obs, next_obs, action)
-            logger.log('train/batch_ss_preds_var', ss_preds_var.mean(), step)
+            logger.log('train/batch_ss_pred_var', ss_preds_var.mean(), step)
 
     def save(self, model_dir, step):
         torch.save(

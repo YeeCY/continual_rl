@@ -15,6 +15,7 @@ from video import VideoRecorder
 def evaluate(env, agent, video, num_episodes, logger, step):
     """Evaluate agent"""
     episode_rewards = []
+    episode_success_rates = []
     episode_fwd_pred_vars = []
     episode_inv_pred_vars = []
     for episode in range(num_episodes):
@@ -25,19 +26,27 @@ def evaluate(env, agent, video, num_episodes, logger, step):
         obs_buf = []
         next_obs_buf = []
         action_buf = []
+        success_buf = []
         while not done:
             with utils.eval_mode(agent):
                 action = agent.act(obs, sample=False)
-            next_obs, reward, done, _ = env.step(action)
+            next_obs, reward, done, info = env.step(action)
+            if hasattr(env, 'max_path_length') and env.curr_path_length > env.max_path_length:  # metaworld
+                done = True
 
             obs_buf.append(obs)
             next_obs_buf.append(next_obs)
             action_buf.append(action)
             episode_reward += reward
+            if info.get('success') is not None:
+                success_buf.append(info.get('success'))
 
             video.record(env)
             obs = next_obs
         episode_rewards.append(episode_reward)
+        if len(success_buf) > 0:
+            episode_success_rates.append(np.sum(success_buf) / len(success_buf))
+
         if agent.use_fwd:
             episode_fwd_pred_vars.append(np.mean(
                 agent.ss_preds_var(
@@ -54,10 +63,12 @@ def evaluate(env, agent, video, num_episodes, logger, step):
             ))
         video.save('%d.mp4' % step)
     logger.log('eval/episode_reward', np.mean(episode_rewards), step)
+    if len(episode_success_rates) > 0:
+        logger.log('eval/episode_success_rate', np.mean(episode_success_rates), step)
     if agent.use_fwd:
-        logger.log('eval/episode_fwd_pred_var', np.mean(episode_fwd_pred_vars), step)
+        logger.log('eval/episode_ss_pred_var', np.mean(episode_fwd_pred_vars), step)
     if agent.use_inv:
-        logger.log('eval/episode_inv_pred_var', np.mean(episode_inv_pred_vars), step)
+        logger.log('eval/episode_ss_pred_var', np.mean(episode_inv_pred_vars), step)
     logger.dump(step, ty='eval')
 
 
@@ -160,6 +171,7 @@ def main(args):
                     action_repeat=args.action_repeat,
                     save_tb=args.save_tb)
     episode, episode_reward, episode_step, done = 0, 0, 0, True
+    success = []
     obs = env.reset()
     start_time = time.time()
     for step in range(args.train_steps + 1):
@@ -187,6 +199,10 @@ def main(args):
             episode_reward = 0
             episode_step = 0
             episode += 1
+            if len(success) > 0:
+                success_rate = np.sum(success) / len(success)
+                logger.log('train/success_rate', success_rate, step)
+                success.clear()
 
             logger.log('train/episode', episode, step)
 
@@ -210,7 +226,12 @@ def main(args):
                 agent.update(replay_buffer, logger, step)
 
         # Take step
-        next_obs, reward, done, _ = env.step(action)
+        next_obs, reward, done, info = env.step(action)
+        if hasattr(env, 'max_path_length') and env.curr_path_length > env.max_path_length:  # metaworld
+            done = True
+        if info.get('success') is not None:
+            success.append(info.get('success'))
+
         replay_buffer.add(obs, action, reward, next_obs, done)
         # replay_buffer.add(np.expand_dims(obs, axis=0),
         #                   np.expand_dims(next_obs, axis=0),

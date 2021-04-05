@@ -12,12 +12,19 @@ from termcolor import colored
 FORMAT_CONFIG = {
     'rl': {
         'train': [
-            ('episode', 'E', 'int'), ('step', 'S', 'int'),
-            ('duration', 'D', 'time'), ('episode_reward', 'R', 'float'),
-            ('batch_reward', 'BR', 'float'), ('actor_loss', 'ALOSS', 'float'),
-            ('critic_loss', 'CLOSS', 'float'), ('ae_loss', 'RLOSS', 'float')
+            ('episode', 'episode', 'int'), ('step', 'step', 'int'),
+            ('duration', 'duration', 'time'), ('episode_reward', 'return', 'float'),
+            ('batch_reward', 'batch_reward', 'float'), ('actor_loss', 'actor_loss', 'float'),
+            ('critic_loss', 'critic_loss', 'float'), ('ae_loss', 'ae_loss', 'float'),
+            ('ss_inv_loss', 'ss_inv_loss', 'float'),
+            ('batch_ss_pred_var', 'batch_ss_pred_var', 'float'),
+            ('success_rate', 'success_rate', 'float')
         ],
-        'eval': [('step', 'S', 'int'), ('episode_reward', 'ER', 'float')]
+        'eval': [
+            ('step', 'step', 'int'), ('episode_reward', 'return', 'float'),
+            ('episode_ss_pred_var', 'ss_pred_var', 'float'),
+            ('episode_success_rate', 'success_rate', 'float'),
+        ]
     }
 }
 
