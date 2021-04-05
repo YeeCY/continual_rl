@@ -186,7 +186,8 @@ def main(args):
         # Save agent periodically
         if step % args.save_freq == 0 and step > 0:
             if args.save_model:
-                agent.save(model_dir, step)
+                # agent.save(model_dir, step)
+                pass
 
         if done:
             if step > 0:
