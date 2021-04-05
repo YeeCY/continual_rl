@@ -117,21 +117,21 @@ def main(args):
         #     device=device,
         #     optimize_memory_usage=True,
         # )
-        # from stable_baselines3.common.buffers import ReplayBuffer
-        # replay_buffer = ReplayBuffer(
-        #     args.replay_buffer_capacity,
-        #     env.observation_space,
-        #     env.action_space,
-        #     device,
-        #     optimize_memory_usage=True,
-        # )
-        replay_buffer = buffers.ReplayBuffer(
-            obs_space=env.observation_space,
-            action_space=env.action_space,
-            capacity=args.replay_buffer_capacity,
-            device=device,
+        from stable_baselines3.common.buffers import ReplayBuffer
+        replay_buffer = ReplayBuffer(
+            args.replay_buffer_capacity,
+            env.observation_space,
+            env.action_space,
+            device,
             optimize_memory_usage=True,
         )
+        # replay_buffer = buffers.ReplayBuffer(
+        #     obs_space=env.observation_space,
+        #     action_space=env.action_space,
+        #     capacity=args.replay_buffer_capacity,
+        #     device=device,
+        #     optimize_memory_usage=True,
+        # )
     elif args.env_type == 'dmc_locomotion':
         replay_buffer = buffers.ReplayBuffer(
             obs_shape=env.observation_space.shape,
@@ -203,12 +203,12 @@ def main(args):
 
         # Take step
         next_obs, reward, done, _ = env.step(action)
-        replay_buffer.add(obs, action, reward, next_obs, done)
-        # replay_buffer.add(np.expand_dims(obs, axis=0),
-        #                   np.expand_dims(next_obs, axis=0),
-        #                   np.expand_dims(action, axis=0),
-        #                   np.expand_dims(reward, axis=0),
-        #                   np.expand_dims(done, axis=0))
+        # replay_buffer.add(obs, action, reward, next_obs, done)
+        replay_buffer.add(np.expand_dims(obs, axis=0),
+                          np.expand_dims(next_obs, axis=0),
+                          np.expand_dims(action, axis=0),
+                          np.expand_dims(reward, axis=0),
+                          np.expand_dims(done, axis=0))
         episode_reward += reward
         obs = next_obs
         episode_step += 1

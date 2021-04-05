@@ -46,10 +46,6 @@ class DQNCnn(nn.Module):
         super().__init__()
         assert obs_shape == (4, 84, 84), "invalid observation shape"
 
-        # self.preprocess = nn.Sequential(
-        #     NormalizeImg()
-        # )
-
         self.encoder = DqnEncoder(obs_shape)
 
         # Compute shape by doing one forward pass

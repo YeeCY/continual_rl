@@ -21,8 +21,8 @@ class DqnCnnAgent:
             obs_shape,
             action_shape,
             device,
-            double_q=True,
-            dueling=True,
+            double_q=False,
+            dueling=False,
             feature_dim=512,
             discount=0.99,
             exploration_fraction=0.1,
@@ -69,10 +69,12 @@ class DqnCnnAgent:
                 obs_shape, action_shape, feature_dim).to(self.device)
 
         self.target_q_net.load_state_dict(self.q_net.state_dict())
+        for param in self.target_q_net.parameters():
+            param.requires_grad = False
 
         # dqn optimizers
         self.q_net_optimizer = torch.optim.Adam(
-            self.q_net.parameters(), lr=self.q_net_lr)
+            self.q_net.parameters(), lr=self.q_net_lr, eps=0.00015)
 
         self.train()
         self.target_q_net.train()
@@ -115,7 +117,10 @@ class DqnCnnAgent:
                 best_next_actions = torch.argmax(self.q_net(next_obs), dim=-1)
                 next_q_values = next_q_values.gather(1, best_next_actions.unsqueeze(-1))
             else:
-                next_q_values = next_q_values.max(dim=1, keepdims=True)[0]
+                # Follow greedy policy: use the one with the highest value
+                next_q_values, _ = next_q_values.max(dim=1)
+                # Avoid potential broadcast issue
+                next_q_values = next_q_values.reshape(-1, 1)
             # 1-step TD target
             target_q_values = reward + not_done * self.discount * next_q_values
 
@@ -131,7 +136,7 @@ class DqnCnnAgent:
         logger.log('train/q_net_loss', q_net_loss, step)
 
         # optimize the Q network
-        self.q_net_optimizer.zero_grad()
+        self.q_net.zero_grad()
         q_net_loss.backward()
         # TODO (chongyi zheng): Do we need to clip gradient norm?
         # clip gradient norm
@@ -145,8 +150,8 @@ class DqnCnnAgent:
 
         self.update_q_net(obs, action, reward, next_obs, not_done, logger, step)
 
-        if step % self.target_update_interval == 0:
-            utils.soft_update_params(self.q_net, self.target_q_net, self.q_net_tau)
+        # if step % self.target_update_interval == 0:
+        #     utils.soft_update_params(self.q_net, self.target_q_net, self.q_net_tau)
 
     def save(self, model_dir, step):
         torch.save(
@@ -294,20 +299,20 @@ class DqnCnnSSEnsembleAgent(DqnCnnAgent):
 
     def update(self, replay_buffer, logger, step):
         # TODO (chongyi zheng): fix duplication
-        obs, action, reward, next_obs, not_done = replay_buffer.sample(self.batch_size)
-        # samples = replay_buffer.sample(self.batch_size)
-        # obs = samples.observations
-        # action = samples.actions
-        # next_obs = samples.next_observations
-        # not_done = 1.0 - samples.dones
-        # reward = samples.rewards
+        # obs, action, reward, next_obs, not_done = replay_buffer.sample(self.batch_size)
+        samples = replay_buffer.sample(self.batch_size)
+        obs = samples.observations
+        action = samples.actions
+        next_obs = samples.next_observations
+        not_done = 1.0 - samples.dones
+        reward = samples.rewards
 
         logger.log('train/batch_reward', reward.mean(), step)
 
         self.update_q_net(obs, action, reward, next_obs, not_done, logger, step)
 
-        if step % self.target_update_interval == 0:
-            utils.soft_update_params(self.q_net, self.target_q_net, self.q_net_tau)
+        # if step % self.target_update_interval == 0:
+        #     utils.soft_update_params(self.q_net, self.target_q_net, self.q_net_tau)
 
         # log exploration rate after training begins
         # logger.log('train/exploration_rate', self.exploration_rate, step)
