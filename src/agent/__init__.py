@@ -25,13 +25,14 @@ def make_agent(obs_space, action_space, device, args):
         kwargs['feature_dim'] = args.encoder_feature_dim
         kwargs['double_q'] = args.double_q
         kwargs['dueling'] = args.dueling
-        kwargs['exploration_fraction'] = args.exploration_fraction
+        kwargs['exploration_anneal_steps'] = args.exploration_anneal_steps
         kwargs['exploration_initial_eps'] = args.exploration_initial_eps
         kwargs['exploration_final_eps'] = args.exploration_final_eps
         kwargs['target_update_interval'] = args.target_update_interval
         kwargs['max_grad_norm'] = args.max_grad_norm
-        kwargs['q_net_lr'] = args.q_net_lr
-        kwargs['q_net_tau'] = args.q_net_tau
+        kwargs['q_net_opt_lr'] = args.q_net_opt_lr
+        kwargs['q_net_opt_alpha'] = args.q_net_opt_alpha
+        kwargs['q_net_opt_eps'] = args.q_net_opt_eps
 
         agent = DqnCnnSSEnsembleAgent(**kwargs)
     elif 'sac' in args.algo:

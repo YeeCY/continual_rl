@@ -3,7 +3,7 @@ import torch
 import torch.nn.functional as F
 
 import utils
-from agent.utils import get_linear_fn
+from agent.utils import LinearSchedule
 
 from agent.network import DqnCnnSSFwdPredictorEnsem, DqnCnnSSInvPredictorEnsem, \
     DQNCnn, DQNDuelingCnn
@@ -25,13 +25,14 @@ class DqnCnnAgent:
             dueling=False,
             feature_dim=512,
             discount=0.99,
-            exploration_fraction=0.1,
+            exploration_anneal_steps=int(1e6),
             exploration_initial_eps=1.0,
-            exploration_final_eps=0.05,
-            target_update_interval=10000,
-            max_grad_norm=10,
-            q_net_lr=1e-4,
-            q_net_tau=1.0,
+            exploration_final_eps=0.01,
+            target_update_interval=40000,
+            max_grad_norm=5,
+            q_net_opt_lr=2.5e-4,
+            q_net_opt_alpha=0.95,
+            q_net_opt_eps=0.01,
             batch_size=32,
     ):
         self.obs_shape = obs_shape
@@ -40,18 +41,17 @@ class DqnCnnAgent:
         self.double_q = double_q
         self.dueling = dueling
         self.discount = discount
-        self.exploration_fraction = exploration_fraction
+        self.exploration_anneal_steps = exploration_anneal_steps
         self.exploration_initial_eps = exploration_initial_eps
         self.exploration_final_eps = exploration_final_eps
         self.target_update_interval = target_update_interval
         self.max_grad_norm = max_grad_norm
-        self.q_net_lr = q_net_lr
-        self.q_net_tau = q_net_tau
-        # "epsilon" for the epsilon-greedy exploration
-        self.exploration_rate = 0.0
-        # Linear schedule will be defined in `_setup_model()`
-        self.exploration_schedule = get_linear_fn(
-            self.exploration_initial_eps, self.exploration_final_eps, self.exploration_fraction
+        self.q_net_opt_lr = q_net_opt_lr
+        self.q_net_opt_alpha = q_net_opt_alpha
+        self.q_net_opt_eps = q_net_opt_eps
+        self.exploration_rate = 1.0  # "epsilon" for the epsilon-greedy exploration
+        self.exploration_schedule = LinearSchedule(
+            self.exploration_initial_eps, self.exploration_final_eps, self.exploration_anneal_steps
         )
         self.batch_size = batch_size
 
@@ -67,14 +67,14 @@ class DqnCnnAgent:
                 obs_shape, action_shape, feature_dim).to(self.device)
             self.target_q_net = DQNCnn(
                 obs_shape, action_shape, feature_dim).to(self.device)
-
         self.target_q_net.load_state_dict(self.q_net.state_dict())
-        for param in self.target_q_net.parameters():
-            param.requires_grad = False
 
         # dqn optimizers
-        self.q_net_optimizer = torch.optim.Adam(
-            self.q_net.parameters(), lr=self.q_net_lr, eps=0.00015)
+        self.q_net_optimizer = torch.optim.RMSprop(
+            self.q_net.parameters(),
+            lr=self.q_net_opt_lr, alpha=self.q_net_opt_alpha,
+            eps=self.q_net_opt_eps, centered=True
+        )
 
         self.train()
         self.target_q_net.train()
@@ -83,11 +83,10 @@ class DqnCnnAgent:
         self.training = training
         self.q_net.train(training)
 
-    def act(self, obs, sample=False):
-        # sample = True indicates exploration
+    def act(self, obs, exploration=False):
         # TODO (chongyi zheng)
-        if sample and np.random.rand() < self.exploration_rate:
-            action = np.random.randint(low=0, high=self.action_shape)
+        if exploration and np.random.rand() < self.exploration_rate:
+            action = np.random.randint(self.action_shape)
         else:
             with torch.no_grad():
                 obs = torch.FloatTensor(obs).to(self.device)
@@ -101,24 +100,22 @@ class DqnCnnAgent:
 
         return action
 
-    def on_step(self, step, total_steps, logger):
-        if step % self.target_update_interval == 0:
-            utils.soft_update_params(self.q_net, self.target_q_net, self.q_net_tau)
-
-        self.exploration_rate = self.exploration_schedule(1.0 - float(step) / float(total_steps))
+    def schedule_exploration_rate(self, step, logger):
+        # TODO (chongyi zheng): update exploration rate
+        self.exploration_rate = self.exploration_schedule()
         logger.log('train/exploration_rate', self.exploration_rate, step)
 
     def update_q_net(self, obs, action, reward, next_obs, not_done, logger, step):
         with torch.no_grad():
             # compute the next Q-values using the target network
-            next_q_values = self.target_q_net(next_obs)
+            next_q_values = self.target_q_net(next_obs).detach()
             # follow greedy policy: use the one with the highest value
             if self.double_q:
                 best_next_actions = torch.argmax(self.q_net(next_obs), dim=-1)
                 next_q_values = next_q_values.gather(1, best_next_actions.unsqueeze(-1))
             else:
                 # Follow greedy policy: use the one with the highest value
-                next_q_values, _ = next_q_values.max(dim=1)
+                next_q_values = next_q_values.max(dim=1)[0]
                 # Avoid potential broadcast issue
                 next_q_values = next_q_values.reshape(-1, 1)
             # 1-step TD target
@@ -128,7 +125,7 @@ class DqnCnnAgent:
         current_q_values = self.q_net(obs)
 
         # retrieve the q-values for the actions from the replay buffer
-        current_q_values = torch.gather(current_q_values, dim=1, index=action.long())
+        current_q_values = current_q_values.gather(1, index=action.long())
 
         # Huber loss (less sensitive to outliers)
         q_net_loss = F.smooth_l1_loss(current_q_values, target_q_values)
@@ -136,10 +133,8 @@ class DqnCnnAgent:
         logger.log('train/q_net_loss', q_net_loss, step)
 
         # optimize the Q network
-        self.q_net.zero_grad()
+        self.q_net_optimizer.zero_grad()
         q_net_loss.backward()
-        # TODO (chongyi zheng): Do we need to clip gradient norm?
-        # clip gradient norm
         torch.nn.utils.clip_grad_norm_(self.q_net.parameters(), self.max_grad_norm)
         self.q_net_optimizer.step()
 
@@ -150,8 +145,9 @@ class DqnCnnAgent:
 
         self.update_q_net(obs, action, reward, next_obs, not_done, logger, step)
 
-        # if step % self.target_update_interval == 0:
-        #     utils.soft_update_params(self.q_net, self.target_q_net, self.q_net_tau)
+        # update target q network
+        if step % self.target_update_interval == 0:
+            self.target_q_net.load_state_dict(self.q_net.state_dict())
 
     def save(self, model_dir, step):
         torch.save(
@@ -173,13 +169,14 @@ class DqnCnnSSEnsembleAgent(DqnCnnAgent):
                  dueling=True,
                  feature_dim=512,
                  discount=0.99,
-                 exploration_fraction=0.1,
+                 exploration_anneal_steps=int(1e6),
                  exploration_initial_eps=1.0,
-                 exploration_final_eps=0.05,
-                 target_update_interval=10000,
-                 max_grad_norm=10,
-                 q_net_lr=1e-4,
-                 q_net_tau=1.0,
+                 exploration_final_eps=0.01,
+                 target_update_interval=40000,
+                 max_grad_norm=5,
+                 q_net_opt_lr=2.5e-4,
+                 q_net_opt_alpha=0.95,
+                 q_net_opt_eps=0.01,
                  use_fwd=False,
                  use_inv=False,
                  ss_lr=1e-3,
@@ -193,13 +190,14 @@ class DqnCnnSSEnsembleAgent(DqnCnnAgent):
                          dueling=dueling,
                          feature_dim=feature_dim,
                          discount=discount,
-                         exploration_fraction=exploration_fraction,
+                         exploration_anneal_steps=exploration_anneal_steps,
                          exploration_initial_eps=exploration_initial_eps,
                          exploration_final_eps=exploration_final_eps,
                          target_update_interval=target_update_interval,
                          max_grad_norm=max_grad_norm,
-                         q_net_lr=q_net_lr,
-                         q_net_tau=q_net_tau,
+                         q_net_opt_lr=q_net_opt_lr,
+                         q_net_opt_alpha=q_net_opt_alpha,
+                         q_net_opt_eps=q_net_opt_eps,
                          batch_size=batch_size)
         self.use_fwd = use_fwd
         self.use_inv = use_inv
@@ -299,23 +297,21 @@ class DqnCnnSSEnsembleAgent(DqnCnnAgent):
 
     def update(self, replay_buffer, logger, step):
         # TODO (chongyi zheng): fix duplication
-        # obs, action, reward, next_obs, not_done = replay_buffer.sample(self.batch_size)
-        samples = replay_buffer.sample(self.batch_size)
-        obs = samples.observations
-        action = samples.actions
-        next_obs = samples.next_observations
-        not_done = 1.0 - samples.dones
-        reward = samples.rewards
+        obs, action, reward, next_obs, not_done = replay_buffer.sample(self.batch_size)
+        # samples = replay_buffer.sample(self.batch_size)
+        # obs = samples.observations
+        # action = samples.actions
+        # next_obs = samples.next_observations
+        # not_done = 1.0 - samples.dones
+        # reward = samples.rewards
 
         logger.log('train/batch_reward', reward.mean(), step)
 
         self.update_q_net(obs, action, reward, next_obs, not_done, logger, step)
 
-        # if step % self.target_update_interval == 0:
-        #     utils.soft_update_params(self.q_net, self.target_q_net, self.q_net_tau)
-
-        # log exploration rate after training begins
-        # logger.log('train/exploration_rate', self.exploration_rate, step)
+        # update target q network
+        if step % self.target_update_interval == 0:
+            self.target_q_net.load_state_dict(self.q_net.state_dict())
 
         if (self.use_fwd or self.use_inv) and step % self.ss_update_freq == 0:
             self.update_ss_preds(obs, next_obs, action, logger, step)

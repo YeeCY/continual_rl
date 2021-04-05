@@ -32,9 +32,9 @@ def parse_args():
 	parser.add_argument('--episode_length', default=1000, type=int)
 
 	# agent
-	parser.add_argument('--init_steps', default=1000, type=int)
+	parser.add_argument('--init_steps', default=1000, type=int)  # sac: 1000, dqn: 50000
 	parser.add_argument('--num_train_iters', default=1, type=int)
-	parser.add_argument('--train_freq', default=1, type=int)  # 4 for dqn?
+	parser.add_argument('--train_freq', default=1, type=int)  # sac: 1, dqn: 4
 	parser.add_argument('--train_steps', default=1000000, type=int)
 	parser.add_argument('--batch_size', default=128, type=int)  # 32 for dqn?
 	parser.add_argument('--device', default='cuda', type=str)
@@ -47,7 +47,7 @@ def parse_args():
 
 	# algorithm common
 	parser.add_argument('--discount', default=0.99, type=float)
-	parser.add_argument('--encoder_feature_dim', default=50, type=int)
+	parser.add_argument('--encoder_feature_dim', default=50, type=int)  # sac: 50, dqn: 512
 	# parser.add_argument('--encoder_lr', default=1e-3, type=float)  # TODO (chongyi zheng): delete this line
 	# parser.add_argument('--encoder_tau', default=0.05, type=float)  # TODO (chongyi zheng): delete this line
 
@@ -87,19 +87,20 @@ def parse_args():
 	# dqn
 	parser.add_argument('--double_q', default=False, action='store_true')
 	parser.add_argument('--dueling', default=False, action='store_true')
-	parser.add_argument('--exploration_fraction', default=0.1, type=float)
+	parser.add_argument('--exploration_anneal_steps', default=1000000, type=int)
 	parser.add_argument('--exploration_initial_eps', default=1.0, type=float)
 	parser.add_argument('--exploration_final_eps', default=0.01, type=float)
-	parser.add_argument('--target_update_interval', default=1000, type=int)
-	parser.add_argument('--max_grad_norm', default=10, type=float)
-	parser.add_argument('--q_net_lr', default=1e-4, type=float)  # try 3e-4?
-	parser.add_argument('--q_net_tau', default=1.0, type=float)
+	parser.add_argument('--target_update_interval', default=40000, type=int)
+	parser.add_argument('--max_grad_norm', default=5, type=float)
+	parser.add_argument('--q_net_opt_lr', default=2.5e-4, type=float)
+	parser.add_argument('--q_net_opt_alpha', default=0.95, type=float)
+	parser.add_argument('--q_net_opt_eps', default=0.01, type=float)
 
 	# misc
 	parser.add_argument('--seed', default=1, type=int)
 	parser.add_argument('--work_dir', default=None, type=str)
 	parser.add_argument('--load_checkpoint', default=None, type=str)
-	parser.add_argument('--replay_buffer_capacity', default=1000000, type=int)  # (chongyi zheng), 100000
+	parser.add_argument('--replay_buffer_capacity', default=1000000, type=int)  # (chongyi zheng): 100000
 	parser.add_argument('--save_model', default=False, action='store_true')
 	parser.add_argument('--save_video', default=False, action='store_true')
 	parser.add_argument('--log_freq', default=20000, type=int)
