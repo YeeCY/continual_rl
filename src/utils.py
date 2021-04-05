@@ -95,6 +95,7 @@ def set_seed_everywhere(seed, env=None, eval_env=None):
     if eval_env is not None:
         eval_env.seed(seed)
 
+
 def make_dir(dir_path):
     try:
         os.makedirs(dir_path)

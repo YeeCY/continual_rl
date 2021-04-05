@@ -26,8 +26,9 @@ def evaluate(env, agent, video, num_episodes, logger, step):
         next_obs_buf = []
         action_buf = []
         while not done:
-            with utils.eval_mode(agent):
-                action = agent.act(obs, sample=False)
+            # with utils.eval_mode(agent):
+            #     action = agent.act(obs, sample=False)
+            action, _ = agent.predict(obs, deterministic=True)
             next_obs, reward, done, _ = env.step(action)
 
             obs_buf.append(obs)
@@ -38,26 +39,26 @@ def evaluate(env, agent, video, num_episodes, logger, step):
             video.record(env)
             obs = next_obs
         episode_rewards.append(episode_reward)
-        if agent.use_fwd:
-            episode_fwd_pred_vars.append(np.mean(
-                agent.ss_preds_var(
-                    np.asarray(obs_buf, dtype=obs.dtype),
-                    np.asarray(next_obs_buf, dtype=obs.dtype),
-                    np.asarray(action_buf, dtype=action.dtype))
-            ))
-        if agent.use_inv:
-            episode_inv_pred_vars.append(np.mean(
-                agent.ss_preds_var(
-                    np.asarray(obs_buf, dtype=obs.dtype),
-                    np.asarray(next_obs_buf, dtype=obs.dtype),
-                    np.asarray(action_buf, dtype=action.dtype))
-            ))
+        # if agent.use_fwd:
+        #     episode_fwd_pred_vars.append(np.mean(
+        #         agent.ss_preds_var(
+        #             np.asarray(obs_buf, dtype=obs.dtype),
+        #             np.asarray(next_obs_buf, dtype=obs.dtype),
+        #             np.asarray(action_buf, dtype=action.dtype))
+        #     ))
+        # if agent.use_inv:
+        #     episode_inv_pred_vars.append(np.mean(
+        #         agent.ss_preds_var(
+        #             np.asarray(obs_buf, dtype=obs.dtype),
+        #             np.asarray(next_obs_buf, dtype=obs.dtype),
+        #             np.asarray(action_buf, dtype=action.dtype))
+        #     ))
         video.save('%d.mp4' % step)
     logger.log('eval/episode_reward', np.mean(episode_rewards), step)
-    if agent.use_fwd:
-        logger.log('eval/episode_fwd_pred_var', np.mean(episode_fwd_pred_vars), step)
-    if agent.use_inv:
-        logger.log('eval/episode_inv_pred_var', np.mean(episode_inv_pred_vars), step)
+    # if agent.use_fwd:
+    #     logger.log('eval/episode_fwd_pred_var', np.mean(episode_fwd_pred_vars), step)
+    # if agent.use_inv:
+    #     logger.log('eval/episode_inv_pred_var', np.mean(episode_inv_pred_vars), step)
     logger.dump(step, ty='eval')
 
 
@@ -105,47 +106,67 @@ def main(args):
                           height=448, width=448, camera_id=args.video_camera_id)
 
     # Prepare agent
-    assert torch.cuda.is_available(), 'must have cuda enabled'
+    # assert torch.cuda.is_available(), 'must have cuda enabled'
     device = torch.device(args.device)
 
-    if args.env_type == 'atari':
-        # replay_buffer = buffers.FrameStackReplayBuffer(
-        #     obs_space=env.observation_space,
-        #     action_space=env.action_space,
-        #     capacity=args.replay_buffer_capacity,
-        #     frame_stack=args.frame_stack,
-        #     device=device,
-        #     optimize_memory_usage=True,
-        # )
-        from stable_baselines3.common.buffers import ReplayBuffer
-        replay_buffer = ReplayBuffer(
-            args.replay_buffer_capacity,
-            env.observation_space,
-            env.action_space,
-            device,
-            optimize_memory_usage=True,
-        )
-        # replay_buffer = buffers.ReplayBuffer(
-        #     obs_space=env.observation_space,
-        #     action_space=env.action_space,
-        #     capacity=args.replay_buffer_capacity,
-        #     device=device,
-        #     optimize_memory_usage=True,
-        # )
-    elif args.env_type == 'dmc_locomotion':
-        replay_buffer = buffers.ReplayBuffer(
-            obs_shape=env.observation_space.shape,
-            action_shape=env.action_space.shape,
-            capacity=args.replay_buffer_capacity,
-            device=device,
-            optimize_memory_usage=True,
-        )
-    agent = make_agent(
-        obs_space=env.observation_space,
-        action_space=env.action_space,
-        device=device,
-        args=args
-    )
+    # if args.env_type == 'atari':
+    #     # replay_buffer = buffers.FrameStackReplayBuffer(
+    #     #     obs_space=env.observation_space,
+    #     #     action_space=env.action_space,
+    #     #     capacity=args.replay_buffer_capacity,
+    #     #     frame_stack=args.frame_stack,
+    #     #     device=device,
+    #     #     optimize_memory_usage=True,
+    #     # )
+    #     from stable_baselines3.common.buffers import ReplayBuffer
+    #     replay_buffer = ReplayBuffer(
+    #         args.replay_buffer_capacity,
+    #         env.observation_space,
+    #         env.action_space,
+    #         device,
+    #         optimize_memory_usage=True,
+    #     )
+    #     # replay_buffer = buffers.ReplayBuffer(
+    #     #     obs_space=env.observation_space,
+    #     #     action_space=env.action_space,
+    #     #     capacity=args.replay_buffer_capacity,
+    #     #     device=device,
+    #     #     optimize_memory_usage=True,
+    #     # )
+    # elif args.env_type == 'dmc_locomotion':
+    #     replay_buffer = buffers.ReplayBuffer(
+    #         obs_shape=env.observation_space.shape,
+    #         action_shape=env.action_space.shape,
+    #         capacity=args.replay_buffer_capacity,
+    #         device=device,
+    #         optimize_memory_usage=True,
+    #     )
+    # agent = make_agent(
+    #     obs_space=env.observation_space,
+    #     action_space=env.action_space,
+    #     device=device,
+    #     args=args
+    # )
+    from stable_baselines3.dqn import DQN
+    from stable_baselines3.dqn.policies import CnnPolicy
+    agent = DQN(CnnPolicy,
+                env,
+                learning_rate=args.q_net_lr,
+                buffer_size=args.replay_buffer_capacity,
+                learning_starts=args.init_steps,
+                batch_size=args.batch_size,
+                tau=args.q_net_tau,
+                gamma=args.discount,
+                train_freq=args.train_freq,
+                gradient_steps=args.num_train_iters,
+                optimize_memory_usage=True,
+                target_update_interval=args.target_update_interval,
+                exploration_fraction=args.exploration_fraction,
+                exploration_initial_eps=args.exploration_initial_eps,
+                exploration_final_eps=args.exploration_final_eps,
+                max_grad_norm=args.max_grad_norm,
+                seed=args.seed,
+                device=device)
 
     logger = Logger(args.work_dir,
                     log_frequency=args.log_freq,
@@ -186,29 +207,35 @@ def main(args):
         if step < args.init_steps:
             action = env.action_space.sample()
         else:
-            with utils.eval_mode(agent):
-                action = agent.act(obs, sample=True)
+            # with utils.eval_mode(agent):
+            #     action = agent.act(obs, sample=True)
+            action, _ = agent.predict(obs, deterministic=False)
 
         if 'dqn' in args.algo:
-            agent.on_step(step, args.train_steps, logger)
+            # agent.on_step(step, args.train_steps, logger)
+            agent._update_current_progress_remaining(step, args.train_steps)
+            agent._on_step()
 
         # Run training update
-        if step >= args.init_steps and step % args.train_freq == 0:
+        if step > args.init_steps and step % args.train_freq == 0:
             # TODO (chongyi zheng): Do we need multiple updates after initial data collection?
             # num_updates = args.init_steps if step == args.init_steps else 1
             # for _ in range(num_updates):
             # 	agent.update(replay_buffer, logger, step)
-            for _ in range(args.num_train_iters):
-                agent.update(replay_buffer, logger, step)
+            # for _ in range(args.num_train_iters):
+            #     agent.update(replay_buffer, logger, step)
+            agent.train(batch_size=args.batch_size, gradient_steps=args.num_train_iters)
 
         # Take step
         next_obs, reward, done, _ = env.step(action)
+        agent.replay_buffer.add(obs, next_obs, action, reward, done)
         # replay_buffer.add(obs, action, reward, next_obs, done)
-        replay_buffer.add(np.expand_dims(obs, axis=0),
-                          np.expand_dims(next_obs, axis=0),
-                          np.expand_dims(action, axis=0),
-                          np.expand_dims(reward, axis=0),
-                          np.expand_dims(done, axis=0))
+        # replay_buffer.add(np.expand_dims(obs, axis=0),
+        #                   np.expand_dims(next_obs, axis=0),
+        #                   np.expand_dims(action, axis=0),
+        #                   np.expand_dims(reward, axis=0),
+        #                   np.expand_dims(done, axis=0))
+
         episode_reward += reward
         obs = next_obs
         episode_step += 1
