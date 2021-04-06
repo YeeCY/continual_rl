@@ -98,6 +98,8 @@ def main(args):
             mode=args.mode
         )
     # Initialize environment
+    if args.seed is None:
+        args.seed = np.random.randint(int(1e9))
     utils.set_seed_everywhere(args.seed, env=env, eval_env=eval_env)
     utils.make_dir(args.work_dir)
     model_dir = utils.make_dir(os.path.join(args.work_dir, 'model'))
