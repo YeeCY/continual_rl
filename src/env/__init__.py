@@ -1,5 +1,6 @@
 import dmc2gym
 from env import dmc_wrappers
+import numpy as np
 # from env import atari_wrappers
 
 
@@ -79,20 +80,42 @@ def make_locomotion_env(
 #         frame_stack=frame_stack
 #     )
 from src.env.atari_wrappers import make_atari, wrap_deepmind
+from src.env.atari_wrappers import FrameStack as FrameStack_
 import gym
 from gym.spaces import Box
 
 
 def make_atari_env(env_id):
     env = make_atari(env_id)
+    env = OriginalReturnWrapper(env)
     env = wrap_deepmind(env,
                         episode_life=True,
-                        clip_rewards=True,
-                        frame_stack=True,
+                        clip_rewards=False,
+                        frame_stack=False,
                         scale=False)
     env = TransposeImage(env)
+    env = FrameStack(env, 4)
 
     return env
+
+
+class OriginalReturnWrapper(gym.Wrapper):
+    def __init__(self, env):
+        gym.Wrapper.__init__(self, env)
+        self.total_rewards = 0
+
+    def step(self, action):
+        obs, reward, done, info = self.env.step(action)
+        self.total_rewards += reward
+        if done:
+            info['episodic_return'] = self.total_rewards
+            self.total_rewards = 0
+        else:
+            info['episodic_return'] = None
+        return obs, reward, done, info
+
+    def reset(self):
+        return self.env.reset()
 
 
 class TransposeImage(gym.ObservationWrapper):
@@ -107,3 +130,36 @@ class TransposeImage(gym.ObservationWrapper):
 
     def observation(self, observation):
         return observation.transpose(2, 0, 1)
+
+class FrameStack(FrameStack_):
+    def __init__(self, env, k):
+        FrameStack_.__init__(self, env, k)
+
+    def _get_ob(self):
+        assert len(self.frames) == self.k
+        return LazyFrames(list(self.frames))
+
+
+# The original LayzeFrames doesn't work well
+class LazyFrames(object):
+    def __init__(self, frames):
+        """This object ensures that common frames between the observations are only stored once.
+        It exists purely to optimize memory usage which can be huge for DQN's 1M frames replay
+        buffers.
+
+        This object should only be converted to numpy array before being passed to the model.
+
+        You'd not believe how complex the previous solution was."""
+        self._frames = frames
+
+    def __array__(self, dtype=None):
+        out = np.concatenate(self._frames, axis=0)
+        if dtype is not None:
+            out = out.astype(dtype)
+        return out
+
+    def __len__(self):
+        return len(self.__array__())
+
+    def __getitem__(self, i):
+        return self.__array__()[i]

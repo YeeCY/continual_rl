@@ -126,7 +126,6 @@ class NatureConvBody(nn.Module):
             self.fc4.reset_noise()
 
     def forward(self, x):
-        x = x.float() / 255
         y = F.relu(self.conv1(x))
         y = F.relu(self.conv2(y))
         y = F.relu(self.conv3(y))
@@ -144,6 +143,7 @@ class CategoricalNet(nn.Module):
         self.body = body
 
     def forward(self, x):
+        x = x.float() / 255
         phi = self.body(x)
         pre_prob = self.fc_categorical(phi).view((-1, self.action_dim, self.num_atoms))
         prob = F.softmax(pre_prob, dim=-1)

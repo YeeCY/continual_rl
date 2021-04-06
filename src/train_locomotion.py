@@ -214,10 +214,10 @@ def main(args):
         next_obs, reward, done, _ = env.step(action)
         # agent.replay_buffer.add(obs, next_obs, action, reward, done)
         # replay_buffer.add(obs, action, reward, next_obs, done)
-        replay_buffer.add(np.expand_dims(obs, axis=0),
-                          np.expand_dims(next_obs, axis=0),
+        replay_buffer.add(np.expand_dims(np.asarray(obs), axis=0),
+                          np.expand_dims(np.asarray(next_obs), axis=0),
                           np.expand_dims(action, axis=0),
-                          np.expand_dims(reward, axis=0),
+                          np.expand_dims(np.sign(reward), axis=0),
                           np.expand_dims(done, axis=0))
 
         episode_reward += reward
