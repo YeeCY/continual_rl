@@ -87,14 +87,17 @@ def parse_args():
 	# dqn
 	parser.add_argument('--double_q', default=False, action='store_true')
 	parser.add_argument('--dueling', default=False, action='store_true')
-	parser.add_argument('--exploration_anneal_steps', default=1000000, type=int)
+	parser.add_argument('--exploration_anneal_steps', default=int(1e6), type=int)
 	parser.add_argument('--exploration_initial_eps', default=1.0, type=float)
 	parser.add_argument('--exploration_final_eps', default=0.01, type=float)
 	parser.add_argument('--target_update_interval', default=40000, type=int)
-	parser.add_argument('--max_grad_norm', default=5, type=float)
+	parser.add_argument('--max_grad_norm', default=0.5, type=float)
+	parser.add_argument('--categorical_n_atoms', default=51, type=int)
+	parser.add_argument('--config.categorical_v_min', default=-10, type=int)
+	parser.add_argument('--config.categorical_v_max', default=10, type=int)
 	parser.add_argument('--q_net_opt_lr', default=2.5e-4, type=float)
 	parser.add_argument('--q_net_opt_alpha', default=0.95, type=float)
-	parser.add_argument('--q_net_opt_eps', default=0.01, type=float)
+	parser.add_argument('--q_net_opt_eps', default=0.01 / 32, type=float)
 
 	# misc
 	parser.add_argument('--seed', default=1, type=int)

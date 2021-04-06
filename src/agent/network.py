@@ -61,23 +61,11 @@ class DQNCnn(nn.Module):
 
         self.apply(weight_init)
 
-        self.outputs = dict()  # log placeholder
-
     def forward(self, obs):
         h = self.encoder(obs)
         q_values = self.trunk(h)
 
-        self.outputs['q_values'] = q_values
-
         return q_values
-
-    def log(self, logger, step):
-        for k, v in self.outputs.items():
-            logger.log_histogram(f'train_dqn/{k}_hist', v, step)
-
-        for i, m in enumerate(self.trunk):
-            if type(m) == nn.Linear:
-                logger.log_param(f'train_dqn/fc{i}', m, step)
 
 
 class DQNDuelingCnn(nn.Module):
@@ -106,8 +94,6 @@ class DQNDuelingCnn(nn.Module):
 
         self.apply(weight_init)
 
-        self.outputs = dict()  # log placeholder
-
     def forward(self, obs):
         h = self.encoder(obs)
         values = self.v_trunk(h)
@@ -116,17 +102,7 @@ class DQNDuelingCnn(nn.Module):
             advantages - advantages.mean(-1, keepdim=True)
         )
 
-        self.outputs['q_values'] = q_values
-
         return q_values
-
-    def log(self, logger, step):
-        for k, v in self.outputs.items():
-            logger.log_histogram(f'train_dueling_dqn/{k}_hist', v, step)
-
-        for i, m in enumerate(self.trunk):
-            if type(m) == nn.Linear:
-                logger.log_param(f'train_dueling_dqn/fc{i}', m, step)
 
 
 class ActorCnn(nn.Module):
@@ -151,8 +127,6 @@ class ActorCnn(nn.Module):
             nn.Linear(hidden_dim, 2 * action_shape[0])
         )
         self.apply(weight_init)
-
-        self.outputs = dict()  # log placeholder
 
     # TODO (chongyi zheng): delete this version of 'forward'
     # def forward(self, obs, compute_pi=True, compute_log_pi=True, detach_encoder=False):
@@ -195,20 +169,9 @@ class ActorCnn(nn.Module):
         log_std = self.log_std_min + 0.5 * (self.log_std_max - self.log_std_min) * (log_std + 1)
         std = log_std.exp()
 
-        self.outputs['mu'] = mu
-        self.outputs['std'] = std
-
         dist = SquashedNormal(mu, std)
 
         return dist
-
-    def log(self, logger, step):
-        for k, v in self.outputs.items():
-            logger.log_histogram(f'train_actor/{k}_hist', v, step)
-
-        for i, m in enumerate(self.trunk):
-            if type(m) == nn.Linear:
-                logger.log_param(f'train_actor/fc{i}', m, step)
 
 
 class CriticCnn(nn.Module):
@@ -228,8 +191,6 @@ class CriticCnn(nn.Module):
         self.Q2 = QFunction(encoder_feature_dim, action_shape[0], hidden_dim)
         self.apply(weight_init)
 
-        self.outputs = dict()  # log placeholder
-
     def forward(self, obs, action, detach_encoder=False):
         # (chongyi zheng): propagate critic gradients into encoder's convolutional layers
         obs = self.encoder(obs, detach=detach_encoder)
@@ -237,23 +198,7 @@ class CriticCnn(nn.Module):
         q1 = self.Q1(obs, action)
         q2 = self.Q2(obs, action)
 
-        self.outputs['q1'] = q1
-        self.outputs['q2'] = q2
-
         return q1, q2
-
-    def log(self, logger, step):
-        self.encoder.log(logger, step)
-
-        for k, v in self.outputs.items():
-            logger.log_histogram(f'train_critic/{k}_hist', v, step)
-
-        assert len(self.Q1.trunk) == len(self.Q2.trunk)
-        for i, (m1, m2) in enumerate(zip(self.Q1.trunk, self.Q2.trunk)):
-            assert type(m1) == type(m2)
-            if type(m1) is nn.Linear:
-                logger.log_param(f'train_critic/q1_fc{i}', m1, step)
-                logger.log_param(f'train_critic/q2_fc{i}', m2, step)
 
 
 class ActorMlp(nn.Module):
@@ -272,8 +217,6 @@ class ActorMlp(nn.Module):
             nn.Linear(hidden_dim, 2 * action_shape[0])
         )
         self.apply(weight_init)
-
-        self.outputs = dict()  # log placeholder
 
     def forward(self, obs, compute_pi=True, compute_log_pi=True):
         mu, log_std = self.trunk(obs).chunk(2, dim=-1)
@@ -298,9 +241,6 @@ class ActorMlp(nn.Module):
 
         mu, pi, log_pi = squash(mu, pi, log_pi)
 
-        self.outputs['mu'] = mu
-        self.outputs['log_std'] = log_std
-
         return mu, pi, log_pi, log_std
 
     # def forward(self, obs):
@@ -318,14 +258,6 @@ class ActorMlp(nn.Module):
     #
     #     return dist
 
-    def log(self, logger, step):
-        for k, v in self.outputs.items():
-            logger.log_histogram(f'train_actor/{k}_hist', v, step)
-
-        for i, m in enumerate(self.trunk):
-            if type(m) == nn.Linear:
-                logger.log_param(f'train_actor/fc{i}', m, step)
-
 
 class CriticMlp(nn.Module):
     """Critic network with MLP, employes two q-functions."""
@@ -336,27 +268,11 @@ class CriticMlp(nn.Module):
         self.Q2 = QFunction(obs_shape[0], action_shape[0], hidden_dim)
         self.apply(weight_init)
 
-        self.outputs = dict()  # log placeholder
-
     def forward(self, obs, action):
         q1 = self.Q1(obs, action)
         q2 = self.Q2(obs, action)
 
-        self.outputs['q1'] = q1
-        self.outputs['q2'] = q2
-
         return q1, q2
-
-    def log(self, logger, step):
-        for k, v in self.outputs.items():
-            logger.log_histogram(f'train_critic/{k}_hist', v, step)
-
-        assert len(self.Q1.trunk) == len(self.Q2.trunk)
-        for i, (m1, m2) in enumerate(zip(self.Q1.trunk, self.Q2.trunk)):
-            assert type(m1) == type(m2)
-            if type(m1) is nn.Linear:
-                logger.log_param(f'train_critic/q1_fc{i}', m1, step)
-                logger.log_param(f'train_critic/q2_fc{i}', m2, step)
 
 
 class CURL(nn.Module):
@@ -435,8 +351,6 @@ class SelfSupervisedCnnInvPredictor(nn.Module):
         )
         self.apply(weight_init)
 
-        self.outputs = dict()  # log placeholder
-
     def forward(self, obs, next_obs, detach_encoder=False):
         # detach_encoder allows to stop gradient propogation to encoder's convolutional layers
         h = self.encoder(obs, detach=detach_encoder)
@@ -445,17 +359,7 @@ class SelfSupervisedCnnInvPredictor(nn.Module):
         joint_h = torch.cat([h, next_h], dim=-1)
         pred_action = self.trunk(joint_h)
 
-        self.outputs['pred_action'] = pred_action
-
         return pred_action
-
-    def log(self, logger, step):
-        for k, v in self.outputs.items():
-            logger.log_histogram(f'train_ss_inv/{k}_hist', v, step)
-
-        for i, m in enumerate(self.trunk):
-            if type(m) == nn.Linear:
-                logger.log_param(f'train_ss_inv/fc{i}', m, step)
 
 
 class SelfSupervisedCnnInvPredictorEnsem(SelfSupervisedCnnInvPredictor):
@@ -496,21 +400,11 @@ class SelfSupervisedCnnInvPredictorEnsem(SelfSupervisedCnnInvPredictor):
                 pred_action = trunk(joint_h_slice)
             else:
                 pred_action = trunk(joint_h)
-            self.outputs[f'pred_action{idx}'] = pred_action
             pred_actions.append(pred_action)
 
         pred_actions = torch.cat(pred_actions, dim=0)
 
         return pred_actions
-
-    def log(self, logger, step):
-        for k, v in self.outputs.items():
-            logger.log_histogram(f'train_ss_inv/{k}_hist', v, step)
-
-        for i, trunk in enumerate(self.trunks):
-            for j, m in enumerate(trunk):
-                if type(m) == nn.Linear:
-                    logger.log_param(f'train_ss_inv/ensem{i}/fc{j}', m, step)
 
 
 class SelfSupervisedCnnFwdPredictor(nn.Module):
@@ -529,8 +423,6 @@ class SelfSupervisedCnnFwdPredictor(nn.Module):
         )
         self.apply(weight_init)
 
-        self.outputs = dict()  # log placeholder
-
     def forward(self, obs, action, detach_encoder=False):
         # detach_encoder allows to stop gradient propogation to encoder's convolutional layers
         h = self.encoder(obs, detach=detach_encoder)
@@ -538,17 +430,7 @@ class SelfSupervisedCnnFwdPredictor(nn.Module):
         joint_h_act = torch.cat([h, action], dim=-1)
         pred_h_next = self.trunk(joint_h_act)
 
-        self.outputs['pred_h_next'] = pred_h_next
-
         return pred_h_next
-
-    def log(self, logger, step):
-        for k, v in self.outputs.items():
-            logger.log_histogram(f'train_ss_fwd/{k}_hist', v, step)
-
-        for i, m in enumerate(self.trunk):
-            if type(m) == nn.Linear:
-                logger.log_param(f'train_ss_fwd/fc{i}', m, step)
 
 
 class SelfSupervisedCnnFwdPredictorEnsem(SelfSupervisedCnnFwdPredictor):
@@ -588,21 +470,11 @@ class SelfSupervisedCnnFwdPredictorEnsem(SelfSupervisedCnnFwdPredictor):
                 pred_next_h = trunk(joint_h_act_slice)
             else:
                 pred_next_h = trunk(joint_h_act)
-            self.outputs[f'pred_next_h{idx}'] = pred_next_h
             pred_next_hs.append(pred_next_h)
 
         pred_next_hs = torch.cat(pred_next_hs, dim=0)
 
         return pred_next_hs
-
-    def log(self, logger, step):
-        for k, v in self.outputs.items():
-            logger.log_histogram(f'train_ss_fwd/{k}_hist', v, step)
-
-        for i, trunk in enumerate(self.trunks):
-            for j, m in enumerate(trunk):
-                if type(m) == nn.Linear:
-                    logger.log_param(f'train_ss_fwd/ensem{i}/fc{j}', m, step)
 
 
 class SelfSupervisedMlpInvPredictor(nn.Module):
@@ -618,23 +490,11 @@ class SelfSupervisedMlpInvPredictor(nn.Module):
         )
         self.apply(weight_init)
 
-        self.outputs = dict()  # log placeholder
-
     def forward(self, obs, next_obs):
         joint_obs = torch.cat([obs, next_obs], dim=-1)
         pred_action = self.trunk(joint_obs)
 
-        self.outputs['pred_action'] = pred_action
-
         return pred_action
-
-    def log(self, logger, step):
-        for k, v in self.outputs.items():
-            logger.log_histogram(f'train_ss_inv/{k}_hist', v, step)
-
-        for i, m in enumerate(self.trunk):
-            if type(m) == nn.Linear:
-                logger.log_param(f'train_ss_inv/fc{i}', m, step)
 
 
 class SelfSupervisedMlpInvPredictorEnsem(SelfSupervisedMlpInvPredictor):
@@ -671,21 +531,11 @@ class SelfSupervisedMlpInvPredictorEnsem(SelfSupervisedMlpInvPredictor):
                 pred_action = trunk(joint_obs[idx])
             else:
                 pred_action = trunk(joint_obs)
-            self.outputs[f'pred_action{idx}'] = pred_action
             pred_actions.append(pred_action)
 
         pred_actions = torch.cat(pred_actions, dim=0)
 
         return pred_actions
-
-    def log(self, logger, step):
-        for k, v in self.outputs.items():
-            logger.log_histogram(f'train_ss_inv/{k}_hist', v, step)
-
-        for i, trunk in enumerate(self.trunks):
-            for j, m in enumerate(trunk):
-                if type(m) == nn.Linear:
-                    logger.log_param(f'train_ss_inv/ensem{i}/fc{j}', m, step)
 
 
 class SelfSupervisedMlpFwdPredictor(nn.Module):
@@ -701,23 +551,11 @@ class SelfSupervisedMlpFwdPredictor(nn.Module):
         )
         self.apply(weight_init)
 
-        self.outputs = dict()  # log placeholder
-
     def forward(self, obs, action):
         joint_obs_act = torch.cat([obs, action], dim=-1)
         pred_next_obs = self.trunk(joint_obs_act)
 
-        self.outputs['pred_next_obs'] = pred_next_obs
-
         return pred_next_obs
-
-    def log(self, logger, step):
-        for k, v in self.outputs.items():
-            logger.log_histogram(f'train_ss_fwd/{k}_hist', v, step)
-
-        for i, m in enumerate(self.trunk):
-            if type(m) == nn.Linear:
-                logger.log_param(f'train_ss_fwd/fc{i}', m, step)
 
 
 class SelfSupervisedMlpFwdPredictorEnsem(SelfSupervisedMlpFwdPredictor):
@@ -754,21 +592,11 @@ class SelfSupervisedMlpFwdPredictorEnsem(SelfSupervisedMlpFwdPredictor):
                 pred_next_obs = trunk(joint_obs_act[idx])
             else:
                 pred_next_obs = trunk(joint_obs_act)
-            self.outputs[f'pred_next_obs{idx}'] = pred_next_obs
             pred_next_obss.append(pred_next_obs)
 
         pred_next_obss = torch.cat(pred_next_obss, dim=0)
 
         return pred_next_obss
-
-    def log(self, logger, step):
-        for k, v in self.outputs.items():
-            logger.log_histogram(f'train_ss_fwd/{k}_hist', v, step)
-
-        for i, trunk in enumerate(self.trunks):
-            for j, m in enumerate(trunk):
-                if type(m) == nn.Linear:
-                    logger.log_param(f'train_ss_fwd/ensem{i}/fc{j}', m, step)
 
 
 class DqnCnnSSInvPredictor(nn.Module):
@@ -790,8 +618,6 @@ class DqnCnnSSInvPredictor(nn.Module):
 
         self.apply(weight_init)
 
-        self.outputs = dict()  # log placeholder
-
     def forward(self, obs, next_obs, detach_encoder=False):
         # detach_encoder allows to stop gradient propogation to encoder's convolutional layers
         h = self.encoder(obs, detach=detach_encoder)
@@ -800,19 +626,7 @@ class DqnCnnSSInvPredictor(nn.Module):
         joint_h = torch.cat([h, next_h], dim=-1)
         pred_logit = self.trunk(joint_h)
 
-        self.outputs['pred_logit'] = pred_logit
-
         return pred_logit
-
-    def log(self, logger, step):
-        self.encoder.log(logger, step)
-
-        for k, v in self.outputs.items():
-            logger.log_histogram(f'train_ss_inv/{k}_hist', v, step)
-
-        for i, m in enumerate(self.trunk):
-            if type(m) == nn.Linear:
-                logger.log_param(f'train_ss_inv/fc{i}', m, step)
 
 
 class DqnCnnSSInvPredictorEnsem(DqnCnnSSInvPredictor):
@@ -855,23 +669,11 @@ class DqnCnnSSInvPredictorEnsem(DqnCnnSSInvPredictor):
                 pred_logit = trunk(joint_h_slice)
             else:
                 pred_logit = trunk(joint_h)
-            self.outputs[f'pred_logit{idx}'] = pred_logit
             pred_logits.append(pred_logit)
 
         pred_logits = torch.cat(pred_logits, dim=0)
 
         return pred_logits
-
-    def log(self, logger, step):
-        self.encoder.log(logger, step)
-
-        for k, v in self.outputs.items():
-            logger.log_histogram(f'train_ss_inv/{k}_hist', v, step)
-
-        for i, trunk in enumerate(self.trunks):
-            for j, m in enumerate(trunk):
-                if type(m) == nn.Linear:
-                    logger.log_param(f'train_ss_inv/ensem{i}/fc{j}', m, step)
 
 
 class DqnCnnSSFwdPredictor(nn.Module):
@@ -892,8 +694,6 @@ class DqnCnnSSFwdPredictor(nn.Module):
         )
         self.apply(weight_init)
 
-        self.outputs = dict()  # log placeholder
-
     def forward(self, obs, action, detach_encoder=False):
         # detach_encoder allows to stop gradient propogation to encoder's convolutional layers
         h = self.encoder(obs, detach=detach_encoder)
@@ -901,17 +701,7 @@ class DqnCnnSSFwdPredictor(nn.Module):
         joint_h_act = torch.cat([h, action], dim=-1)
         pred_next_h = self.trunk(joint_h_act)
 
-        self.outputs['pred_next_h'] = pred_next_h
-
         return pred_next_h
-
-    def log(self, logger, step):
-        for k, v in self.outputs.items():
-            logger.log_histogram(f'train_ss_fwd/{k}_hist', v, step)
-
-        for i, m in enumerate(self.trunk):
-            if type(m) == nn.Linear:
-                logger.log_param(f'train_ss_fwd/fc{i}', m, step)
 
 
 class DqnCnnSSFwdPredictorEnsem(SelfSupervisedCnnFwdPredictor):
@@ -952,18 +742,8 @@ class DqnCnnSSFwdPredictorEnsem(SelfSupervisedCnnFwdPredictor):
                 pred_next_h = trunk(joint_h_act_slice)
             else:
                 pred_next_h = trunk(joint_h_act)
-            self.outputs[f'pred_next_h{idx}'] = pred_next_h
             pred_next_hs.append(pred_next_h)
 
         pred_next_hs = torch.cat(pred_next_hs, dim=0)
 
         return pred_next_hs
-
-    def log(self, logger, step):
-        for k, v in self.outputs.items():
-            logger.log_histogram(f'train_ss_fwd/{k}_hist', v, step)
-
-        for i, trunk in enumerate(self.trunks):
-            for j, m in enumerate(trunk):
-                if type(m) == nn.Linear:
-                    logger.log_param(f'train_ss_fwd/ensem{i}/fc{j}', m, step)
