@@ -101,6 +101,55 @@ class DqnCategoricalCnn(nn.Module):
 
         return prob, log_prob
 
+def layer_init(layer, w_scale=1.0):
+    nn.init.orthogonal_(layer.weight.data)
+    layer.weight.data.mul_(w_scale)
+    nn.init.constant_(layer.bias.data, 0)
+    return layer
+
+
+class NatureConvBody(nn.Module):
+    def __init__(self, in_channels=4, noisy_linear=False):
+        super(NatureConvBody, self).__init__()
+        self.feature_dim = 512
+        self.conv1 = layer_init(nn.Conv2d(in_channels, 32, kernel_size=8, stride=4))
+        self.conv2 = layer_init(nn.Conv2d(32, 64, kernel_size=4, stride=2))
+        self.conv3 = layer_init(nn.Conv2d(64, 64, kernel_size=3, stride=1))
+        if noisy_linear:
+            self.fc4 = NoisyLinear(7 * 7 * 64, self.feature_dim)
+        else:
+            self.fc4 = layer_init(nn.Linear(7 * 7 * 64, self.feature_dim))
+        self.noisy_linear = noisy_linear
+
+    def reset_noise(self):
+        if self.noisy_linear:
+            self.fc4.reset_noise()
+
+    def forward(self, x):
+        x = x.float() / 255
+        y = F.relu(self.conv1(x))
+        y = F.relu(self.conv2(y))
+        y = F.relu(self.conv3(y))
+        y = y.view(y.size(0), -1)
+        y = F.relu(self.fc4(y))
+        return y
+
+
+class CategoricalNet(nn.Module):
+    def __init__(self, action_dim, num_atoms, body):
+        super(CategoricalNet, self).__init__()
+        self.fc_categorical = layer_init(nn.Linear(body.feature_dim, action_dim * num_atoms))
+        self.action_dim = action_dim
+        self.num_atoms = num_atoms
+        self.body = body
+
+    def forward(self, x):
+        phi = self.body(x)
+        pre_prob = self.fc_categorical(phi).view((-1, self.action_dim, self.num_atoms))
+        prob = F.softmax(pre_prob, dim=-1)
+        log_prob = F.log_softmax(pre_prob, dim=-1)
+        return prob, log_prob
+
 
 class DqnDuelingCnn(nn.Module):
     def __init__(self, obs_shape, action_shape, feature_dim):

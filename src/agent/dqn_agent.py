@@ -6,7 +6,7 @@ import utils
 from agent.utils import LinearSchedule
 
 from agent.network import DqnCnnSSFwdPredictorEnsem, DqnCnnSSInvPredictorEnsem, \
-    DqnCnn, DqnDuelingCnn, DqnCategoricalCnn
+    DqnCnn, DqnDuelingCnn, DqnCategoricalCnn, CategoricalNet, NatureConvBody
 
 
 class DqnCnnAgent:
@@ -72,10 +72,14 @@ class DqnCnnAgent:
             self.target_q_net = DqnDuelingCnn(
                 obs_shape, action_shape, feature_dim).to(self.device)
         else:
-            self.q_net = DqnCategoricalCnn(
-                obs_shape, action_shape, feature_dim, categorical_n_atoms).to(self.device)
-            self.target_q_net = DqnCategoricalCnn(
-                obs_shape, action_shape, feature_dim, categorical_n_atoms).to(self.device)
+            # self.q_net = DqnCategoricalCnn(
+            #     obs_shape, action_shape, feature_dim, categorical_n_atoms).to(self.device)
+            # self.target_q_net = DqnCategoricalCnn(
+            #     obs_shape, action_shape, feature_dim, categorical_n_atoms).to(self.device)
+            self.q_net = CategoricalNet(
+                action_shape, categorical_n_atoms, NatureConvBody()).to(self.device)
+            self.target_q_net = CategoricalNet(
+                action_shape, categorical_n_atoms, NatureConvBody()).to(self.device)
         self.target_q_net.load_state_dict(self.q_net.state_dict())
 
         # dqn optimizers
@@ -170,7 +174,13 @@ class DqnCnnAgent:
         self.q_net_optimizer.step()
 
     def update(self, replay_buffer, logger, step):
-        obs, action, reward, next_obs, not_done = replay_buffer.sample(self.batch_size)
+        # obs, action, reward, next_obs, not_done = replay_buffer.sample(self.batch_size)
+        samples = replay_buffer.sample(self.batch_size)
+        obs = samples.observations.float()
+        action = samples.actions.float()
+        next_obs = samples.next_observations.float()
+        not_done = 1.0 - samples.dones
+        reward = samples.rewards
 
         logger.log('train/batch_reward', reward.mean(), step)
 
@@ -332,13 +342,13 @@ class DqnCnnSSEnsembleAgent(DqnCnnAgent):
 
     def update(self, replay_buffer, logger, step):
         # TODO (chongyi zheng): fix duplication
-        obs, action, reward, next_obs, not_done = replay_buffer.sample(self.batch_size)
-        # samples = replay_buffer.sample(self.batch_size)
-        # obs = samples.observations
-        # action = samples.actions
-        # next_obs = samples.next_observations
-        # not_done = 1.0 - samples.dones
-        # reward = samples.rewards
+        # obs, action, reward, next_obs, not_done = replay_buffer.sample(self.batch_size)
+        samples = replay_buffer.sample(self.batch_size)
+        obs = samples.observations
+        action = samples.actions
+        next_obs = samples.next_observations
+        not_done = 1.0 - samples.dones
+        reward = samples.rewards
 
         logger.log('train/batch_reward', reward.mean(), step)
 
