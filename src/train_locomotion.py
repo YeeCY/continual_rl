@@ -64,16 +64,18 @@ def evaluate(env, agent, video, num_episodes, logger, step):
 
 def main(args):
     if args.env_type == 'atari':
-        env = make_atari_env(
-            env_name=args.env_name,
-            action_repeat=args.action_repeat,
-            frame_stack=args.frame_stack
-        )
-        eval_env = make_atari_env(
-            env_name=args.env_name,
-            action_repeat=args.action_repeat,
-            frame_stack=args.frame_stack
-        )
+        # env = make_atari_env(
+        #     env_name=args.env_name,
+        #     action_repeat=args.action_repeat,
+        #     frame_stack=args.frame_stack
+        # )
+        # eval_env = make_atari_env(
+        #     env_name=args.env_name,
+        #     action_repeat=args.action_repeat,
+        #     frame_stack=args.frame_stack
+        # )
+        env = make_atari_env(env_id=args.env_name)
+        eval_env = make_atari_env(env_id=args.env_name)
     elif args.env_type == 'dmc_locomotion':
         env = make_locomotion_env(
             env_name=args.env_name,

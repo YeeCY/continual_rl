@@ -1,6 +1,6 @@
 import dmc2gym
 from env import dmc_wrappers
-from env import atari_wrappers
+# from env import atari_wrappers
 
 
 def make_pad_env(
@@ -72,9 +72,38 @@ def make_locomotion_env(
     return env
 
 
-def make_atari_env(env_name, action_repeat=4, frame_stack=4):
-    return atari_wrappers.wrap_deepmind(
-        env_id=env_name,
-        frame_skip=action_repeat,
-        frame_stack=frame_stack
-    )
+# def make_atari_env(env_name, action_repeat=4, frame_stack=4):
+#     return atari_wrappers.wrap_deepmind(
+#         env_id=env_name,
+#         frame_skip=action_repeat,
+#         frame_stack=frame_stack
+#     )
+from src.env.atari_wrappers import make_atari, wrap_deepmind
+import gym
+from gym.spaces import Box
+
+
+def make_atari_env(env_id):
+    env = make_atari(env_id)
+    env = wrap_deepmind(env,
+                        episode_life=True,
+                        clip_rewards=True,
+                        frame_stack=True,
+                        scale=False)
+    env = TransposeImage(env)
+
+    return env
+
+
+class TransposeImage(gym.ObservationWrapper):
+    def __init__(self, env=None):
+        super(TransposeImage, self).__init__(env)
+        obs_shape = self.observation_space.shape
+        self.observation_space = Box(
+            self.observation_space.low[0, 0, 0],
+            self.observation_space.high[0, 0, 0],
+            [obs_shape[2], obs_shape[1], obs_shape[0]],
+            dtype=self.observation_space.dtype)
+
+    def observation(self, observation):
+        return observation.transpose(2, 0, 1)
