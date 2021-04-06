@@ -96,7 +96,7 @@ def parse_args():
 	parser.add_argument('--q_net_tau', default=1.0, type=float)
 
 	# misc
-	parser.add_argument('--seed', default=1, type=int)
+	parser.add_argument('--seed', default=None, type=int)
 	parser.add_argument('--work_dir', default=None, type=str)
 	parser.add_argument('--load_checkpoint', default=None, type=str)
 	parser.add_argument('--replay_buffer_capacity', default=1000000, type=int)  # (chongyi zheng), 100000
@@ -114,7 +114,6 @@ def parse_args():
 
 	assert args.mode in {'train', 'eval', 'eval_color_easy', 'eval_color_hard'} or 'eval_video' in args.mode, \
 		f'unrecognized mode "{args.mode}"'
-	assert args.seed is not None, 'must provide seed for experiment'
 	assert args.work_dir is not None, 'must provide a working directory for experiment'
 
 	assert np.sum([args.use_inv, args.use_rot, args.use_curl]) <= 1, \
