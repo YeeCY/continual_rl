@@ -45,7 +45,7 @@ if __name__ == '__main__':
     parser.add_argument('--init_steps', default=100000, type=int)
     parser.add_argument('--num_train_iters', default=1, type=int)
     parser.add_argument('--train_freq', default=4, type=int)
-    parser.add_argument('--train_steps', default=1000000, type=int)
+    parser.add_argument('--train_steps', default=10000000, type=int)
     parser.add_argument('--batch_size', default=32, type=int)
     parser.add_argument('--replay_buffer_capacity', default=10000, type=int)
     parser.add_argument('--discount', default=0.99, type=float)
