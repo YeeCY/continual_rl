@@ -6,10 +6,11 @@ import gym
 import copy
 import psutil
 
+from segment_tree import MinSegmentTree, SumSegmentTree
 from utils import random_crop
 
 
-class ReplayBuffer(object):
+class ReplayBuffer:
     """Buffer to store environment transitions
 
     (Chongyi Zheng): update replay buffer to stable_baselines style to save memory
@@ -90,6 +91,18 @@ class ReplayBuffer(object):
     #
     #     return obses, actions, rewards, next_obses, not_dones
 
+    def _sample(self, idxs):
+        obses = torch.as_tensor(self.obses[idxs], device=self.device).float()
+        if not self.optimize_memory_usage:
+            next_obses = torch.as_tensor(self.next_obses[idxs], device=self.device).float()
+        else:
+            next_obses = torch.as_tensor(self.obses[(idxs + 1) % self.capacity], device=self.device).float()
+        actions = torch.as_tensor(self.actions[idxs], device=self.device).float()
+        rewards = torch.as_tensor(self.rewards[idxs], device=self.device)
+        not_dones = torch.as_tensor(self.not_dones[idxs], device=self.device)
+
+        return obses, actions, rewards, next_obses, not_dones
+
     def add(self, obs, action, reward, next_obs, done):
         np.copyto(self.obses[self.idx], obs)
         np.copyto(self.actions[self.idx], action)
@@ -108,20 +121,18 @@ class ReplayBuffer(object):
             idxs = np.random.randint(
                 0, self.capacity if self.full else self.idx, size=batch_size
             )
-
-            next_obses = torch.as_tensor(self.next_obses[idxs], device=self.device).float()
         else:
             if self.full:
                 idxs = (np.random.randint(1, self.capacity, size=batch_size) + self.idx) % self.capacity
             else:
                 idxs = np.random.randint(0, self.idx, size=batch_size)
 
-            next_obses = torch.as_tensor(self.obses[(idxs + 1) % self.capacity], device=self.device).float()
+        obses, actions, rewards, next_obses, not_dones = self._sample(idxs)
 
-        obses = torch.as_tensor(self.obses[idxs], device=self.device).float()
-        actions = torch.as_tensor(self.actions[idxs], device=self.device).float()
-        rewards = torch.as_tensor(self.rewards[idxs], device=self.device)
-        not_dones = torch.as_tensor(self.not_dones[idxs], device=self.device)
+        # obses = torch.as_tensor(self.obses[idxs], device=self.device).float()
+        # actions = torch.as_tensor(self.actions[idxs], device=self.device).float()
+        # rewards = torch.as_tensor(self.rewards[idxs], device=self.device)
+        # not_dones = torch.as_tensor(self.not_dones[idxs], device=self.device)
 
         # TODO (chongyi zheng): We don't need to crop image as PAD
         # obses = random_crop(obses)
@@ -169,6 +180,72 @@ class ReplayBuffer(object):
         ensem_kwargs = dict(obses=ensem_obses, next_obses=ensem_next_obses, actions=ensem_actions)
 
         return obses, actions, rewards, next_obses, not_dones, ensem_kwargs
+
+
+class PrioritizedReplayBuffer(ReplayBuffer):
+    """
+    Adapt from https://github.com/hill-a/stable-baselines/blob/master/stable_baselines/common/buffers.py
+    """
+    def __init__(self, obs_space, action_space, capacity, exponent, device, optimize_memory_usage=False):
+        super().__init__(obs_space, action_space, capacity, device,
+                         optimize_memory_usage=optimize_memory_usage)
+        assert exponent >= 0
+        self.exponent = exponent
+
+        it_capacity = 1
+        while it_capacity < self.capacity:
+            it_capacity *= 2
+
+        self._it_sum = SumSegmentTree(it_capacity)
+        self._it_min = MinSegmentTree(it_capacity)
+        self._max_priority = 1.0
+
+    def _sample_proportional(self, batch_size):
+        total = self._it_sum.sum(0, len(self) - 1)
+        mass = np.random.random(size=batch_size) * total
+        idx = self._it_sum.find_prefixsum_idx(mass)
+
+        # replace idx == self.idx
+        if self.full and self.optimize_memory_usage:
+            while np.any(idx == self.idx):
+                replace_mass = np.random.random(len(idx == self.idx)) * total
+                replace_idx = self._it_sum.find_prefixsum_idx(replace_mass)
+                idx[idx == self.idx] = replace_idx
+
+        return idx
+
+    def add(self, obs, action, reward, next_obs, done):
+        idx = self.idx
+        super().add(obs, action, reward, next_obs, done)
+        self._it_sum[idx] = self._max_priority ** self.exponent
+        self._it_min[idx] = self._max_priority ** self.exponent
+
+    def sample(self, batch_size, beta=0):
+        assert beta >= 0
+
+        idxes = self._sample_proportional(batch_size)
+        p_min = self._it_min.min() / self._it_sum.sum()
+        max_weight = (p_min * len(self)) ** (-beta)
+        p_sample = self._it_sum[idxes] / self._it_sum.sum()
+        weights = (p_sample * len(self)) ** (-beta) / max_weight
+        obses, actions, rewards, next_obses, not_dones = self._sample(idxes)
+
+        priority_kwargs = {
+            'weights': weights,
+            'idxes': idxes
+        }
+
+        return obses, actions, rewards, next_obses, not_dones, priority_kwargs
+
+    def update_priorities(self, idxes, priorities):
+        assert len(idxes) == len(priorities)
+        assert np.min(priorities) > 0
+        assert np.min(idxes) >= 0
+        assert np.max(idxes) < len(self)
+        self._it_sum[idxes] = priorities ** self.exponent
+        self._it_min[idxes] = priorities ** self.exponent
+
+        self._max_priority = max(self._max_priority, np.max(priorities))
 
 
 class AugmentReplayBuffer(ReplayBuffer):
