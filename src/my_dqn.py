@@ -120,6 +120,34 @@ class DQN(OffPolicyAlgorithm):
         if _init_setup_model:
             self._setup_model()
 
+        self.discount = gamma
+        self.exploration_fraction = exploration_fraction
+        self.exploration_initial_eps = exploration_initial_eps
+        self.exploration_final_eps = exploration_final_eps
+        self.target_update_interval = target_update_interval
+        self.max_grad_norm = max_grad_norm
+        self.q_net_lr = learning_rate
+        self.q_net_tau = tau
+        # "epsilon" for the epsilon-greedy exploration
+        self.exploration_rate = 0.0
+        # Linear schedule will be defined in `_setup_model()`
+        self.exploration_schedule = get_linear_fn(
+            self.exploration_initial_eps, self.exploration_final_eps, self.exploration_fraction
+        )
+        self.batch_size = batch_size
+
+        from agent.network import DQNCnn, DQNDuelingCnn
+
+        self.q_net = DQNCnn(
+            self.observation_space.shape, self.action_space.n, 512).to(self.device)
+        self.target_q_net = DQNCnn(
+            self.observation_space.shape, self.action_space.n, 512).to(self.device)
+        self.target_q_net.load_state_dict(self.q_net.state_dict())
+
+        # dqn optimizers
+        self.q_net_optimizer = th.optim.Adam(
+            self.q_net.parameters(), lr=self.q_net_lr)
+
     def _setup_model(self) -> None:
         super(DQN, self)._setup_model()
         self._create_aliases()
@@ -137,7 +165,8 @@ class DQN(OffPolicyAlgorithm):
         This method is called in ``collect_rollouts()`` after each step in the environment.
         """
         if self.num_timesteps % self.target_update_interval == 0:
-            polyak_update(self.q_net.parameters(), self.q_net_target.parameters(), self.tau)
+            # polyak_update(self.q_net.parameters(), self.q_net_target.parameters(), self.tau)
+            polyak_update(self.q_net.parameters(), self.target_q_net.parameters(), self.tau)
 
         self.exploration_rate = self.exploration_schedule(self._current_progress_remaining)
         logger.record("rollout/exploration rate", self.exploration_rate)
@@ -150,33 +179,65 @@ class DQN(OffPolicyAlgorithm):
         for gradient_step in range(gradient_steps):
             # Sample replay buffer
             replay_data = self.replay_buffer.sample(batch_size, env=self._vec_normalize_env)
+            obs = replay_data.observations
+            action = replay_data.actions
+            next_obs = replay_data.next_observations
+            not_done = 1.0 - replay_data.dones
+            reward = replay_data.rewards
+
+            # with th.no_grad():
+            #     # Compute the next Q-values using the target network
+            #     next_q_values = self.q_net_target(replay_data.next_observations)
+            #     # Follow greedy policy: use the one with the highest value
+            #     next_q_values, _ = next_q_values.max(dim=1)
+            #     # Avoid potential broadcast issue
+            #     next_q_values = next_q_values.reshape(-1, 1)
+            #     # 1-step TD target
+            #     target_q_values = replay_data.rewards + (1 - replay_data.dones) * self.gamma * next_q_values
+            #
+            # # Get current Q-values estimates
+            # current_q_values = self.q_net(replay_data.observations)
+            #
+            # # Retrieve the q-values for the actions from the replay buffer
+            # current_q_values = th.gather(current_q_values, dim=1, index=replay_data.actions.long())
+            #
+            # # Compute Huber loss (less sensitive to outliers)
+            # loss = F.smooth_l1_loss(current_q_values, target_q_values)
+            # losses.append(loss.item())
+            #
+            # # Optimize the policy
+            # self.policy.optimizer.zero_grad()
+            # loss.backward()
+            # # Clip gradient norm
+            # th.nn.utils.clip_grad_norm_(self.policy.parameters(), self.max_grad_norm)
+            # self.policy.optimizer.step()
 
             with th.no_grad():
-                # Compute the next Q-values using the target network
-                next_q_values = self.q_net_target(replay_data.next_observations)
-                # Follow greedy policy: use the one with the highest value
+                # compute the next Q-values using the target network
+                next_q_values = self.target_q_net(next_obs)
+                # follow greedy policy: use the one with the highest value
                 next_q_values, _ = next_q_values.max(dim=1)
                 # Avoid potential broadcast issue
                 next_q_values = next_q_values.reshape(-1, 1)
                 # 1-step TD target
-                target_q_values = replay_data.rewards + (1 - replay_data.dones) * self.gamma * next_q_values
+                target_q_values = reward + not_done * self.discount * next_q_values
 
-            # Get current Q-values estimates
-            current_q_values = self.q_net(replay_data.observations)
+            # get current Q estimates
+            current_q_values = self.q_net(obs)
 
-            # Retrieve the q-values for the actions from the replay buffer
-            current_q_values = th.gather(current_q_values, dim=1, index=replay_data.actions.long())
+            # retrieve the q-values for the actions from the replay buffer
+            current_q_values = th.gather(current_q_values, dim=1, index=action.long())
 
-            # Compute Huber loss (less sensitive to outliers)
+            # Huber loss (less sensitive to outliers)
             loss = F.smooth_l1_loss(current_q_values, target_q_values)
-            losses.append(loss.item())
 
-            # Optimize the policy
-            self.policy.optimizer.zero_grad()
+            # optimize the Q network
+            self.q_net.zero_grad()
             loss.backward()
-            # Clip gradient norm
-            th.nn.utils.clip_grad_norm_(self.policy.parameters(), self.max_grad_norm)
-            self.policy.optimizer.step()
+            # TODO (chongyi zheng): Do we need to clip gradient norm?
+            # clip gradient norm
+            th.nn.utils.clip_grad_norm_(self.q_net.parameters(), self.max_grad_norm)
+            self.q_net_optimizer.step()
 
         # Increase update counter
         self._n_updates += gradient_steps
@@ -210,6 +271,24 @@ class DQN(OffPolicyAlgorithm):
         else:
             action, state = self.policy.predict(observation, state, mask, deterministic)
         return action, state
+
+    def act(
+            self,
+            observation,
+            deterministic=False,
+    ) -> Tuple[np.ndarray, Optional[np.ndarray]]:
+        if not deterministic and np.random.rand() < self.exploration_rate:
+            action = np.array([self.action_space.sample()])
+        else:
+            with th.no_grad():
+                # observation = th.as_tensor(observation).to(self.device)
+                observation = th.FloatTensor(observation).to(self.device)
+                q_values = self.q_net(observation)
+                # Greedy action
+                action = q_values.argmax(dim=1).reshape(-1)
+                action = action.detach().cpu().numpy()
+
+        return action
 
     def learn(
             self,
@@ -256,7 +335,7 @@ class DQN(OffPolicyAlgorithm):
             if step < self.learning_starts:
                 action = np.array([self.env.action_space.sample()])
             else:
-                action, _ = self.predict(obs, deterministic=False)
+                action = self.act(obs, deterministic=False)
 
             self._update_current_progress_remaining(self.num_timesteps, total_timesteps)
             self._on_step()
