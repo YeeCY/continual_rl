@@ -26,8 +26,8 @@ def evaluate(env, agent, video, num_episodes, logger, step):
         next_obs_buf = []
         action_buf = []
         while not done:
-            with utils.eval_mode(agent):
-                action = agent.act(obs, False)
+            # with utils.eval_mode(agent):
+            action = agent.act(obs, False)
             # action, _ = agent.predict(obs, deterministic=True)
             next_obs, reward, done, _ = env.step(action)
 
@@ -192,8 +192,8 @@ def main(args):
         if step < args.init_steps:
             action = env.action_space.sample()
         else:
-            with utils.eval_mode(agent):
-                action = agent.act(obs, True)
+            # with utils.eval_mode(agent):
+            action = agent.act(obs, True)
             # action, _ = agent.predict(obs, deterministic=False)
 
             if 'dqn' in args.algo:
