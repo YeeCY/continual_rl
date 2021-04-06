@@ -147,14 +147,15 @@ class DqnCnnAgent:
             next_prob = next_prob[self.batch_indices, next_action, :]
 
             target_atoms = reward + self.discount * not_done * self.atoms.view(1, -1)
-            target_atoms.clamp(self.categorical_v_min, self.categorical_v_max).unsqueeze(1)
+            target_atoms.clamp(self.categorical_v_min, self.categorical_v_max)
+            target_atoms = target_atoms.unsqueeze(1)
             target_prob = (1 - (target_atoms - self.atoms.view(1, -1, 1)).abs() / self.delta_atom).clamp(0, 1) * \
                           next_prob.unsqueeze(1)
             target_prob = target_prob.sum(-1)
 
         # current z probability
         log_prob = self.q_net(obs)[1]
-        log_prob = log_prob[self.batch_indices, action.long(), :]
+        log_prob = log_prob[self.batch_indices, action.squeeze(-1).long(), :]
 
         # KL divergence
         q_net_loss = (target_prob * target_prob.add(1e-5).log() - target_prob * log_prob).sum(-1)
