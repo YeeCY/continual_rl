@@ -224,17 +224,68 @@ class DQN(OffPolicyAlgorithm):
             reset_num_timesteps: bool = True,
     ) -> OffPolicyAlgorithm:
 
-        return super(DQN, self).learn(
-            total_timesteps=total_timesteps,
-            callback=callback,
-            log_interval=log_interval,
-            eval_env=eval_env,
-            eval_freq=eval_freq,
-            n_eval_episodes=n_eval_episodes,
-            tb_log_name=tb_log_name,
-            eval_log_path=eval_log_path,
-            reset_num_timesteps=reset_num_timesteps,
-        )
+        # return super(DQN, self).learn(
+        #     total_timesteps=total_timesteps,
+        #     callback=callback,
+        #     log_interval=log_interval,
+        #     eval_env=eval_env,
+        #     eval_freq=eval_freq,
+        #     n_eval_episodes=n_eval_episodes,
+        #     tb_log_name=tb_log_name,
+        #     eval_log_path=eval_log_path,
+        #     reset_num_timesteps=reset_num_timesteps,
+        # )
+        from logger import Logger
+        logger = Logger('../tmp_logs/sb3')
+        episode, episode_reward, episode_step, done = 0, 0, 0, [True]
+        obs = self.env.reset()
+        for step in range(total_timesteps + 1):
+            if done[0]:
+                if step > 0:
+                    logger.log('train/episode_reward', episode_reward, step)
+                    logger.dump(step, ty='train', save=(step > self.learning_starts))
+
+                obs = self.env.reset()
+                episode_reward = 0
+                episode_step = 0
+                episode += 1
+
+                logger.log('train/episode', episode, step)
+
+            # Sample action for data collection
+            if step < self.learning_starts:
+                action = np.array([self.env.action_space.sample()])
+            else:
+                action, _ = self.predict(obs, deterministic=False)
+
+            self._update_current_progress_remaining(self.num_timesteps, total_timesteps)
+            self._on_step()
+
+            # Run training update
+            if step >= self.learning_starts and step % self.train_freq[0]:
+                # TODO (chongyi zheng): Do we need multiple updates after initial data collection?
+                # num_updates = args.init_steps if step == args.init_steps else 1
+                # for _ in range(num_updates):
+                # 	agent.update(replay_buffer, logger, step)
+                self.train(self.gradient_steps, self.batch_size)
+
+            # Take step
+            next_obs, reward, done, info = self.env.step(action)
+            if done[0] and info[0].get("terminal_observation") is not None:
+                next_obs[0] = info[0]["terminal_observation"]
+
+            # replay_buffer.add(obs, action, reward, next_obs, done)
+            self.replay_buffer.add(obs, next_obs, action, reward, done)
+            # replay_buffer.add(np.expand_dims(obs, axis=0),
+            #                   np.expand_dims(next_obs, axis=0),
+            #                   np.expand_dims(action, axis=0),
+            #                   np.expand_dims(reward, axis=0),
+            #                   np.expand_dims(done, axis=0))
+            episode_reward += reward
+            obs = next_obs
+            episode_step += 1
+            self.num_timesteps += 1
+
 
     def _excluded_save_params(self) -> List[str]:
         return super(DQN, self)._excluded_save_params() + ["q_net", "q_net_target"]
