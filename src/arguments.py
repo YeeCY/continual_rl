@@ -93,17 +93,16 @@ def parse_args():
 	parser.add_argument('--target_update_interval', default=40000, type=int)
 	parser.add_argument('--max_grad_norm', default=0.5, type=float)
 	parser.add_argument('--categorical_n_atoms', default=51, type=int)
-	parser.add_argument('--config.categorical_v_min', default=-10, type=int)
-	parser.add_argument('--config.categorical_v_max', default=10, type=int)
+	parser.add_argument('--categorical_v_min', default=-10, type=int)
+	parser.add_argument('--categorical_v_max', default=10, type=int)
 	parser.add_argument('--q_net_opt_lr', default=2.5e-4, type=float)
-	parser.add_argument('--q_net_opt_alpha', default=0.95, type=float)
 	parser.add_argument('--q_net_opt_eps', default=0.01 / 32, type=float)
 
 	# misc
 	parser.add_argument('--seed', default=1, type=int)
 	parser.add_argument('--work_dir', default=None, type=str)
 	parser.add_argument('--load_checkpoint', default=None, type=str)
-	parser.add_argument('--replay_buffer_capacity', default=1000000, type=int)  # (chongyi zheng): 100000
+	parser.add_argument('--replay_buffer_capacity', default=int(1e6), type=int)  # (chongyi zheng): 100000
 	parser.add_argument('--save_model', default=False, action='store_true')
 	parser.add_argument('--save_video', default=False, action='store_true')
 	parser.add_argument('--log_freq', default=20000, type=int)

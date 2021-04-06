@@ -30,8 +30,10 @@ def make_agent(obs_space, action_space, device, args):
         kwargs['exploration_final_eps'] = args.exploration_final_eps
         kwargs['target_update_interval'] = args.target_update_interval
         kwargs['max_grad_norm'] = args.max_grad_norm
+        kwargs['categorical_n_atoms'] = args.categorical_n_atoms
+        kwargs['categorical_v_min'] = args.categorical_v_min
+        kwargs['categorical_v_max'] = args.categorical_v_max
         kwargs['q_net_opt_lr'] = args.q_net_opt_lr
-        kwargs['q_net_opt_alpha'] = args.q_net_opt_alpha
         kwargs['q_net_opt_eps'] = args.q_net_opt_eps
 
         agent = DqnCnnSSEnsembleAgent(**kwargs)

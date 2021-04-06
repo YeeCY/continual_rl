@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 from agent.encoder import PixelEncoder, DqnEncoder
 from utils import weight_init, SquashedNormal, gaussian_logprob, squash
@@ -41,7 +42,7 @@ class RotFunction(nn.Module):
         return self.trunk(h)
 
 
-class DQNCnn(nn.Module):
+class DqnCnn(nn.Module):
     def __init__(self, obs_shape, action_shape, feature_dim):
         super().__init__()
         assert obs_shape == (4, 84, 84), "invalid observation shape"
@@ -68,7 +69,40 @@ class DQNCnn(nn.Module):
         return q_values
 
 
-class DQNDuelingCnn(nn.Module):
+class DqnCategoricalCnn(nn.Module):
+    def __init__(self, obs_shape, action_shape, feature_dim, num_atoms):
+        super().__init__()
+        assert obs_shape == (4, 84, 84), "invalid observation shape"
+        self.obs_shape = obs_shape
+        self.action_shape = action_shape
+        self.feature_dim = feature_dim
+        self.num_atoms = num_atoms
+
+        self.encoder = DqnEncoder(obs_shape)
+
+        # Compute shape by doing one forward pass
+        with torch.no_grad():
+            flatten_dim = np.prod(
+                self.encoder(torch.zeros(1, *obs_shape)).shape[1:])
+
+        self.trunk = nn.Sequential(
+            nn.Linear(flatten_dim, feature_dim),
+            nn.ReLU(),
+            nn.Linear(feature_dim, action_shape * num_atoms)
+        )
+
+        self.apply(weight_init)
+
+    def forward(self, obs):
+        h = self.encoder(obs)
+        logits = self.trunk(h).view(-1, self.action_shape, self.num_atoms)
+        prob = F.softmax(logits, dim=-1)
+        log_prob = F.log_softmax(logits, dim=-1)
+
+        return prob, log_prob
+
+
+class DqnDuelingCnn(nn.Module):
     def __init__(self, obs_shape, action_shape, feature_dim):
         super().__init__()
         assert obs_shape == (4, 84, 84), "invalid observation shape"

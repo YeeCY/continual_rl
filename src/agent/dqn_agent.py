@@ -6,7 +6,7 @@ import utils
 from agent.utils import LinearSchedule
 
 from agent.network import DqnCnnSSFwdPredictorEnsem, DqnCnnSSInvPredictorEnsem, \
-    DQNCnn, DQNDuelingCnn
+    DqnCnn, DqnDuelingCnn, DqnCategoricalCnn
 
 
 class DqnCnnAgent:
@@ -29,10 +29,12 @@ class DqnCnnAgent:
             exploration_initial_eps=1.0,
             exploration_final_eps=0.01,
             target_update_interval=40000,
-            max_grad_norm=5,
+            max_grad_norm=0.5,
+            categorical_n_atoms=51,
+            categorical_v_min=-10,
+            categorical_v_max=10,
             q_net_opt_lr=2.5e-4,
-            q_net_opt_alpha=0.95,
-            q_net_opt_eps=0.01,
+            q_net_opt_eps=0.01 / 32,
             batch_size=32,
     ):
         self.obs_shape = obs_shape
@@ -46,8 +48,10 @@ class DqnCnnAgent:
         self.exploration_final_eps = exploration_final_eps
         self.target_update_interval = target_update_interval
         self.max_grad_norm = max_grad_norm
+        self.categorical_n_atoms = categorical_n_atoms
+        self.categorical_v_min = categorical_v_min
+        self.categorical_v_max = categorical_v_max
         self.q_net_opt_lr = q_net_opt_lr
-        self.q_net_opt_alpha = q_net_opt_alpha
         self.q_net_opt_eps = q_net_opt_eps
         self.exploration_rate = 1.0  # "epsilon" for the epsilon-greedy exploration
         self.exploration_schedule = LinearSchedule(
@@ -56,24 +60,29 @@ class DqnCnnAgent:
         self.batch_size = batch_size
 
         self.training = False
+        self.batch_indices = torch.arange(self.batch_size).long().to(self.device)
+        self.atoms = torch.linspace(
+            categorical_v_min, categorical_v_max, categorical_n_atoms).to(self.device)
+        self.delta_atom = (categorical_v_max - categorical_v_min) / float(categorical_n_atoms - 1)
+
 
         if self.dueling:
-            self.q_net = DQNDuelingCnn(
+            self.q_net = DqnDuelingCnn(
                 obs_shape, action_shape, feature_dim).to(self.device)
-            self.target_q_net = DQNDuelingCnn(
+            self.target_q_net = DqnDuelingCnn(
                 obs_shape, action_shape, feature_dim).to(self.device)
         else:
-            self.q_net = DQNCnn(
-                obs_shape, action_shape, feature_dim).to(self.device)
-            self.target_q_net = DQNCnn(
-                obs_shape, action_shape, feature_dim).to(self.device)
+            self.q_net = DqnCategoricalCnn(
+                obs_shape, action_shape, feature_dim, categorical_n_atoms).to(self.device)
+            self.target_q_net = DqnCategoricalCnn(
+                obs_shape, action_shape, feature_dim, categorical_n_atoms).to(self.device)
         self.target_q_net.load_state_dict(self.q_net.state_dict())
 
         # dqn optimizers
-        self.q_net_optimizer = torch.optim.RMSprop(
+        self.q_net_optimizer = torch.optim.Adam(
             self.q_net.parameters(),
-            lr=self.q_net_opt_lr, alpha=self.q_net_opt_alpha,
-            eps=self.q_net_opt_eps, centered=True
+            lr=self.q_net_opt_lr,
+            eps=self.q_net_opt_eps,
         )
 
         self.train()
@@ -91,12 +100,10 @@ class DqnCnnAgent:
             with torch.no_grad():
                 obs = torch.FloatTensor(obs).to(self.device)
                 obs = obs.unsqueeze(0)
-                q_values = self.q_net(obs)
+                prob, _ = self.q_net(obs)
+                q_values = (prob * self.atoms).sum(-1)
                 # greed action
-                action = q_values.argmax(dim=1).reshape(-1)
-                assert action.shape[0] == 1
-
-            action = utils.to_np(action[0])
+                action = utils.to_np(q_values.argmax(dim=-1))
 
         return action
 
@@ -106,29 +113,52 @@ class DqnCnnAgent:
         logger.log('train/exploration_rate', self.exploration_rate, step)
 
     def update_q_net(self, obs, action, reward, next_obs, not_done, logger, step):
+        # with torch.no_grad():
+        #     # compute the next Q-values using the target network
+        #     next_q_values = self.target_q_net(next_obs).detach()
+        #     # follow greedy policy: use the one with the highest value
+        #     if self.double_q:
+        #         best_next_actions = torch.argmax(self.q_net(next_obs), dim=-1)
+        #         next_q_values = next_q_values.gather(1, best_next_actions.unsqueeze(-1))
+        #     else:
+        #         # Follow greedy policy: use the one with the highest value
+        #         next_q_values = next_q_values.max(dim=1)[0]
+        #         # Avoid potential broadcast issue
+        #         next_q_values = next_q_values.reshape(-1, 1)
+        #     # 1-step TD target
+        #     target_q_values = reward + not_done * self.discount * next_q_values
+        #
+        # # get current Q estimates
+        # current_q_values = self.q_net(obs)
+        #
+        # # retrieve the q-values for the actions from the replay buffer
+        # current_q_values = current_q_values.gather(1, index=action.long())
+        #
+        # # Huber loss (less sensitive to outliers)
+        # q_net_loss = F.smooth_l1_loss(current_q_values, target_q_values)
+        # target z probability
         with torch.no_grad():
-            # compute the next Q-values using the target network
-            next_q_values = self.target_q_net(next_obs).detach()
-            # follow greedy policy: use the one with the highest value
+            next_prob = self.target_q_net(next_obs)[0]
+            next_q_values = (next_prob * self.atoms).sum(-1)
             if self.double_q:
-                best_next_actions = torch.argmax(self.q_net(next_obs), dim=-1)
-                next_q_values = next_q_values.gather(1, best_next_actions.unsqueeze(-1))
+                next_action = torch.argmax((self.q_net(next_obs)[0] * self.atoms).sum(-1), dim=-1)
             else:
-                # Follow greedy policy: use the one with the highest value
-                next_q_values = next_q_values.max(dim=1)[0]
-                # Avoid potential broadcast issue
-                next_q_values = next_q_values.reshape(-1, 1)
-            # 1-step TD target
-            target_q_values = reward + not_done * self.discount * next_q_values
+                next_action = torch.argmax(next_q_values, dim=-1)
+            next_prob = next_prob[self.batch_indices, next_action, :]
 
-        # get current Q estimates
-        current_q_values = self.q_net(obs)
+            target_atoms = reward + self.discount * not_done * self.atoms.view(1, -1)
+            target_atoms.clamp(self.categorical_v_min, self.categorical_v_max).unsqueeze(1)
+            target_prob = (1 - (target_atoms - self.atoms.view(1, -1, 1)).abs() / self.delta_atom).clamp(0, 1) * \
+                          next_prob.unsqueeze(1)
+            target_prob = target_prob.sum(-1)
 
-        # retrieve the q-values for the actions from the replay buffer
-        current_q_values = current_q_values.gather(1, index=action.long())
+        # current z probability
+        log_prob = self.q_net(obs)[1]
+        log_prob = log_prob[self.batch_indices, action.long(), :]
 
-        # Huber loss (less sensitive to outliers)
-        q_net_loss = F.smooth_l1_loss(current_q_values, target_q_values)
+        # KL divergence
+        q_net_loss = (target_prob * target_prob.add(1e-5).log() - target_prob * log_prob).sum(-1)
+        q_net_loss = q_net_loss.mean()
 
         logger.log('train/q_net_loss', q_net_loss, step)
 
