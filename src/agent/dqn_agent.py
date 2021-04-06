@@ -76,17 +76,15 @@ class DqnCnnAgent:
         self.q_net_optimizer = torch.optim.Adam(
             self.q_net.parameters(), lr=self.q_net_lr, eps=0.00015)
 
-        self.train()
-        self.target_q_net.train()
+        # self.train()
+        # self.target_q_net.train()
 
-    def train(self, training=True):
-        self.training = training
-        self.q_net.train(training)
+    # def train(self, training=True):
+    #     self.training = training
+    #     self.q_net.train(training)
 
-    def act(self, obs, sample=False):
-        # sample = True indicates exploration
-        # TODO (chongyi zheng)
-        if sample and np.random.rand() < self.exploration_rate:
+    def act(self, obs, deterministic=False):
+        if not deterministic and np.random.rand() < self.exploration_rate:
             action = np.random.randint(low=0, high=self.action_shape)
         else:
             with torch.no_grad():
@@ -215,7 +213,7 @@ class DqnCnnSSEnsembleAgent(DqnCnnAgent):
             self.ss_fwd_optimizer = torch.optim.Adam(
                 self.ss_fwd_pred_ensem.parameters(), lr=ss_lr)
 
-            self.ss_fwd_pred_ensem.train()
+            # self.ss_fwd_pred_ensem.train()
 
         if self.use_inv:
             self.ss_inv_pred_ensem = DqnCnnSSInvPredictorEnsem(
@@ -224,7 +222,7 @@ class DqnCnnSSEnsembleAgent(DqnCnnAgent):
             self.ss_inv_optimizer = torch.optim.Adam(
                 self.ss_inv_pred_ensem.parameters(), lr=ss_lr)
 
-            self.ss_inv_pred_ensem.train()
+            # self.ss_inv_pred_ensem.train()
 
     def ss_preds_var(self, obs, next_obs, action):
         # TODO (chongyi zheng):
