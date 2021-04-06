@@ -2,6 +2,8 @@ from stable_baselines3.dqn import DQN
 from stable_baselines3.dqn.policies import CnnPolicy
 from src.env.atari_wrappers import wrap_deepmind
 
+from src.agent.dqn_agent import DQNCnn
+
 import argparse
 
 
@@ -40,7 +42,7 @@ if __name__ == '__main__':
     parser.add_argument('--env_name', default='PongNoFrameskip-v4')
     parser.add_argument('--frame_stack', default=4, type=int)
     parser.add_argument('--action_repeat', default=4, type=int)
-    parser.add_argument('--init_steps', default=100000, type=int)
+    parser.add_argument('--init_steps', default=100, type=int)
     parser.add_argument('--num_train_iters', default=1, type=int)
     parser.add_argument('--train_freq', default=4, type=int)
     parser.add_argument('--train_steps', default=1000000, type=int)

@@ -61,23 +61,126 @@ class DQNCnn(nn.Module):
 
         # self.apply(weight_init)
 
-        self.outputs = dict()  # log placeholder
-
     def forward(self, obs):
         h = self.encoder(obs)
         q_values = self.trunk(h)
 
-        self.outputs['q_values'] = q_values
+        return q_values
+
+
+class DqnCnn(nn.Module):
+    def __init__(self, obs_space, feature_dim):
+        super().__init__()
+
+        self.encoder = DqnEncoder(obs_space.shape)
+
+        # Compute shape by doing one forward pass
+        with torch.no_grad():
+            flatten_dim = np.prod(
+                self.encoder(torch.zeros(1, *obs_space.shape)).shape[1:])
+
+        self.trunk = nn.Sequential(
+            nn.Linear(flatten_dim, feature_dim),
+            nn.ReLU(),
+        )
+
+        self.apply(weight_init)
+
+    def forward(self, obs):
+        h = self.trunk(self.encoder(obs))
+
+        return h
+
+from stable_baselines3.common.policies import BasePolicy
+
+
+class QNetwork(BasePolicy):
+    """
+    Action-Value (Q-Value) network for DQN
+
+    :param observation_space: Observation space
+    :param action_space: Action space
+    :param net_arch: The specification of the policy and value networks.
+    :param activation_fn: Activation function
+    :param normalize_images: Whether to normalize images or not,
+         dividing by 255.0 (True by default)
+    """
+
+    def __init__(
+            self,
+            observation_space,
+            action_space,
+            features_extractor,
+            features_dim,
+            net_arch,
+            activation_fn,
+            normalize_images=True,
+    ):
+        super(QNetwork, self).__init__(
+            observation_space,
+            action_space,
+            features_extractor=features_extractor,
+            normalize_images=normalize_images,
+        )
+
+        # if net_arch is None:
+        #     net_arch = [64, 64]
+
+        self.net_arch = net_arch
+        self.activation_fn = activation_fn
+        self.features_extractor = features_extractor
+        self.features_dim = features_dim
+        self.normalize_images = normalize_images
+        # action_dim = self.action_space.n  # number of actions
+        # q_net = create_mlp(self.features_dim, action_dim, self.net_arch, self.activation_fn)
+        # self.q_net = nn.Sequential(*q_net)
+        assert observation_space.shape == (4, 84, 84), "invalid observation shape"
+
+        self.encoder = DqnEncoder(observation_space.shape)
+
+        # Compute shape by doing one forward pass
+        with torch.no_grad():
+            flatten_dim = np.prod(
+                self.encoder(torch.zeros(1, *observation_space.shape)).shape[1:])
+
+        self.trunk = nn.Sequential(
+            nn.Linear(flatten_dim, features_dim),
+            nn.ReLU(),
+            nn.Linear(features_dim, action_space.n)
+        )
+
+        self.apply(weight_init)
+
+    def forward(self, obs):
+        """
+        Predict the q-values.
+
+        :param obs: Observation
+        :return: The estimated Q-Value for each action.
+        """
+        h = self.encoder(obs)
+        q_values = self.trunk(h)
 
         return q_values
 
-    def log(self, logger, step):
-        for k, v in self.outputs.items():
-            logger.log_histogram(f'train_dqn/{k}_hist', v, step)
+    def _predict(self, observation, deterministic=True):
+        q_values = self.forward(observation)
+        # Greedy action
+        action = q_values.argmax(dim=1).reshape(-1)
+        return action
 
-        for i, m in enumerate(self.trunk):
-            if type(m) == nn.Linear:
-                logger.log_param(f'train_dqn/fc{i}', m, step)
+    def _get_constructor_parameters(self):
+        data = super()._get_constructor_parameters()
+
+        data.update(
+            dict(
+                net_arch=self.net_arch,
+                features_dim=self.features_dim,
+                activation_fn=self.activation_fn,
+                features_extractor=self.features_extractor,
+            )
+        )
+        return data
 
 
 class DQNDuelingCnn(nn.Module):
