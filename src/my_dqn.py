@@ -236,7 +236,7 @@ class DQN(OffPolicyAlgorithm):
         #     reset_num_timesteps=reset_num_timesteps,
         # )
         from logger import Logger
-        logger = Logger('../tmp_logs/sb3')
+        logger = Logger('../tmp_logs/sb3', save_tb=False)
         episode, episode_reward, episode_step, done = 0, 0, 0, [True]
         obs = self.env.reset()
         for step in range(total_timesteps + 1):
