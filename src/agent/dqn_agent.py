@@ -89,12 +89,12 @@ class DqnCnnAgent:
             eps=self.q_net_opt_eps,
         )
 
-        self.train()
-        self.target_q_net.train()
-
-    def train(self, training=True):
-        self.training = training
-        self.q_net.train(training)
+    #     self.train()
+    #     self.target_q_net.train()
+    #
+    # def train(self, training=True):
+    #     self.training = training
+    #     self.q_net.train(training)
 
     def act(self, obs, exploration=False):
         # TODO (chongyi zheng)

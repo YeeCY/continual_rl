@@ -181,6 +181,7 @@ def main(args):
             logger.log('train/episode_reward', episode_reward, step)
 
             obs = env.reset()
+            done = False
             episode_reward = 0
             episode_step = 0
             episode += 1
@@ -211,7 +212,7 @@ def main(args):
             # agent.train(batch_size=args.batch_size, gradient_steps=args.num_train_iters)
 
         # Take step
-        next_obs, reward, done, _ = env.step(action)
+        next_obs, reward, done, info = env.step(action)
         # agent.replay_buffer.add(obs, next_obs, action, reward, done)
         # replay_buffer.add(obs, action, reward, next_obs, done)
         replay_buffer.add(np.expand_dims(np.asarray(obs), axis=0),
