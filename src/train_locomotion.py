@@ -217,14 +217,14 @@ def main(args):
     #     episode_reward += reward
     #     obs = next_obs
     #     episode_step += 1
-    for step in range(total_timesteps + 1):
+    for step in range(args.train_steps + 1):
         # if done[0]:
         if done:
             if step > 0:
                 recent_epsode_reward.append(episode_reward)
-                logger.log('train/recent_episode_reward', np.mean(recent_epsode_reward), step)
+                logger.log('train/recent_episode_reward', np.mean(recent_episode_reward), step)
                 logger.log('train/episode_reward', episode_reward, step)
-                logger.dump(step, ty='train', save=(step > self.learning_starts))
+                logger.dump(step, ty='train', save=(step > args.init_steps))
 
             obs = env.reset()
             episode_reward = 0
@@ -234,17 +234,17 @@ def main(args):
             logger.log('train/episode', episode, step)
 
         # Sample action for data collection
-        if step < args.learning_starts:
-            action = np.array([self.env.action_space.sample()])
+        if step < args.init_steps:
+            action = np.array([env.action_space.sample()])
         else:
             # action = self.act(obs, deterministic=False)
             action = agent.act(obs, deterministic=False)[0]
 
         if 'dqn' in args.algo:
-            agent.on_step()
+            agent.on_step(step, args.train_steps, logger)
 
         # Run training update
-        if step >= args.learning_starts and step % args.train_freq:
+        if step >= args.init_steps and step % args.train_freq:
             # TODO (chongyi zheng): Do we need multiple updates after initial data collection?
             # num_updates = args.init_steps if step == args.init_steps else 1
             for _ in range(num_updates):

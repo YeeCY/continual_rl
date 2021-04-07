@@ -322,13 +322,13 @@ class DQN(OffPolicyAlgorithm):
         # env = self.env
         env = self.env.envs[0].env
         from collections import deque
-        recent_epsode_reward = deque(maxlen=100)
+        recent_episode_reward = deque(maxlen=100)
         for step in range(total_timesteps + 1):
             # if done[0]:
             if done:
                 if step > 0:
-                    recent_epsode_reward.append(episode_reward)
-                    logger.log('train/recent_episode_reward', np.mean(recent_epsode_reward), step)
+                    recent_episode_reward.append(episode_reward)
+                    logger.log('train/recent_episode_reward', np.mean(recent_episode_reward), step)
                     logger.log('train/episode_reward', episode_reward, step)
                     logger.dump(step, ty='train', save=(step > self.learning_starts))
 
