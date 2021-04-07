@@ -16,7 +16,8 @@ FORMAT_CONFIG = {
             ('duration', 'D', 'time'), ('episode_reward', 'return', 'float'),
             ('batch_reward', 'BR', 'float'), ('actor_loss', 'ALOSS', 'float'),
             ('critic_loss', 'CLOSS', 'float'), ('ae_loss', 'RLOSS', 'float'),
-            ('recent_episode_reward', 'recent_return', 'float')
+            ('recent_episode_reward', 'recent_return', 'float'),
+            ('exploration_rate', 'exploration_rate', 'float')
         ],
         'eval': [('step', 'S', 'int'), ('episode_reward', 'ER', 'float')]
     }

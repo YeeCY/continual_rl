@@ -1,6 +1,7 @@
 import torch
 import numpy as np
 import os
+from collections import deque
 
 from arguments import parse_args
 from env import make_atari_env, make_locomotion_env
@@ -154,28 +155,76 @@ def main(args):
                     action_repeat=args.action_repeat,
                     save_tb=args.save_tb)
     episode, episode_reward, episode_step, done = 0, 0, 0, True
-    obs = env.reset()
+    recent_episode_reward = deque(maxlen=100)
     start_time = time.time()
-    for step in range(args.train_steps + 1):
-        # (chongyi zheng): we can also evaluate and save model when current episode is not finished
-        # Evaluate agent periodically
-        if step % args.eval_freq == 0:
-            print('Evaluating:', args.work_dir)
-            logger.log('eval/episode', episode, step)
-            evaluate(eval_env, agent, video, args.num_eval_episodes, logger, step)
-
-        # Save agent periodically
-        if step % args.save_freq == 0 and step > 0:
-            if args.save_model:
-                agent.save(model_dir, step)
-
+    # for step in range(args.train_steps + 1):
+    #     # (chongyi zheng): we can also evaluate and save model when current episode is not finished
+    #     # Evaluate agent periodically
+    #     if step % args.eval_freq == 0:
+    #         print('Evaluating:', args.work_dir)
+    #         logger.log('eval/episode', episode, step)
+    #         evaluate(eval_env, agent, video, args.num_eval_episodes, logger, step)
+    #
+    #     # Save agent periodically
+    #     if step % args.save_freq == 0 and step > 0:
+    #         if args.save_model:
+    #             agent.save(model_dir, step)
+    #
+    #     if done:
+    #         if step > 0:
+    #             logger.log('train/duration', time.time() - start_time, step)
+    #             start_time = time.time()
+    #             logger.dump(step, ty='train', save=(step > args.init_steps))
+    #
+    #         recent_episode_reward.append(episode_reward)
+    #         logger.log('train/recent_episode_reward', np.mean(recent_episode_reward), step)
+    #         logger.log('train/episode_reward', episode_reward, step)
+    #
+    #         obs = env.reset()
+    #         episode_reward = 0
+    #         episode_step = 0
+    #         episode += 1
+    #
+    #         logger.log('train/episode', episode, step)
+    #
+    #     # Sample action for data collection
+    #     if step < args.init_steps:
+    #         action = env.action_space.sample()
+    #     else:
+    #         # with utils.eval_mode(agent):
+    #         action = agent.act(obs, False)
+    #
+    #     if 'dqn' in args.algo:
+    #         agent.on_step(step, args.train_steps, logger)
+    #
+    #     # Run training update
+    #     if step >= args.init_steps and step % args.train_freq == 0:
+    #         # TODO (chongyi zheng): Do we need multiple updates after initial data collection?
+    #         # num_updates = args.init_steps if step == args.init_steps else 1
+    #         # for _ in range(num_updates):
+    #         # 	agent.update(replay_buffer, logger, step)
+    #         for _ in range(args.num_train_iters):
+    #             agent.update(replay_buffer, logger, step)
+    #
+    #     # Take step
+    #     next_obs, reward, done, _ = env.step(action)
+    #     # replay_buffer.add(obs, action, reward, next_obs, done)
+    #     replay_buffer.add(np.expand_dims(obs, axis=0),
+    #                       np.expand_dims(next_obs, axis=0),
+    #                       np.expand_dims(action, axis=0),
+    #                       np.expand_dims(reward, axis=0),
+    #                       np.expand_dims(done, axis=0))
+    #     episode_reward += reward
+    #     obs = next_obs
+    #     episode_step += 1
+    for step in range(total_timesteps + 1):
+        # if done[0]:
         if done:
             if step > 0:
-                logger.log('train/duration', time.time() - start_time, step)
-                start_time = time.time()
-                logger.dump(step, ty='train', save=(step > args.init_steps))
-
-            logger.log('train/episode_reward', episode_reward, step)
+                recent_epsode_reward.append(episode_reward)
+                logger.log('train/recent_episode_reward', np.mean(recent_epsode_reward), step)
+                logger.log('train/episode_reward', episode_reward, step)
+                logger.dump(step, ty='train', save=(step > self.learning_starts))
 
             obs = env.reset()
             episode_reward = 0
@@ -185,32 +234,34 @@ def main(args):
             logger.log('train/episode', episode, step)
 
         # Sample action for data collection
-        if step < args.init_steps:
-            action = env.action_space.sample()
+        if step < args.learning_starts:
+            action = np.array([self.env.action_space.sample()])
         else:
-            # with utils.eval_mode(agent):
-            action = agent.act(obs, False)
+            # action = self.act(obs, deterministic=False)
+            action = agent.act(obs, deterministic=False)[0]
 
         if 'dqn' in args.algo:
-            agent.on_step(step, args.train_steps, logger)
+            agent.on_step()
 
         # Run training update
-        if step >= args.init_steps and step % args.train_freq == 0:
+        if step >= args.learning_starts and step % args.train_freq:
             # TODO (chongyi zheng): Do we need multiple updates after initial data collection?
             # num_updates = args.init_steps if step == args.init_steps else 1
-            # for _ in range(num_updates):
-            # 	agent.update(replay_buffer, logger, step)
-            for _ in range(args.num_train_iters):
-                agent.update(replay_buffer, logger, step)
+            for _ in range(num_updates):
+            	agent.update(replay_buffer, logger, step)
 
         # Take step
-        next_obs, reward, done, _ = env.step(action)
+        next_obs, reward, done, info = env.step(action)
+        # if done[0] and info[0].get("terminal_observation") is not None:
+        #     next_obs[0] = info[0]["terminal_observation"]
+
         # replay_buffer.add(obs, action, reward, next_obs, done)
-        replay_buffer.add(np.expand_dims(obs, axis=0),
-                          np.expand_dims(next_obs, axis=0),
-                          np.expand_dims(action, axis=0),
-                          np.expand_dims(reward, axis=0),
-                          np.expand_dims(done, axis=0))
+        replay_buffer.add(obs, next_obs, action, reward, done)
+        # self.replay_buffer.add(np.expand_dims(obs, axis=0),
+        #                        np.expand_dims(next_obs, axis=0),
+        #                        np.expand_dims(action, axis=0),
+        #                        np.expand_dims(reward, axis=0),
+        #                        np.expand_dims(done, axis=0))
         episode_reward += reward
         obs = next_obs
         episode_step += 1
