@@ -13,9 +13,10 @@ FORMAT_CONFIG = {
     'rl': {
         'train': [
             ('episode', 'E', 'int'), ('step', 'S', 'int'),
-            ('duration', 'D', 'time'), ('episode_reward', 'R', 'float'),
+            ('duration', 'D', 'time'), ('episode_reward', 'return', 'float'),
             ('batch_reward', 'BR', 'float'), ('actor_loss', 'ALOSS', 'float'),
-            ('critic_loss', 'CLOSS', 'float'), ('ae_loss', 'RLOSS', 'float')
+            ('critic_loss', 'CLOSS', 'float'), ('ae_loss', 'RLOSS', 'float'),
+            ('recent_episode_reward', 'recent_return', 'float')
         ],
         'eval': [('step', 'S', 'int'), ('episode_reward', 'ER', 'float')]
     }
