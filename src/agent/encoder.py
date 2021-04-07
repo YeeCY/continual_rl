@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from utils import tie_weights
+from src.utils import tie_weights
 
 
 OUT_DIM = {2: 39, 4: 35, 6: 31, 8: 27, 10: 23, 11: 21, 12: 19}

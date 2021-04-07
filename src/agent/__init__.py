@@ -1,5 +1,5 @@
-from src.agent.dqn_agent import DqnCnnSSEnsembleAgent
-from src.agent.sac_agent import SacMlpSSEnsembleAgent, SacCnnSSEnsembleAgent
+from agent.dqn_agent import DqnCnnSSEnsembleAgent
+from agent.sac_agent import SacMlpSSEnsembleAgent, SacCnnSSEnsembleAgent
 
 ALGOS = [
     'dqn_cnn_ss_ensem',
