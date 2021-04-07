@@ -4,7 +4,6 @@ import torch.nn.functional as F
 
 import utils
 from agent.utils import get_linear_fn
-from stable_baselines3.common.utils import polyak_update
 
 from agent.network import DqnCnnSSFwdPredictorEnsem, DqnCnnSSInvPredictorEnsem, \
     DQNCnn, DQNDuelingCnn
@@ -102,7 +101,8 @@ class DqnCnnAgent:
         #     utils.soft_update_params(self.q_net, self.target_q_net, self.q_net_tau)
         if step % self.target_update_interval == 0:
             # polyak_update(self.q_net.parameters(), self.q_net_target.parameters(), self.tau)
-            polyak_update(self.q_net.parameters(), self.target_q_net.parameters(), self.q_net_tau)
+            # polyak_update(self.q_net.parameters(), self.target_q_net.parameters(), self.q_net_tau)
+            utils.soft_update_params(self.q_net.parameters(), self.target_q_net.parameters(), self.q_net_tau)
 
         self.exploration_rate = self.exploration_schedule(1.0 - float(step) / float(total_steps))
         logger.log('train/exploration_rate', self.exploration_rate, step)
@@ -143,20 +143,17 @@ class DqnCnnAgent:
         self.q_net_optimizer.step()
 
     def update(self, replay_buffer, logger, step):
-        # obs, action, reward, next_obs, not_done = replay_buffer.sample(self.batch_size)
-        samples = replay_buffer.sample(self.batch_size)
-        obs = samples.observations
-        action = samples.actions
-        next_obs = samples.next_observations
-        not_done = 1.0 - samples.dones
-        reward = samples.rewards
+        obs, action, reward, next_obs, not_done = replay_buffer.sample(self.batch_size)
+        # samples = replay_buffer.sample(self.batch_size)
+        # obs = samples.observations
+        # action = samples.actions
+        # next_obs = samples.next_observations
+        # not_done = 1.0 - samples.dones
+        # reward = samples.rewards
 
         logger.log('train/batch_reward', reward.mean(), step)
 
         self.update_q_net(obs, action, reward, next_obs, not_done, logger, step)
-
-        # if step % self.target_update_interval == 0:
-        #     utils.soft_update_params(self.q_net, self.target_q_net, self.q_net_tau)
 
     def save(self, model_dir, step):
         torch.save(

@@ -71,12 +71,35 @@ class SquashedNormal(pyd.transformed_distribution.TransformedDistribution):
         return mu
 
 
-def soft_update_params(net, target_net, tau):
-    with torch.no_grad():
-        for param, target_param in zip(net.parameters(), target_net.parameters()):
-            target_param.data.copy_(
-                tau * param.data + (1 - tau) * target_param.data
-            )
+def zip_strict(*iterables: Iterable) -> Iterable:
+    """
+    Adapt from stable_baseline3
+
+    ``zip()`` function but enforces that iterables are of equal length.
+    Raises ``ValueError`` if iterables not of equal length.
+    Code inspired by Stackoverflow answer for question #32954486.
+
+    :param \*iterables: iterables to ``zip()``
+    """
+    # As in Stackoverflow #32954486, use
+    # new object for "empty" in case we have
+    # Nones in iterable.
+    sentinel = object()
+    for combo in zip_longest(*iterables, fillvalue=sentinel):
+        if sentinel in combo:
+            raise ValueError("Iterables have different lengths")
+        yield combo
+
+
+def soft_update_params(params, target_params, tau):
+    """
+    Adapt from stable_baseline3
+    """
+    with th.no_grad():
+        # zip does not raise an exception if length of parameters does not match.
+        for param, target_param in zip_strict(params, target_params):
+            target_param.data.mul_(1 - tau)
+            th.add(target_param.data, param.data, alpha=tau, out=target_param.data)
 
 
 def set_seed_everywhere(seed, env=None, eval_env=None):
