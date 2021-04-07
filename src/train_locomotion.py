@@ -221,7 +221,7 @@ def main(args):
         # if done[0]:
         if done:
             if step > 0:
-                recent_epsode_reward.append(episode_reward)
+                recent_episode_reward.append(episode_reward)
                 logger.log('train/recent_episode_reward', np.mean(recent_episode_reward), step)
                 logger.log('train/episode_reward', episode_reward, step)
                 logger.dump(step, ty='train', save=(step > args.init_steps))
