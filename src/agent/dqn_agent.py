@@ -84,7 +84,7 @@ class DqnCnnAgent:
 
     def act(self, obs, deterministic=False):
         if not deterministic and np.random.rand() < self.exploration_rate:
-            action = np.array([np.random.randint(self.action_shape)])
+            action = np.random.randint(self.action_shape)
         else:
             with torch.no_grad():
                 # observation = th.as_tensor(observation).to(self.device)
@@ -93,16 +93,16 @@ class DqnCnnAgent:
                 q_values = self.q_net(obs)
                 # Greedy action
                 action = q_values.argmax(dim=1).reshape(-1)
-                action = utils.to_np(action)
+                action = utils.to_np(action)[0]
 
         return action
 
     def on_step(self, step, total_steps, logger):
-        if step % self.target_update_interval == 0:
-            utils.soft_update_params(self.q_net, self.target_q_net, self.q_net_tau)
         # if step % self.target_update_interval == 0:
-        #     # polyak_update(self.q_net.parameters(), self.q_net_target.parameters(), self.tau)
-        #     polyak_update(self.q_net.parameters(), self.target_q_net.parameters(), self.q_net_tau)
+        #     utils.soft_update_params(self.q_net, self.target_q_net, self.q_net_tau)
+        if step % self.target_update_interval == 0:
+            # polyak_update(self.q_net.parameters(), self.q_net_target.parameters(), self.tau)
+            polyak_update(self.q_net.parameters(), self.target_q_net.parameters(), self.q_net_tau)
 
         self.exploration_rate = self.exploration_schedule(1.0 - float(step) / float(total_steps))
         logger.log('train/exploration_rate', self.exploration_rate, step)
@@ -304,13 +304,13 @@ class DqnCnnSSEnsembleAgent(DqnCnnAgent):
 
     def update(self, replay_buffer, logger, step):
         # TODO (chongyi zheng): fix duplication
-        # obs, action, reward, next_obs, not_done = replay_buffer.sample(self.batch_size)
-        samples = replay_buffer.sample(self.batch_size)
-        obs = samples.observations
-        action = samples.actions
-        next_obs = samples.next_observations
-        not_done = 1.0 - samples.dones
-        reward = samples.rewards
+        obs, action, reward, next_obs, not_done = replay_buffer.sample(self.batch_size)
+        # samples = replay_buffer.sample(self.batch_size)
+        # obs = samples.observations
+        # action = samples.actions
+        # next_obs = samples.next_observations
+        # not_done = 1.0 - samples.dones
+        # reward = samples.rewards
 
         logger.log('train/batch_reward', reward.mean(), step)
 

@@ -120,21 +120,21 @@ def main(args):
         #     device=device,
         #     optimize_memory_usage=True,
         # )
-        from stable_baselines3.common.buffers import ReplayBuffer
-        replay_buffer = ReplayBuffer(
-            args.replay_buffer_capacity,
-            env.observation_space,
-            env.action_space,
-            device,
-            optimize_memory_usage=True,
-        )
-        # replay_buffer = buffers.ReplayBuffer(
-        #     obs_space=env.observation_space,
-        #     action_space=env.action_space,
-        #     capacity=args.replay_buffer_capacity,
-        #     device=device,
+        # from stable_baselines3.common.buffers import ReplayBuffer
+        # replay_buffer = ReplayBuffer(
+        #     args.replay_buffer_capacity,
+        #     env.observation_space,
+        #     env.action_space,
+        #     device,
         #     optimize_memory_usage=True,
         # )
+        replay_buffer = buffers.ReplayBuffer(
+            obs_space=env.observation_space,
+            action_space=env.action_space,
+            capacity=args.replay_buffer_capacity,
+            device=device,
+            optimize_memory_usage=True,
+        )
     elif args.env_type == 'dmc_locomotion':
         replay_buffer = buffers.ReplayBuffer(
             obs_shape=env.observation_space.shape,
@@ -255,7 +255,7 @@ def main(args):
 
         # Sample action for data collection
         if step < args.init_steps:
-            action = np.array([env.action_space.sample()])
+            action = np.array(env.action_space.sample())
         else:
             # action = self.act(obs, deterministic=False)
             action = agent.act(obs, deterministic=False)
@@ -275,8 +275,8 @@ def main(args):
         # if done[0] and info[0].get("terminal_observation") is not None:
         #     next_obs[0] = info[0]["terminal_observation"]
 
-        # replay_buffer.add(obs, action, reward, next_obs, done)
-        replay_buffer.add(obs, next_obs, action, reward, done)
+        replay_buffer.add(obs, action, reward, next_obs, done)
+        # replay_buffer.add(obs, next_obs, action, reward, done)
         # self.replay_buffer.add(np.expand_dims(obs, axis=0),
         #                        np.expand_dims(next_obs, axis=0),
         #                        np.expand_dims(action, axis=0),
