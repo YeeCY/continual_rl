@@ -74,12 +74,12 @@ class DqnCnnAgent:
         self.q_net_optimizer = torch.optim.Adam(
             self.q_net.parameters(), lr=self.q_net_lr)
 
-        # self.train()
-        # self.target_q_net.train()
+        self.train()
 
-    # def train(self, training=True):
-    #     self.training = training
-    #     self.q_net.train(training)
+    def train(self, training=True):
+        self.training = training
+        self.q_net.train(training)
+        self.target_q_net.train(training)
 
     def act(self, obs, deterministic=False):
         if not deterministic and np.random.rand() < self.exploration_rate:
