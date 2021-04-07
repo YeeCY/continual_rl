@@ -238,7 +238,7 @@ def main(args):
             action = np.array([env.action_space.sample()])
         else:
             # action = self.act(obs, deterministic=False)
-            action = agent.act(obs, deterministic=False)[0]
+            action = agent.act(obs, deterministic=False)
 
         if 'dqn' in args.algo:
             agent.on_step(step, args.train_steps, logger)
@@ -247,8 +247,8 @@ def main(args):
         if step >= args.init_steps and step % args.train_freq:
             # TODO (chongyi zheng): Do we need multiple updates after initial data collection?
             # num_updates = args.init_steps if step == args.init_steps else 1
-            for _ in range(num_updates):
-            	agent.update(replay_buffer, logger, step)
+            for _ in range(args.num_train_iters):
+                agent.update(replay_buffer, logger, step)
 
         # Take step
         next_obs, reward, done, info = env.step(action)

@@ -85,17 +85,16 @@ class DqnCnnAgent:
 
     def act(self, obs, deterministic=False):
         if not deterministic and np.random.rand() < self.exploration_rate:
-            action = np.random.randint(low=0, high=self.action_shape)
+            action = np.array([np.random.randint(self.action_shape)])
         else:
             with torch.no_grad():
-                obs = torch.FloatTensor(obs).to(self.device)
-                obs = obs.unsqueeze(0)
+                # observation = th.as_tensor(observation).to(self.device)
+                # observation = th.FloatTensor(observation).to(self.device)
+                obs = torch.FloatTensor(obs).to(self.device).unsqueeze(0)
                 q_values = self.q_net(obs)
-                # greed action
+                # Greedy action
                 action = q_values.argmax(dim=1).reshape(-1)
-                assert action.shape[0] == 1
-
-            action = utils.to_np(action[0])
+                action = utils.to_np(action)
 
         return action
 
