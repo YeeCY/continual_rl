@@ -6,6 +6,7 @@ from torch import distributions as pyd
 import numpy as np
 import os
 import random
+from itertools import zip_longest
 
 
 class eval_mode(object):
@@ -99,7 +100,7 @@ def soft_update_params(params, target_params, tau):
         # zip does not raise an exception if length of parameters does not match.
         for param, target_param in zip_strict(params, target_params):
             target_param.data.mul_(1 - tau)
-            th.add(target_param.data, param.data, alpha=tau, out=target_param.data)
+            torch.add(target_param.data, param.data, alpha=tau, out=target_param.data)
 
 
 def set_seed_everywhere(seed, env=None, eval_env=None):
