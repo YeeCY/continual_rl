@@ -71,7 +71,7 @@ class SquashedNormal(pyd.transformed_distribution.TransformedDistribution):
         return mu
 
 
-def zip_strict(*iterables: Iterable) -> Iterable:
+def zip_strict(*iterables):
     """
     Adapt from stable_baseline3
 
@@ -95,7 +95,7 @@ def soft_update_params(params, target_params, tau):
     """
     Adapt from stable_baseline3
     """
-    with th.no_grad():
+    with torch.no_grad():
         # zip does not raise an exception if length of parameters does not match.
         for param, target_param in zip_strict(params, target_params):
             target_param.data.mul_(1 - tau)
