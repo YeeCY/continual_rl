@@ -18,12 +18,14 @@ FORMAT_CONFIG = {
             ('critic_loss', 'critic_loss', 'float'), ('ae_loss', 'ae_loss', 'float'),
             ('ss_inv_loss', 'ss_inv_loss', 'float'),
             ('batch_ss_pred_var', 'batch_ss_pred_var', 'float'),
+            ('recent_episode_reward', 'recent_return', 'float'),
             ('success_rate', 'success_rate', 'float')
         ],
         'eval': [
             ('step', 'step', 'int'), ('episode_reward', 'return', 'float'),
             ('episode_ss_pred_var', 'ss_pred_var', 'float'),
-            ('episode_success_rate', 'success_rate', 'float'),
+            ('episode_success', 'success', 'bool'),
+            ('recent_success_rate', 'recent_success_rate', 'float'),
         ]
     }
 }

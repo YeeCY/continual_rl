@@ -1,6 +1,7 @@
 import torch
 import numpy as np
 import os
+from collections import deque
 
 from arguments import parse_args
 from env import make_atari_env, make_locomotion_env, make_single_metaworld_env
@@ -15,6 +16,7 @@ from video import VideoRecorder
 def evaluate(env, agent, video, num_episodes, logger, step):
     """Evaluate agent"""
     episode_rewards = []
+    successes = []
     episode_success_rates = []
     episode_fwd_pred_vars = []
     episode_inv_pred_vars = []
@@ -26,26 +28,21 @@ def evaluate(env, agent, video, num_episodes, logger, step):
         obs_buf = []
         next_obs_buf = []
         action_buf = []
-        success_buf = []
         while not done:
             with utils.eval_mode(agent):
-                action = agent.act(obs, sample=False)
+                action = agent.act(obs, False)
             next_obs, reward, done, info = env.step(action)
-            if hasattr(env, 'max_path_length') and env.curr_path_length > env.max_path_length:  # metaworld
-                done = True
 
             obs_buf.append(obs)
             next_obs_buf.append(next_obs)
             action_buf.append(action)
             episode_reward += reward
-            if info.get('success') is not None:
-                success_buf.append(info.get('success'))
+            if done and info.get('success') is not None:
+                successes.append(info.get('success'))
 
             video.record(env)
             obs = next_obs
         episode_rewards.append(episode_reward)
-        if len(success_buf) > 0:
-            episode_success_rates.append(np.sum(success_buf) / len(success_buf))
 
         if agent.use_fwd:
             episode_fwd_pred_vars.append(np.mean(
@@ -64,7 +61,7 @@ def evaluate(env, agent, video, num_episodes, logger, step):
         video.save('%d.mp4' % step)
     logger.log('eval/episode_reward', np.mean(episode_rewards), step)
     if len(episode_success_rates) > 0:
-        logger.log('eval/episode_success_rate', np.mean(episode_success_rates), step)
+        logger.log('eval/success_rate', np.sum(successes) / len(successes), step)
     if agent.use_fwd:
         logger.log('eval/episode_ss_pred_var', np.mean(episode_fwd_pred_vars), step)
     if agent.use_inv:
@@ -73,14 +70,20 @@ def evaluate(env, agent, video, num_episodes, logger, step):
 
 
 def main(args):
+    if args.seed is None:
+        args.seed = np.random.randint(int(1e9))
+
+    # Initialize environment
     if args.env_type == 'atari':
         env = make_atari_env(
             env_name=args.env_name,
+            seed=args.seed,
             action_repeat=args.action_repeat,
             frame_stack=args.frame_stack
         )
         eval_env = make_atari_env(
             env_name=args.env_name,
+            seed=args.seed,
             action_repeat=args.action_repeat,
             frame_stack=args.frame_stack
         )
@@ -109,14 +112,15 @@ def main(args):
         )
     elif args.env_type == 'metaworld':
         env = make_single_metaworld_env(
-            env_name=args.env_name
+            env_name=args.env_name,
+            seed=args.seed
         )
         eval_env = make_single_metaworld_env(
-            env_name=args.env_name
+            env_name=args.env_name,
+            seed=args.seed
         )
 
-    # Initialize environment
-    utils.set_seed_everywhere(args.seed, env=env, eval_env=eval_env)
+    utils.set_seed_everywhere(args.seed)
     utils.make_dir(args.work_dir)
     model_dir = utils.make_dir(os.path.join(args.work_dir, 'model'))
     video_dir = utils.make_dir(os.path.join(args.work_dir, 'video'))
@@ -124,7 +128,7 @@ def main(args):
                           height=448, width=448, camera_id=args.video_camera_id)
 
     # Prepare agent
-    assert torch.cuda.is_available(), 'must have cuda enabled'
+    # assert torch.cuda.is_available(), 'must have cuda enabled'
     device = torch.device(args.device)
 
     if args.env_type == 'atari':
@@ -136,21 +140,21 @@ def main(args):
         #     device=device,
         #     optimize_memory_usage=True,
         # )
-        from stable_baselines3.common.buffers import ReplayBuffer
-        replay_buffer = ReplayBuffer(
-            args.replay_buffer_capacity,
-            env.observation_space,
-            env.action_space,
-            device,
-            optimize_memory_usage=True,
-        )
-        # replay_buffer = buffers.ReplayBuffer(
-        #     obs_space=env.observation_space,
-        #     action_space=env.action_space,
-        #     capacity=args.replay_buffer_capacity,
-        #     device=device,
+        # from stable_baselines3.common.buffers import ReplayBuffer
+        # replay_buffer = ReplayBuffer(
+        #     args.replay_buffer_capacity,
+        #     env.observation_space,
+        #     env.action_space,
+        #     device,
         #     optimize_memory_usage=True,
         # )
+        replay_buffer = buffers.ReplayBuffer(
+            obs_space=env.observation_space,
+            action_space=env.action_space,
+            capacity=args.replay_buffer_capacity,
+            device=device,
+            optimize_memory_usage=True,
+        )
     elif args.env_type == 'dmc_locomotion' or 'metaworld':
         replay_buffer = buffers.ReplayBuffer(
             obs_space=env.observation_space,
@@ -170,11 +174,71 @@ def main(args):
                     log_frequency=args.log_freq,
                     action_repeat=args.action_repeat,
                     save_tb=args.save_tb)
-    episode, episode_reward, episode_step, done = 0, 0, 0, True
-    success = []
-    obs = env.reset()
+    episode, episode_reward, episode_step, done, info = 0, 0, 0, True, {}
+    recent_success = deque(maxlen=100)
+    recent_episode_reward = deque(maxlen=100)
     start_time = time.time()
-    for step in range(args.train_steps + 1):
+    # for step in range(args.train_steps + 1):
+    #     # (chongyi zheng): we can also evaluate and save model when current episode is not finished
+    #     # Evaluate agent periodically
+    #     if step % args.eval_freq == 0:
+    #         print('Evaluating:', args.work_dir)
+    #         logger.log('eval/episode', episode, step)
+    #         evaluate(eval_env, agent, video, args.num_eval_episodes, logger, step)
+    #
+    #     # Save agent periodically
+    #     if step % args.save_freq == 0 and step > 0:
+    #         if args.save_model:
+    #             agent.save(model_dir, step)
+    #
+    #     if done:
+    #         if step > 0:
+    #             logger.log('train/duration', time.time() - start_time, step)
+    #             start_time = time.time()
+    #             logger.dump(step, ty='train', save=(step > args.init_steps))
+    #
+    #         recent_episode_reward.append(episode_reward)
+    #         logger.log('train/recent_episode_reward', np.mean(recent_episode_reward), step)
+    #         logger.log('train/episode_reward', episode_reward, step)
+    #
+    #         obs = env.reset()
+    #         episode_reward = 0
+    #         episode_step = 0
+    #         episode += 1
+    #
+    #         logger.log('train/episode', episode, step)
+    #
+    #     # Sample action for data collection
+    #     if step < args.init_steps:
+    #         action = env.action_space.sample()
+    #     else:
+    #         # with utils.eval_mode(agent):
+    #         action = agent.act(obs, False)
+    #
+    #     if 'dqn' in args.algo:
+    #         agent.on_step(step, args.train_steps, logger)
+    #
+    #     # Run training update
+    #     if step >= args.init_steps and step % args.train_freq == 0:
+    #         # TODO (chongyi zheng): Do we need multiple updates after initial data collection?
+    #         # num_updates = args.init_steps if step == args.init_steps else 1
+    #         # for _ in range(num_updates):
+    #         # 	agent.update(replay_buffer, logger, step)
+    #         for _ in range(args.num_train_iters):
+    #             agent.update(replay_buffer, logger, step)
+    #
+    #     # Take step
+    #     next_obs, reward, done, _ = env.step(action)
+    #     # replay_buffer.add(obs, action, reward, next_obs, done)
+    #     replay_buffer.add(np.expand_dims(obs, axis=0),
+    #                       np.expand_dims(next_obs, axis=0),
+    #                       np.expand_dims(action, axis=0),
+    #                       np.expand_dims(reward, axis=0),
+    #                       np.expand_dims(done, axis=0))
+    #     episode_reward += reward
+    #     obs = next_obs
+    #     episode_step += 1
+    for step in range(args.train_steps + 1):  # plus one step for final evaluation
         # (chongyi zheng): we can also evaluate and save model when current episode is not finished
         # Evaluate agent periodically
         if step % args.eval_freq == 0:
@@ -187,31 +251,38 @@ def main(args):
             if args.save_model:
                 agent.save(model_dir, step)
 
+        # if done[0]:
         if done:
+            # if step > 0:
+            #     recent_episode_reward.append(episode_reward)
+            #     logger.log('train/recent_episode_reward', np.mean(recent_episode_reward), step)
+            #     logger.log('train/episode_reward', episode_reward, step)
+            #     logger.dump(step, ty='train', save=(step > args.init_steps))
+            if info.get('success') is not None:
+                success = info.get('success')
+                recent_success.append(success)
+                logger.log('train/episode_success', success, step)
+                logger.log('train/recent_success_rate', np.sum(recent_success) / len(recent_success), step)
+            recent_episode_reward.append(episode_reward)
+            logger.log('train/episode_reward', episode_reward, step)
+            logger.log('train/recent_episode_reward', np.mean(recent_episode_reward), step)
+            logger.log('train/episode', episode, step)
+
             if step > 0:
                 logger.log('train/duration', time.time() - start_time, step)
                 start_time = time.time()
                 logger.dump(step, ty='train', save=(step > args.init_steps))
 
-            logger.log('train/episode_reward', episode_reward, step)
-
             obs = env.reset()
             episode_reward = 0
             episode_step = 0
             episode += 1
-            if len(success) > 0:
-                success_rate = np.sum(success) / len(success)
-                logger.log('train/success_rate', success_rate, step)
-                success.clear()
-
-            logger.log('train/episode', episode, step)
 
         # Sample action for data collection
         if step < args.init_steps:
-            action = env.action_space.sample()
+            action = np.array(env.action_space.sample())
         else:
-            with utils.eval_mode(agent):
-                action = agent.act(obs, sample=True)
+            action = agent.act(obs, False)
 
         if 'dqn' in args.algo:
             agent.on_step(step, args.train_steps, logger)
@@ -220,24 +291,19 @@ def main(args):
         if step >= args.init_steps and step % args.train_freq == 0:
             # TODO (chongyi zheng): Do we need multiple updates after initial data collection?
             # num_updates = args.init_steps if step == args.init_steps else 1
-            # for _ in range(num_updates):
-            # 	agent.update(replay_buffer, logger, step)
             for _ in range(args.num_train_iters):
                 agent.update(replay_buffer, logger, step)
 
         # Take step
         next_obs, reward, done, info = env.step(action)
-        if hasattr(env, 'max_path_length') and env.curr_path_length > env.max_path_length:  # metaworld
-            done = True
-        if info.get('success') is not None:
-            success.append(info.get('success'))
 
         replay_buffer.add(obs, action, reward, next_obs, done)
-        # replay_buffer.add(np.expand_dims(obs, axis=0),
-        #                   np.expand_dims(next_obs, axis=0),
-        #                   np.expand_dims(action, axis=0),
-        #                   np.expand_dims(reward, axis=0),
-        #                   np.expand_dims(done, axis=0))
+        # replay_buffer.add(obs, next_obs, action, reward, done)
+        # self.replay_buffer.add(np.expand_dims(obs, axis=0),
+        #                        np.expand_dims(next_obs, axis=0),
+        #                        np.expand_dims(action, axis=0),
+        #                        np.expand_dims(reward, axis=0),
+        #                        np.expand_dims(done, axis=0))
         episode_reward += reward
         obs = next_obs
         episode_step += 1

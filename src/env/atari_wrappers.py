@@ -284,6 +284,7 @@ class FrameStack(gym.Wrapper):
 
 
 def wrap_deepmind(env_id,
+                  seed=None,
                   noop_max=30,
                   terminal_on_life_loss=True,
                   clip_reward=True,
@@ -292,6 +293,7 @@ def wrap_deepmind(env_id,
                   screen_size=84):
     assert 'NoFrameskip' in env_id
     env = gym.make(env_id)
+    env.seed(seed)
     env = NoopResetEnv(env, noop_max=noop_max)
     env = MaxAndSkipEnv(env, skip=frame_skip)
     if terminal_on_life_loss:

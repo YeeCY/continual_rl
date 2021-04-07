@@ -1,9 +1,9 @@
 import dmc2gym
 import metaworld
-import random
 
 from env import dmc_wrappers
 from env import atari_wrappers
+from env import metaworld_wrappers
 
 
 def make_pad_env(
@@ -75,17 +75,21 @@ def make_locomotion_env(
     return env
 
 
-def make_atari_env(env_name, action_repeat=4, frame_stack=4):
+def make_atari_env(env_name, seed=None, action_repeat=4, frame_stack=4):
     return atari_wrappers.wrap_deepmind(
         env_id=env_name,
+        seed=seed,
         frame_skip=action_repeat,
         frame_stack=frame_stack
     )
 
 
-def make_single_metaworld_env(env_name):
+def make_single_metaworld_env(env_name, seed=None):
     mt1 = metaworld.MT1(env_name)
     env = mt1.train_classes[env_name]()
-    task = random.choice(mt1.train_tasks)
-    env.set_task(task)
+    # task = random.choice(mt1.train_tasks)
+    # env.set_task(task)
+    env = metaworld_wrappers.SingleMT1Wrapper(env, mt1.train_tasks)
+    env.seed(seed)
+
     return env
