@@ -282,7 +282,8 @@ class DQN(OffPolicyAlgorithm):
         else:
             with th.no_grad():
                 # observation = th.as_tensor(observation).to(self.device)
-                observation = th.FloatTensor(observation).to(self.device).unsqueeze(0)
+                observation = th.FloatTensor(observation).to(self.device)
+                # observation = th.FloatTensor(observation).to(self.device).unsqueeze(0)
                 q_values = self.q_net(observation)
                 # Greedy action
                 action = q_values.argmax(dim=1).reshape(-1)
@@ -316,10 +317,13 @@ class DQN(OffPolicyAlgorithm):
         # )
         from logger import Logger
         logger = Logger('../tmp_logs/sb3', save_tb=False)
-        episode, episode_reward, episode_step, done = 0, 0, 0, True
-        env = self.env.envs[0].env
+        episode, episode_reward, episode_step, done = 0, 0, 0, [True]
+        # episode, episode_reward, episode_step, done = 0, 0, 0, True
+        env = self.env
+        # env = self.env.envs[0].env
         for step in range(total_timesteps + 1):
-            if done:
+            if done[0]:
+            # if done:
                 if step > 0:
                     logger.log('train/episode_reward', episode_reward, step)
                     logger.dump(step, ty='train', save=(step > self.learning_starts))
@@ -335,7 +339,7 @@ class DQN(OffPolicyAlgorithm):
             if step < self.learning_starts:
                 action = np.array([self.env.action_space.sample()])
             else:
-                action = self.act(obs, deterministic=False)[0]
+                action = self.act(obs, deterministic=False)
 
             self._update_current_progress_remaining(self.num_timesteps, total_timesteps)
             self._on_step()
@@ -350,16 +354,16 @@ class DQN(OffPolicyAlgorithm):
 
             # Take step
             next_obs, reward, done, info = env.step(action)
-            # if done[0] and info[0].get("terminal_observation") is not None:
-            #     next_obs[0] = info[0]["terminal_observation"]
+            if done[0] and info[0].get("terminal_observation") is not None:
+                next_obs[0] = info[0]["terminal_observation"]
 
             # replay_buffer.add(obs, action, reward, next_obs, done)
-            # self.replay_buffer.add(obs, next_obs, action, reward, done)
-            self.replay_buffer.add(np.expand_dims(obs, axis=0),
-                                   np.expand_dims(next_obs, axis=0),
-                                   np.expand_dims(action, axis=0),
-                                   np.expand_dims(reward, axis=0),
-                                   np.expand_dims(done, axis=0))
+            self.replay_buffer.add(obs, next_obs, action, reward, done)
+            # self.replay_buffer.add(np.expand_dims(obs, axis=0),
+            #                        np.expand_dims(next_obs, axis=0),
+            #                        np.expand_dims(action, axis=0),
+            #                        np.expand_dims(reward, axis=0),
+            #                        np.expand_dims(done, axis=0))
             episode_reward += reward
             obs = next_obs
             episode_step += 1
