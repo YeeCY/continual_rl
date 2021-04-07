@@ -59,7 +59,7 @@ class DQNCnn(nn.Module):
             nn.Linear(feature_dim, action_shape)
         )
 
-        # self.apply(weight_init)
+        self.apply(weight_init)
 
     def forward(self, obs):
         h = self.encoder(obs)
@@ -67,29 +67,6 @@ class DQNCnn(nn.Module):
 
         return q_values
 
-
-class DqnCnn(nn.Module):
-    def __init__(self, obs_space, feature_dim):
-        super().__init__()
-
-        self.encoder = DqnEncoder(obs_space.shape)
-
-        # Compute shape by doing one forward pass
-        with torch.no_grad():
-            flatten_dim = np.prod(
-                self.encoder(torch.zeros(1, *obs_space.shape)).shape[1:])
-
-        self.trunk = nn.Sequential(
-            nn.Linear(flatten_dim, feature_dim),
-            nn.ReLU(),
-        )
-
-        self.apply(weight_init)
-
-    def forward(self, obs):
-        h = self.trunk(self.encoder(obs))
-
-        return h
 
 from stable_baselines3.common.policies import BasePolicy
 
@@ -207,7 +184,7 @@ class DQNDuelingCnn(nn.Module):
             nn.Linear(feature_dim, action_shape)
         )
 
-        # self.apply(weight_init)
+        self.apply(weight_init)
 
         self.outputs = dict()  # log placeholder
 
