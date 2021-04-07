@@ -217,13 +217,34 @@ def main(args):
     #     episode_reward += reward
     #     obs = next_obs
     #     episode_step += 1
-    for step in range(args.train_steps + 1):
+    for step in range(args.train_steps + 1):  # plus one step for final evaluation
+        # (chongyi zheng): we can also evaluate and save model when current episode is not finished
+        # Evaluate agent periodically
+        if step % args.eval_freq == 0:
+            print('Evaluating:', args.work_dir)
+            logger.log('eval/episode', episode, step)
+            evaluate(eval_env, agent, video, args.num_eval_episodes, logger, step)
+
+        # Save agent periodically
+        if step % args.save_freq == 0 and step > 0:
+            if args.save_model:
+                agent.save(model_dir, step)
+
         # if done[0]:
         if done:
+            # if step > 0:
+            #     recent_episode_reward.append(episode_reward)
+            #     logger.log('train/recent_episode_reward', np.mean(recent_episode_reward), step)
+            #     logger.log('train/episode_reward', episode_reward, step)
+            #     logger.dump(step, ty='train', save=(step > args.init_steps))
+            recent_episode_reward.append(episode_reward)
+            logger.log('train/recent_episode_reward', np.mean(recent_episode_reward), step)
+            logger.log('train/episode_reward', episode_reward, step)
+            logger.log('train/episode', episode, step)
+
             if step > 0:
-                recent_episode_reward.append(episode_reward)
-                logger.log('train/recent_episode_reward', np.mean(recent_episode_reward), step)
-                logger.log('train/episode_reward', episode_reward, step)
+                logger.log('train/duration', time.time() - start_time, step)
+                start_time = time.time()
                 logger.dump(step, ty='train', save=(step > args.init_steps))
 
             obs = env.reset()
@@ -231,7 +252,6 @@ def main(args):
             episode_step = 0
             episode += 1
 
-            logger.log('train/episode', episode, step)
 
         # Sample action for data collection
         if step < args.init_steps:

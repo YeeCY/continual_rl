@@ -98,11 +98,11 @@ class DqnCnnAgent:
         return action
 
     def on_step(self, step, total_steps, logger):
-        # if step % self.target_update_interval == 0:
-        #     utils.soft_update_params(self.q_net, self.target_q_net, self.q_net_tau)
         if step % self.target_update_interval == 0:
-            # polyak_update(self.q_net.parameters(), self.q_net_target.parameters(), self.tau)
-            polyak_update(self.q_net.parameters(), self.target_q_net.parameters(), self.q_net_tau)
+            utils.soft_update_params(self.q_net, self.target_q_net, self.q_net_tau)
+        # if step % self.target_update_interval == 0:
+        #     # polyak_update(self.q_net.parameters(), self.q_net_target.parameters(), self.tau)
+        #     polyak_update(self.q_net.parameters(), self.target_q_net.parameters(), self.q_net_tau)
 
         self.exploration_rate = self.exploration_schedule(1.0 - float(step) / float(total_steps))
         logger.log('train/exploration_rate', self.exploration_rate, step)
@@ -315,12 +315,6 @@ class DqnCnnSSEnsembleAgent(DqnCnnAgent):
         logger.log('train/batch_reward', reward.mean(), step)
 
         self.update_q_net(obs, action, reward, next_obs, not_done, logger, step)
-
-        # if step % self.target_update_interval == 0:
-        #     utils.soft_update_params(self.q_net, self.target_q_net, self.q_net_tau)
-
-        # log exploration rate after training begins
-        # logger.log('train/exploration_rate', self.exploration_rate, step)
 
         if (self.use_fwd or self.use_inv) and step % self.ss_update_freq == 0:
             self.update_ss_preds(obs, next_obs, action, logger, step)
