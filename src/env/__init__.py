@@ -1,6 +1,8 @@
 import dmc2gym
 from env import dmc_wrappers
 from env import atari_wrappers
+from env.common_wrappers import TaskNameWrapper, MultiEnvWrapper
+from env.utils import round_robin_strategy
 
 
 def make_pad_env(
@@ -72,9 +74,32 @@ def make_locomotion_env(
     return env
 
 
-def make_atari_env(env_name, action_repeat=4, frame_stack=4):
+def make_atari_env(env_name, seed=None, action_repeat=4, frame_stack=4):
     return atari_wrappers.wrap_deepmind(
         env_id=env_name,
+        seed=seed,
         frame_skip=action_repeat,
         frame_stack=frame_stack
     )
+
+
+def make_continual_atari_env(env_names, seed=None,
+                             action_repeat=4, frame_stack=4):
+    envs = []
+    for env_name in env_names:
+        env = atari_wrappers.wrap_deepmind(
+            env_id=env_name,
+            full_action_space=True,
+            frame_skip=action_repeat,
+            frame_stack=frame_stack
+        )
+        env = TaskNameWrapper(env)
+        envs.append(env)
+
+    env = MultiEnvWrapper(envs,
+                          sample_strategy=round_robin_strategy,
+                          mode='vanilla',
+                          env_names=env_names)
+    env.seed(seed)
+
+    return env

@@ -3,6 +3,8 @@
 import gym
 import numpy as np
 from gym import spaces
+from gym.envs.atari.atari_env import AtariEnv
+from gym.wrappers import TimeLimit
 from collections import deque
 
 try:
@@ -206,6 +208,7 @@ class WarpFrame(gym.ObservationWrapper):
         return frame
 
 
+# (chongyi zheng): deprecated
 class AtariWrapper(gym.Wrapper):
     """
     Atari 2600 preprocessings
@@ -283,7 +286,41 @@ class FrameStack(gym.Wrapper):
         return np.stack(self.frames, axis=0)
 
 
+class AugActionWrapper(gym.Wrapper):
+    def __init__(self,
+                 env,
+                 max_action_n):
+        super().__init__(env)
+
+        self.max_action_n = max_action_n
+
+        self.action_space = self._aug_action_space()
+        self.observation_space = self._update_observation_space()  # avoid crash
+
+    def _aug_action_space(self):
+        pass
+
+    def step(self, action):
+        obs, reward, done, info = self.env.step(action)
+
+        # if self._mode == 'add-onehot':
+        #     obs = np.concatenate([obs, self._active_task_one_hot()])
+        # elif self._mode == 'del-onehot':
+        #     obs = obs[:-self._num_tasks]
+        # else:  # self._mode == 'vanilla'
+        #     obs = obs
+        #
+        # if 'task_id' not in info:
+        #     info['task_id'] = self._active_task_index
+        # if self._env_names is not None:
+        #     info['task_name'] = self._env_names[self._active_task_index]
+
+        return obs, reward, done, info
+
+
 def wrap_deepmind(env_id,
+                  seed=None,
+                  full_action_space=False,
                   noop_max=30,
                   terminal_on_life_loss=True,
                   clip_reward=True,
@@ -292,6 +329,17 @@ def wrap_deepmind(env_id,
                   screen_size=84):
     assert 'NoFrameskip' in env_id
     env = gym.make(env_id)
+    # remake environment from scratch if full_action_space = True
+    if full_action_space:
+        kwargs = env.spec._kwargs
+        kwargs.update(dict(full_action_space=True))
+        max_episode_steps = env.spec.max_episode_steps
+        # TODO (chongyi zheng): fix env.spec
+        env = TimeLimit(
+            AtariEnv(**kwargs),
+            max_episode_steps=max_episode_steps
+        )
+    env.seed(seed)
     env = NoopResetEnv(env, noop_max=noop_max)
     env = MaxAndSkipEnv(env, skip=frame_skip)
     if terminal_on_life_loss:

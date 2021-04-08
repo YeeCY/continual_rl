@@ -5,7 +5,8 @@ from agent import ALGOS
 
 ENV_TYPES = [
 	'atari',
-	'dmc_locomotion'
+	'dmc_locomotion',
+	'metaworld'
 ]
 
 
@@ -16,6 +17,7 @@ def parse_args():
 	# parser.add_argument('--domain_name', default='walker')
 	# parser.add_argument('--task_name', default='walk')
 	parser.add_argument('--env_name', default='walker_run')  # (chongyi zheng)
+	parser.add_argument('--env_names', nargs='+', default='reach-v2 window-close-v2 button-press-topdown-v2', type=str)
 	parser.add_argument('--env_type', default='dmc_locomotion', type=str, choices=ENV_TYPES)
 	parser.add_argument('--algo', default='sac_mlp_ss_ensem', type=str, choices=list(ALGOS))
 	parser.add_argument('--video_camera_id', default=0, type=int)  # (chongyi zheng)
@@ -36,12 +38,14 @@ def parse_args():
 	parser.add_argument('--num_train_iters', default=1, type=int)
 	parser.add_argument('--train_freq', default=1, type=int)  # 4 for dqn?
 	parser.add_argument('--train_steps', default=1000000, type=int)
+	parser.add_argument('--train_steps_per_task', default=1000000, type=int)
 	parser.add_argument('--batch_size', default=128, type=int)  # 32 for dqn?
 	parser.add_argument('--device', default='cuda', type=str)
 
 	# eval
 	parser.add_argument('--save_freq', default=100000, type=int)
 	parser.add_argument('--eval_freq', default=100000, type=int)
+	parser.add_argument('--eval_freq_per_task', default=100000, type=int)
 	parser.add_argument('--num_eval_episodes', default=3, type=int)
 	parser.add_argument('--eval_results', default=False, action='store_true')  # (chongyi zheng): save evalution results or not
 
@@ -67,7 +71,7 @@ def parse_args():
 	parser.add_argument('--curl_latent_dim', default=128, type=int)  # latent dimension for curl
 	parser.add_argument('--use_ensemble', default=False, action='store_true')  # ensemble
 	parser.add_argument('--num_ensem_comps', default=4, type=int)  # number of components in ensemble
-	
+
 	# sac
 	parser.add_argument('--hidden_dim', default=400, type=int)  # 1024
 	parser.add_argument('--init_temperature', default=1.0, type=float)  # 0.1
@@ -96,7 +100,7 @@ def parse_args():
 	parser.add_argument('--q_net_tau', default=1.0, type=float)
 
 	# misc
-	parser.add_argument('--seed', default=None, type=int)
+	parser.add_argument('--seed', default=1, type=int)
 	parser.add_argument('--work_dir', default=None, type=str)
 	parser.add_argument('--load_checkpoint', default=None, type=str)
 	parser.add_argument('--replay_buffer_capacity', default=1000000, type=int)  # (chongyi zheng), 100000
@@ -114,6 +118,7 @@ def parse_args():
 
 	assert args.mode in {'train', 'eval', 'eval_color_easy', 'eval_color_hard'} or 'eval_video' in args.mode, \
 		f'unrecognized mode "{args.mode}"'
+	assert args.seed is not None, 'must provide seed for experiment'
 	assert args.work_dir is not None, 'must provide a working directory for experiment'
 
 	assert np.sum([args.use_inv, args.use_rot, args.use_curl]) <= 1, \
@@ -125,5 +130,5 @@ def parse_args():
 			args.load_checkpoint = int(args.load_checkpoint)
 		except:
 			return ValueError('load_checkpoint must be int, received', args.load_checkpoint)
-	
+
 	return args
