@@ -34,8 +34,8 @@ def evaluate(env, agent, video, num_episodes, logger, step):
                 next_obs_buf = []
                 action_buf = []
                 while not done:
-                    with utils.eval_mode(agent):
-                        action = agent.act(obs, False)
+                    # with utils.eval_mode(agent):
+                    action = agent.act(obs, True)
                     next_obs, reward, done, info = env.step(action)
 
                     obs_buf.append(obs)
@@ -49,28 +49,28 @@ def evaluate(env, agent, video, num_episodes, logger, step):
                     obs = next_obs
                 episode_rewards.append(episode_reward)
 
-                if agent.use_fwd:
-                    episode_fwd_pred_vars.append(np.mean(
-                        agent.ss_preds_var(
-                            np.asarray(obs_buf, dtype=obs.dtype),
-                            np.asarray(next_obs_buf, dtype=obs.dtype),
-                            np.asarray(action_buf, dtype=action.dtype))
-                    ))
-                if agent.use_inv:
-                    episode_inv_pred_vars.append(np.mean(
-                        agent.ss_preds_var(
-                            np.asarray(obs_buf, dtype=obs.dtype),
-                            np.asarray(next_obs_buf, dtype=obs.dtype),
-                            np.asarray(action_buf, dtype=action.dtype))
-                    ))
+                # if agent.use_fwd:
+                #     episode_fwd_pred_vars.append(np.mean(
+                #         agent.ss_preds_var(
+                #             np.asarray(obs_buf, dtype=obs.dtype),
+                #             np.asarray(next_obs_buf, dtype=obs.dtype),
+                #             np.asarray(action_buf, dtype=action.dtype))
+                #     ))
+                # if agent.use_inv:
+                #     episode_inv_pred_vars.append(np.mean(
+                #         agent.ss_preds_var(
+                #             np.asarray(obs_buf, dtype=obs.dtype),
+                #             np.asarray(next_obs_buf, dtype=obs.dtype),
+                #             np.asarray(action_buf, dtype=action.dtype))
+                #     ))
                 video.save('%s_%d.mp4' % (task_name, step))
-            logger.log('eval/episode_reward', np.mean(episode_rewards), step)
+            logger.log('eval/episode_reward', np.mean(episode_rewards), step, sw_prefix=task_name + '_')
             if len(episode_success_rates) > 0:
                 logger.log('eval/success_rate', np.sum(successes) / len(successes), step)
-            if agent.use_fwd:
-                logger.log('eval/episode_ss_pred_var', np.mean(episode_fwd_pred_vars), step)
-            if agent.use_inv:
-                logger.log('eval/episode_ss_pred_var', np.mean(episode_inv_pred_vars), step)
+            # if agent.use_fwd:
+            #     logger.log('eval/episode_ss_pred_var', np.mean(episode_fwd_pred_vars), step)
+            # if agent.use_inv:
+            #     logger.log('eval/episode_ss_pred_var', np.mean(episode_inv_pred_vars), step)
             log_info = {
                 'train/task_name': task_name
             }
@@ -205,6 +205,7 @@ def main(args):
                     action_repeat=args.action_repeat,
                     save_tb=args.save_tb)
     episode, episode_reward, episode_step, done, info = 0, 0, 0, True, {}
+    task_step = 0
     recent_success = deque(maxlen=100)
     recent_episode_reward = deque(maxlen=100)
     start_time = time.time()
@@ -310,7 +311,12 @@ def main(args):
                     start_time = time.time()
                     logger.dump(step, ty='train', save=(step > args.init_steps), info=log_info)
 
-                obs = env.reset(sample_task=(step % train_steps_per_task == 0))
+                # TODO (chongyi zheng): force reset outside done = True when step reach train_steps_per_task
+                if task_step >= train_steps_per_task:
+                    obs = env.reset(sample_task=True)
+                    task_step = 0
+                else:
+                    obs = env.reset()
                 episode_reward = 0
                 episode_step = 0
                 episode += 1
@@ -344,6 +350,7 @@ def main(args):
             episode_reward += reward
             obs = next_obs
             episode_step += 1
+            task_step += 1
 
     print('Final evaluating:', args.work_dir)
     evaluate(eval_env, agent, video, args.num_eval_episodes, logger,

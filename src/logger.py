@@ -195,14 +195,18 @@ class Logger(object):
         if self._sw is not None:
             self._sw.add_histogram(key, histogram, step)
 
-    def log(self, key, value, step, n=1, log_frequency=1):
+    def log(self, key, value, step, n=1, log_frequency=1, sw_prefix=None):
         if not self._should_log(step, log_frequency):
             return
         assert key.startswith('train') or key.startswith('eval')
         if type(value) == torch.Tensor:
             value = value.item()
         if isinstance(value, (float, int, np.ndarray)):
-            self._try_sw_log(key, value / n, step)
+            if sw_prefix is not None:
+                sw_key = sw_prefix + key
+            else:
+                sw_key = key
+            self._try_sw_log(sw_key, value / n, step)
         mg = self._train_mg if key.startswith('train') else self._eval_mg
         mg.log(key, value, n)
 
