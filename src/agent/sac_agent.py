@@ -1211,9 +1211,9 @@ class SacMlpSSEnsembleAgent:
         self.critic.train(training)
 
         if self.use_inv:
-            self.ss_inv_pred_ensem.train()
+            self.ss_inv_pred_ensem.train(training)
         if self.use_fwd:
-            self.ss_fwd_pred_ensem.train()
+            self.ss_fwd_pred_ensem.train(training)
 
     @property
     def alpha(self):
@@ -1297,8 +1297,6 @@ class SacMlpSSEnsembleAgent:
         critic_loss.backward()
         self.critic_optimizer.step()
 
-        self.critic.log(logger, step)
-
     def update_actor_and_alpha(self, obs, logger, step, update_alpha=True):
         # dist = self.actor(obs)
         # action = dist.rsample()
@@ -1325,8 +1323,6 @@ class SacMlpSSEnsembleAgent:
         actor_loss.backward()
         self.actor_optimizer.step()
 
-        self.actor.log(logger, step)
-
         if update_alpha:
             self.log_alpha_optimizer.zero_grad()
             alpha_loss = (self.alpha * (-log_pi - self.target_entropy).detach()).mean()
@@ -1349,7 +1345,6 @@ class SacMlpSSEnsembleAgent:
             inv_loss.backward()
             self.ss_inv_optimizer.step()
 
-            self.ss_inv_pred_ensem.log(logger, step)
             logger.log('train_ss_inv/loss', inv_loss, step)
 
         if self.use_fwd:
@@ -1360,7 +1355,6 @@ class SacMlpSSEnsembleAgent:
             fwd_loss.backward()
             self.ss_fwd_optimizer.step()
 
-            self.ss_fwd_pred_ensem.log(logger, step)
             logger.log('train_ss_fwd/loss', fwd_loss, step)
 
     def update(self, replay_buffer, logger, step):
@@ -1384,8 +1378,6 @@ class SacMlpSSEnsembleAgent:
         if (self.use_fwd or self.use_inv) and step % self.ss_update_freq == 0:
             # self.update_ss_preds(ensem_kwargs['obses'], ensem_kwargs['next_obses'], ensem_kwargs['actions'], L, step)
             self.update_ss_preds(obs, next_obs, action, logger, step)
-            ss_preds_var = self.ss_preds_var(obs, next_obs, action)
-            logger.log('train/batch_ss_preds_var', ss_preds_var.mean(), step)
 
     def save(self, model_dir, step):
         torch.save(
