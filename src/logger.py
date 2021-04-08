@@ -12,14 +12,22 @@ from termcolor import colored
 FORMAT_CONFIG = {
     'rl': {
         'train': [
-            ('episode', 'E', 'int'), ('step', 'S', 'int'),
-            ('duration', 'D', 'time'), ('episode_reward', 'return', 'float'),
-            ('batch_reward', 'BR', 'float'), ('actor_loss', 'ALOSS', 'float'),
-            ('critic_loss', 'CLOSS', 'float'), ('ae_loss', 'RLOSS', 'float'),
+            ('task_name', 'task_name', 'str'),
+            ('episode', 'episode', 'int'), ('step', 'step', 'int'),
+            ('duration', 'duration', 'time'), ('episode_reward', 'return', 'float'),
+            ('batch_reward', 'batch_reward', 'float'), ('actor_loss', 'actor_loss', 'float'),
+            ('critic_loss', 'critic_loss', 'float'),
+            ('ss_inv_loss', 'ss_inv_loss', 'float'),
             ('recent_episode_reward', 'recent_return', 'float'),
-            ('exploration_rate', 'exploration_rate', 'float')
+            ('recent_success_rate', 'recent_success_rate', 'float')
         ],
-        'eval': [('step', 'S', 'int'), ('episode_reward', 'ER', 'float')]
+        'eval': [
+            ('task_name', 'task_name', 'str'),
+            ('step', 'step', 'int'), ('episode_reward', 'return', 'float'),
+            ('episode_ss_pred_var', 'ss_pred_var', 'float'),
+            ('episode_success', 'success', 'int'),
+            ('success_rate', 'success_rate', 'float'),
+        ]
     }
 }
 
@@ -43,8 +51,8 @@ class MetersGroup(object):
         self._csv_file_name = self._prepare_file(file_name, 'csv')
         self._formating = formating
         self._meters = defaultdict(AverageMeter)
-        # self._csv_file = open(self._csv_file_name, 'w')
-        # self._csv_writer = None
+        self._csv_file = open(self._csv_file_name, 'w')
+        self._csv_writer = None
 
     def log(self, key, value, n=1):
         self._meters[key].update(value, n)
@@ -74,6 +82,8 @@ class MetersGroup(object):
             template += '%.04f'
         elif ty == 'time':
             template += '%.01f s'
+        elif ty == 'str':
+            template += '%s'
         else:
             raise 'invalid format type: %s' % ty
         return template % (key, value)
@@ -99,15 +109,24 @@ class MetersGroup(object):
             pieces.append(self._format(disp_key, value, ty))
         print('| %s' % (' | '.join(pieces)))
 
-    def dump(self, step, prefix, save=True):
+    def dump(self, step, prefix, save=True, info=None):
         if len(self._meters) == 0:
             return
         if save:
             data = self._prime_meters()
             data['step'] = step
-            # TODO (chongyi zheng): remove comment
-            # self._dump_to_file(data)
-            # self._dump_to_csv(data)
+            if isinstance(info, dict):
+                for key, val in info.items():
+                    assert key.startswith('train') or key.startswith('eval'), \
+                        "Keys in 'info' must begin with 'train' or 'eval'!"
+                    if key.startswith('train'):
+                        key = key[len('train') + 1:]
+                    else:
+                        key = key[len('eval') + 1:]
+                    key = key.replace('/', '')
+                    data[key] = val
+            self._dump_to_file(data)
+            self._dump_to_csv(data)
             self._dump_to_console(data, prefix)
         self._meters.clear()
 
@@ -182,7 +201,8 @@ class Logger(object):
         assert key.startswith('train') or key.startswith('eval')
         if type(value) == torch.Tensor:
             value = value.item()
-        self._try_sw_log(key, value / n, step)
+        if isinstance(value, (float, int)):
+            self._try_sw_log(key, value / n, step)
         mg = self._train_mg if key.startswith('train') else self._eval_mg
         mg.log(key, value, n)
 
@@ -215,14 +235,14 @@ class Logger(object):
         assert key.startswith('train') or key.startswith('eval')
         self._try_sw_log_histogram(key, histogram, step)
 
-    def dump(self, step, save=True, ty=None):
+    def dump(self, step, save=True, ty=None, info=None):
         # step = self._update_step(step)
         if ty is None:
-            self._train_mg.dump(step, 'train', save)
-            self._eval_mg.dump(step, 'eval', save)
+            self._train_mg.dump(step, 'train', save, info)
+            self._eval_mg.dump(step, 'eval', save, info)
         elif ty == 'eval':
-            self._eval_mg.dump(step, 'eval', save)
+            self._eval_mg.dump(step, 'eval', save, info)
         elif ty == 'train':
-            self._train_mg.dump(step, 'train', save)
+            self._train_mg.dump(step, 'train', save, info)
         else:
             raise f'invalid log type: {ty}'
