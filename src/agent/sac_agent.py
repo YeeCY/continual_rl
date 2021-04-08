@@ -1084,8 +1084,6 @@ class DrQSacSSEnsembleAgent:
         if (self.use_fwd or self.use_inv) and step % self.ss_update_freq == 0:
             # self.update_ss_preds(ensem_kwargs['obses'], ensem_kwargs['next_obses'], ensem_kwargs['actions'], L, step)
             self.update_ss_preds(obs, next_obs, action, logger, step)
-            ss_preds_var = self.ss_preds_var(obs, next_obs, action)
-            logger.log('train/batch_ss_pred_var', ss_preds_var.mean(), step)
 
     def save(self, model_dir, step):
         torch.save(
