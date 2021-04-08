@@ -71,10 +71,10 @@ def evaluate(env, agent, video, num_episodes, logger, step):
                 logger.log('eval/episode_ss_pred_var', np.mean(episode_fwd_pred_vars), step)
             if agent.use_inv:
                 logger.log('eval/episode_ss_pred_var', np.mean(episode_inv_pred_vars), step)
-            info = {
+            log_info = {
                 'train/task_name': task_name
             }
-            logger.dump(step, ty='eval', info=info)
+            logger.dump(step, ty='eval', info=log_info)
 
 
 def main(args):
@@ -289,12 +289,12 @@ def main(args):
 
                 if step > 0:
                     # save non-scalar info
-                    info = {
-                        'train/task_name': task_name
+                    log_info = {
+                        'train/task_name': info['task_name']
                     }
                     logger.log('train/duration', time.time() - start_time, step)
                     start_time = time.time()
-                    logger.dump(step, ty='train', save=(step > args.init_steps), info=info)
+                    logger.dump(step, ty='train', save=(step > args.init_steps), info=log_info)
 
                 obs = env.reset(sample_task=(step % args.train_steps_per_task == 0))
                 episode_reward = 0

@@ -19,14 +19,14 @@ FORMAT_CONFIG = {
             ('critic_loss', 'critic_loss', 'float'),
             ('ss_inv_loss', 'ss_inv_loss', 'float'),
             ('recent_episode_reward', 'recent_return', 'float'),
-            ('success_rate', 'success_rate', 'float')
+            ('recent_success_rate', 'recent_success_rate', 'float')
         ],
         'eval': [
             ('task_name', 'task_name', 'str'),
             ('step', 'step', 'int'), ('episode_reward', 'return', 'float'),
             ('episode_ss_pred_var', 'ss_pred_var', 'float'),
             ('episode_success', 'success', 'int'),
-            ('recent_success_rate', 'recent_success_rate', 'float'),
+            ('success_rate', 'success_rate', 'float'),
         ]
     }
 }
