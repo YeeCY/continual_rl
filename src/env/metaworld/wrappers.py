@@ -34,6 +34,19 @@ class SingleMT1Wrapper(gym.Wrapper):
         return obs, reward, done, info
 
 
+class SuccessTruncatedTimeLimitWrapper(gym.wrappers.TimeLimit):
+    def __init__(self, env, max_episode_steps):
+        super().__init__(env, max_episode_steps=max_episode_steps)
+
+    def step(self, action):
+        obs, reward, done, info = super().step(action)
+        success = info.get('success')
+        if success == 1.0:
+            done = True
+
+        return obs, reward, done, info
+
+
 class NormalizedEnv(gym.Wrapper):
     """An environment wrapper for normalization.
     This wrapper normalizes action, and optionally observation and reward.
@@ -72,7 +85,8 @@ class NormalizedEnv(gym.Wrapper):
         self._flatten_obs = flatten_obs
 
         self._obs_alpha = obs_alpha
-        flat_obs_dim = self.env.observation_space.flat_dim
+        # (chongyi zheng): use 'np.prod'
+        flat_obs_dim = np.prod(self.env.observation_space.shape)
         self._obs_mean = np.zeros(flat_obs_dim)
         self._obs_var = np.ones(flat_obs_dim)
 
@@ -91,11 +105,12 @@ class NormalizedEnv(gym.Wrapper):
                 needed to determine the first action (e.g. in the case of
                 goal-conditioned or MTRL.)
         """
-        first_obs, episode_info = self.env.reset()
+        # (chongyi zheng): remove episode_info
+        first_obs = self.env.reset()
         if self._normalize_obs:
-            return self._apply_normalize_obs(first_obs), episode_info
+            return self._apply_normalize_obs(first_obs)
         else:
-            return first_obs, episode_info
+            return first_obs
 
     def step(self, action):
         """Call step on wrapped env.
@@ -131,10 +146,8 @@ class NormalizedEnv(gym.Wrapper):
 
     def _update_obs_estimate(self, obs):
         flat_obs = self.env.observation_space.flatten(obs)
-        self._obs_mean = (
-                                 1 - self._obs_alpha) * self._obs_mean + self._obs_alpha * flat_obs
-        self._obs_var = (
-                                1 - self._obs_alpha) * self._obs_var + self._obs_alpha * np.square(
+        self._obs_mean = (1 - self._obs_alpha) * self._obs_mean + self._obs_alpha * flat_obs
+        self._obs_var = (1 - self._obs_alpha) * self._obs_var + self._obs_alpha * np.square(
             flat_obs - self._obs_mean)
 
     def _update_reward_estimate(self, reward):
@@ -198,12 +211,13 @@ class TaskNameWrapper(gym.Wrapper):
                 dict[str, np.ndarray]: Contains auxiliary diagnostic
                     information about this time-step.
         """
-        es = super().step(action)
+        # (chongyi zheng): remove 'es'
+        obs, reward, done, info = super().step(action)
         if self._task_name is not None:
-            es.env_info['task_name'] = self._task_name
+            info['task_name'] = self._task_name
         if self._task_id is not None:
-            es.env_info['task_id'] = self._task_id
-        return es
+            info['task_id'] = self._task_id
+        return obs, reward, done, info
 
 
 class TaskOnehotWrapper(gym.Wrapper):
@@ -393,6 +407,8 @@ class MultiEnvWrapper(gym.Wrapper):
         self._mode = mode
 
         super().__init__(envs[0])
+        self.observation_space = self._update_observation_space()  # avoid crash
+
         if env_names is not None:
             assert isinstance(env_names, list), 'env_names must be a list'
             msg = ('env_names are not unique or there is not an env_name',
@@ -409,12 +425,12 @@ class MultiEnvWrapper(gym.Wrapper):
                 raise ValueError('Action space of all envs should be same.')
             self._task_envs.append(env)
 
-    @property
-    def observation_space(self):
+    def _update_observation_space(self):
         """Observation space.
         Returns:
             akro.Box: Observation space.
         """
+        # (chongyi zheng): avoid crash
         if self._mode == 'vanilla':
             return self.env.observation_space
         elif self._mode == 'add-onehot':
@@ -438,7 +454,6 @@ class MultiEnvWrapper(gym.Wrapper):
     #                    observation_space=self.observation_space,
     #                    max_episode_length=self._env.spec.max_episode_length)
 
-    @property
     def seed(self, seed=None):
         for idx, task_env in enumerate(self._task_envs):
             task_env.seed(seed + idx)
@@ -496,7 +511,7 @@ class MultiEnvWrapper(gym.Wrapper):
                 goal-conditioned or MTRL.)
         """
         # (chongyi zheng): remove episode_info
-        if sample_task and self._active_task_index is not None:
+        if sample_task or self._active_task_index is None:
             self._active_task_index = self._sample_strategy(
                 self._num_tasks, self._active_task_index)
         self.env = self._task_envs[self._active_task_index]

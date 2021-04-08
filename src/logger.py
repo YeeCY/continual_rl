@@ -12,6 +12,7 @@ from termcolor import colored
 FORMAT_CONFIG = {
     'rl': {
         'train': [
+            ('task_name', 'task_name', 'str'),
             ('episode', 'episode', 'int'), ('step', 'step', 'int'),
             ('duration', 'duration', 'time'), ('episode_reward', 'return', 'float'),
             ('batch_reward', 'batch_reward', 'float'), ('actor_loss', 'actor_loss', 'float'),
@@ -22,6 +23,7 @@ FORMAT_CONFIG = {
             ('success_rate', 'success_rate', 'float')
         ],
         'eval': [
+            ('task_name', 'task_name', 'str'),
             ('step', 'step', 'int'), ('episode_reward', 'return', 'float'),
             ('episode_ss_pred_var', 'ss_pred_var', 'float'),
             ('episode_success', 'success', 'int'),
@@ -81,6 +83,8 @@ class MetersGroup(object):
             template += '%.04f'
         elif ty == 'time':
             template += '%.01f s'
+        elif ty == 'str':
+            template += '%s'
         else:
             raise 'invalid format type: %s' % ty
         return template % (key, value)
@@ -106,12 +110,22 @@ class MetersGroup(object):
             pieces.append(self._format(disp_key, value, ty))
         print('| %s' % (' | '.join(pieces)))
 
-    def dump(self, step, prefix, save=True):
+    def dump(self, step, prefix, save=True, info=None):
         if len(self._meters) == 0:
             return
         if save:
             data = self._prime_meters()
             data['step'] = step
+            if isinstance(info, dict):
+                for key, val in info.items():
+                    assert key.startswith('train') or key.startswith('eval'), \
+                        "Keys in 'info' must begin with 'train' or 'eval'!"
+                    if key.startswith('train'):
+                        key = key[len('train') + 1:]
+                    else:
+                        key = key[len('eval') + 1:]
+                    key = key.replace('/', '')
+                    data[key] = val
             self._dump_to_file(data)
             self._dump_to_csv(data)
             self._dump_to_console(data, prefix)
@@ -188,7 +202,8 @@ class Logger(object):
         assert key.startswith('train') or key.startswith('eval')
         if type(value) == torch.Tensor:
             value = value.item()
-        self._try_sw_log(key, value / n, step)
+        if isinstance(value, (float, int)):
+            self._try_sw_log(key, value / n, step)
         mg = self._train_mg if key.startswith('train') else self._eval_mg
         mg.log(key, value, n)
 
@@ -221,14 +236,14 @@ class Logger(object):
         assert key.startswith('train') or key.startswith('eval')
         self._try_sw_log_histogram(key, histogram, step)
 
-    def dump(self, step, save=True, ty=None):
+    def dump(self, step, save=True, ty=None, info=None):
         # step = self._update_step(step)
         if ty is None:
-            self._train_mg.dump(step, 'train', save)
-            self._eval_mg.dump(step, 'eval', save)
+            self._train_mg.dump(step, 'train', save, info)
+            self._eval_mg.dump(step, 'eval', save, info)
         elif ty == 'eval':
-            self._eval_mg.dump(step, 'eval', save)
+            self._eval_mg.dump(step, 'eval', save, info)
         elif ty == 'train':
-            self._train_mg.dump(step, 'train', save)
+            self._train_mg.dump(step, 'train', save, info)
         else:
             raise f'invalid log type: {ty}'

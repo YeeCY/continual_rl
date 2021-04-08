@@ -14,12 +14,12 @@ from logger import Logger
 from video import VideoRecorder
 
 
-def evaluate(env, agent, video, num_episodes, logger, step, env_names=None):
+def evaluate(env, agent, video, num_episodes, logger, step):
     """Evaluate agent"""
     if isinstance(env, MultiEnvWrapper):
-        assert env.env_names == env_names, "Environment names don't match!"
+        assert env.env_names is not None, "Environment name must exist!"
 
-        for env_name in env.env_names:
+        for task_name in env.env_names:
             episode_rewards = []
             successes = []
             episode_success_rates = []
@@ -63,8 +63,7 @@ def evaluate(env, agent, video, num_episodes, logger, step, env_names=None):
                             np.asarray(next_obs_buf, dtype=obs.dtype),
                             np.asarray(action_buf, dtype=action.dtype))
                     ))
-                video.save('%s_%d.mp4' % (env_name, step))
-            logger.log('eval/env_name', env_name, step)
+                video.save('%s_%d.mp4' % (task_name, step))
             logger.log('eval/episode_reward', np.mean(episode_rewards), step)
             if len(episode_success_rates) > 0:
                 logger.log('eval/success_rate', np.sum(successes) / len(successes), step)
@@ -72,7 +71,10 @@ def evaluate(env, agent, video, num_episodes, logger, step, env_names=None):
                 logger.log('eval/episode_ss_pred_var', np.mean(episode_fwd_pred_vars), step)
             if agent.use_inv:
                 logger.log('eval/episode_ss_pred_var', np.mean(episode_inv_pred_vars), step)
-            logger.dump(step, ty='eval')
+            info = {
+                'train/task_name': task_name
+            }
+            logger.dump(step, ty='eval', info=info)
 
 
 def main(args):
@@ -253,7 +255,7 @@ def main(args):
     #     obs = next_obs
     #     episode_step += 1
     if isinstance(env, MultiEnvWrapper):
-        for env_name in env.env_names:
+        for task_name in env.env_names:
             for step in range(args.train_steps_per_task + 1):  # plus one step for final evaluation
                 # (chongyi zheng): we can also evaluate and save model when current episode is not finished
                 # Evaluate agent periodically
@@ -286,10 +288,13 @@ def main(args):
                     logger.log('train/episode', episode, step)
 
                     if step > 0:
-                        logger.log('train/env_name', env_name, step)
+                        # save non-scalar info
+                        info = {
+                            'train/task_name': task_name
+                        }
                         logger.log('train/duration', time.time() - start_time, step)
                         start_time = time.time()
-                        logger.dump(step, ty='train', save=(step > args.init_steps))
+                        logger.dump(step, ty='train', save=(step > args.init_steps), info=info)
 
                     obs = env.reset(sample_task=(step == 0))
                     episode_reward = 0
