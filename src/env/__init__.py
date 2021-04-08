@@ -3,7 +3,8 @@ import metaworld
 
 from env import dmc_wrappers
 from env import atari_wrappers
-from env import metaworld_wrappers
+from env.metaworld import MetaWorldTaskSampler, SingleMT1Wrapper, MultiEnvWrapper, NormalizedEnv
+from env.metaworld import uniform_random_strategy, round_robin_strategy
 
 
 def make_pad_env(
@@ -89,7 +90,28 @@ def make_single_metaworld_env(env_name, seed=None):
     env = mt1.train_classes[env_name]()
     # task = random.choice(mt1.train_tasks)
     # env.set_task(task)
-    env = metaworld_wrappers.SingleMT1Wrapper(env, mt1.train_tasks)
+    env = SingleMT1Wrapper(env, mt1.train_tasks)
+    env.seed(seed)
+
+    return env
+
+
+def make_continual_metaworld_env(env_names, seed=None):
+    # envs = metaworld_wrappers.MT10Wrapper()
+    # envs.seed(seed)
+
+    envs = []
+    for env_name in env_names:
+        mt1 = metaworld.MT1(env_name)
+        train_task_sampler = MetaWorldTaskSampler(
+            mt1, 'train',
+            lambda env, _: NormalizedEnv(env))
+        env_up = train_task_sampler.sample(1)[0]
+        envs.append(env_up())
+    env = MultiEnvWrapper(envs,
+                          sample_strategy=uniform_random_strategy,
+                          mode='vanilla',
+                          env_names=env_names)
     env.seed(seed)
 
     return env

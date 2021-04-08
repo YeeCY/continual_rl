@@ -24,7 +24,7 @@ FORMAT_CONFIG = {
         'eval': [
             ('step', 'step', 'int'), ('episode_reward', 'return', 'float'),
             ('episode_ss_pred_var', 'ss_pred_var', 'float'),
-            ('episode_success', 'success', 'bool'),
+            ('episode_success', 'success', 'int'),
             ('recent_success_rate', 'recent_success_rate', 'float'),
         ]
     }

@@ -17,6 +17,8 @@ def parse_args():
 	# parser.add_argument('--domain_name', default='walker')
 	# parser.add_argument('--task_name', default='walk')
 	parser.add_argument('--env_name', default='walker_run')  # (chongyi zheng)
+	parser.add_argument('--env_names', nargs='+', default='reach-v2 close_window-v2 press_button_top-v2 '
+														  'pick_and_place-v2', type=str)
 	parser.add_argument('--env_type', default='dmc_locomotion', type=str, choices=ENV_TYPES)
 	parser.add_argument('--algo', default='sac_mlp_ss_ensem', type=str, choices=list(ALGOS))
 	parser.add_argument('--video_camera_id', default=0, type=int)  # (chongyi zheng)
@@ -37,6 +39,7 @@ def parse_args():
 	parser.add_argument('--num_train_iters', default=1, type=int)
 	parser.add_argument('--train_freq', default=1, type=int)  # 4 for dqn?
 	parser.add_argument('--train_steps', default=1000000, type=int)
+	parser.add_argument('--train_steps_per_task', default=1000000, type=int)
 	parser.add_argument('--batch_size', default=128, type=int)  # 32 for dqn?
 	parser.add_argument('--device', default='cuda', type=str)
 
