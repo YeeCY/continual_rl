@@ -108,7 +108,6 @@ def main(args):
                           height=448, width=448, camera_id=args.video_camera_id)
 
     # Prepare agent
-    assert torch.cuda.is_available(), 'must have cuda enabled'
     device = torch.device(args.device)
 
     if args.env_type == 'atari':
