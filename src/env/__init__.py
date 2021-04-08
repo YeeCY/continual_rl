@@ -109,7 +109,7 @@ def make_continual_metaworld_env(env_names, seed=None):
         env_up = train_task_sampler.sample(1)[0]
         envs.append(env_up())
     env = MultiEnvWrapper(envs,
-                          sample_strategy=uniform_random_strategy,
+                          sample_strategy=round_robin_strategy,
                           mode='vanilla',
                           env_names=env_names)
     env.seed(seed)

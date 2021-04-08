@@ -296,7 +296,7 @@ def main(args):
                     start_time = time.time()
                     logger.dump(step, ty='train', save=(step > args.init_steps), info=log_info)
 
-                obs = env.reset(sample_task=(step % args.train_steps_per_task == 0))
+                obs = env.reset(sample_task=(step % train_steps_per_task == 0))
                 episode_reward = 0
                 episode_step = 0
                 episode += 1
@@ -332,8 +332,8 @@ def main(args):
             episode_step += 1
 
     print('Final evaluating:', args.work_dir)
-    logger.log('eval/episode', episode, step)
-    evaluate(eval_env, agent, video, args.num_eval_episodes, logger, step)
+    evaluate(eval_env, agent, video, args.num_eval_episodes, logger,
+             train_steps_per_task * env.num_tasks)
 
 
 if __name__ == '__main__':
