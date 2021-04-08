@@ -232,11 +232,13 @@ class DQN(OffPolicyAlgorithm):
             loss = F.smooth_l1_loss(current_q_values, target_q_values)
 
             # optimize the Q network
-            self.q_net.zero_grad()
+            self.q_net_optimizer.zero_grad()
             loss.backward()
             # TODO (chongyi zheng): Do we need to clip gradient norm?
             # clip gradient norm
-            th.nn.utils.clip_grad_norm_(self.q_net.parameters(), self.max_grad_norm)
+            # TODO (chongyi zheng): modify this Apr 8, 17: 36
+            th.nn.utils.clip_grad_norm_(list(self.q_net.parameters() + self.target_q_net()),
+                                        self.max_grad_norm)
             self.q_net_optimizer.step()
 
         # Increase update counter
@@ -282,8 +284,8 @@ class DQN(OffPolicyAlgorithm):
         else:
             with th.no_grad():
                 # observation = th.as_tensor(observation).to(self.device)
-                # observation = th.FloatTensor(observation).to(self.device)
-                observation = th.FloatTensor(observation).to(self.device).unsqueeze(0)
+                observation = th.FloatTensor(observation).to(self.device)
+                # observation = th.FloatTensor(observation).to(self.device).unsqueeze(0)
                 q_values = self.q_net(observation)
                 # Greedy action
                 action = q_values.argmax(dim=1).reshape(-1)
@@ -317,15 +319,15 @@ class DQN(OffPolicyAlgorithm):
         # )
         from logger import Logger
         logger = Logger('../tmp_logs/sb3', save_tb=False)
-        # episode, episode_reward, episode_step, done = 0, 0, 0, [True]
-        episode, episode_reward, episode_step, done = 0, 0, 0, True
-        # env = self.env
-        env = self.env.envs[0].env
+        episode, episode_reward, episode_step, done = 0, 0, 0, [True]
+        # episode, episode_reward, episode_step, done = 0, 0, 0, True
+        env = self.env
+        # env = self.env.envs[0].env
         from collections import deque
         recent_episode_reward = deque(maxlen=100)
         for step in range(total_timesteps + 1):
-            # if done[0]:
-            if done:
+            if done[0]:
+            # if done:
                 if step > 0:
                     recent_episode_reward.append(episode_reward)
                     logger.log('train/recent_episode_reward', np.mean(recent_episode_reward), step)
@@ -343,8 +345,8 @@ class DQN(OffPolicyAlgorithm):
             if step < self.learning_starts:
                 action = np.array([self.env.action_space.sample()])
             else:
-                # action = self.act(obs, deterministic=False)
-                action = self.act(obs, deterministic=False)[0]
+                action = self.act(obs, deterministic=False)
+                # action = self.act(obs, deterministic=False)[0]
 
             self._update_current_progress_remaining(self.num_timesteps, total_timesteps)
             self._on_step()

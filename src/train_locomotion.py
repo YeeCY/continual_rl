@@ -27,8 +27,8 @@ def evaluate(env, agent, video, num_episodes, logger, step):
         next_obs_buf = []
         action_buf = []
         while not done:
-            with utils.eval_mode(agent):
-                action = agent.act(obs, True)
+            # with utils.eval_mode(agent):
+            action = agent.act(obs, True)
             next_obs, reward, done, _ = env.step(action)
 
             obs_buf.append(obs)
@@ -39,26 +39,26 @@ def evaluate(env, agent, video, num_episodes, logger, step):
             video.record(env)
             obs = next_obs
         episode_rewards.append(episode_reward)
-        if agent.use_fwd:
-            episode_fwd_pred_vars.append(np.mean(
-                agent.ss_preds_var(
-                    np.asarray(obs_buf, dtype=obs.dtype),
-                    np.asarray(next_obs_buf, dtype=obs.dtype),
-                    np.asarray(action_buf, dtype=action.dtype))
-            ))
-        if agent.use_inv:
-            episode_inv_pred_vars.append(np.mean(
-                agent.ss_preds_var(
-                    np.asarray(obs_buf, dtype=obs.dtype),
-                    np.asarray(next_obs_buf, dtype=obs.dtype),
-                    np.asarray(action_buf, dtype=action.dtype))
-            ))
+        # if agent.use_fwd:
+        #     episode_fwd_pred_vars.append(np.mean(
+        #         agent.ss_preds_var(
+        #             np.asarray(obs_buf, dtype=obs.dtype),
+        #             np.asarray(next_obs_buf, dtype=obs.dtype),
+        #             np.asarray(action_buf, dtype=action.dtype))
+        #     ))
+        # if agent.use_inv:
+        #     episode_inv_pred_vars.append(np.mean(
+        #         agent.ss_preds_var(
+        #             np.asarray(obs_buf, dtype=obs.dtype),
+        #             np.asarray(next_obs_buf, dtype=obs.dtype),
+        #             np.asarray(action_buf, dtype=action.dtype))
+        #     ))
         video.save('%d.mp4' % step)
     logger.log('eval/episode_reward', np.mean(episode_rewards), step)
-    if agent.use_fwd:
-        logger.log('eval/episode_fwd_pred_var', np.mean(episode_fwd_pred_vars), step)
-    if agent.use_inv:
-        logger.log('eval/episode_inv_pred_var', np.mean(episode_inv_pred_vars), step)
+    # if agent.use_fwd:
+    #     logger.log('eval/episode_fwd_pred_var', np.mean(episode_fwd_pred_vars), step)
+    # if agent.use_inv:
+    #     logger.log('eval/episode_inv_pred_var', np.mean(episode_inv_pred_vars), step)
     logger.dump(step, ty='eval')
 
 
@@ -120,21 +120,21 @@ def main(args):
         #     device=device,
         #     optimize_memory_usage=True,
         # )
-        # from stable_baselines3.common.buffers import ReplayBuffer
-        # replay_buffer = ReplayBuffer(
-        #     args.replay_buffer_capacity,
-        #     env.observation_space,
-        #     env.action_space,
-        #     device,
-        #     optimize_memory_usage=True,
-        # )
-        replay_buffer = buffers.ReplayBuffer(
-            obs_space=env.observation_space,
-            action_space=env.action_space,
-            capacity=args.replay_buffer_capacity,
-            device=device,
+        from stable_baselines3.common.buffers import ReplayBuffer
+        replay_buffer = ReplayBuffer(
+            args.replay_buffer_capacity,
+            env.observation_space,
+            env.action_space,
+            device,
             optimize_memory_usage=True,
         )
+        # replay_buffer = buffers.ReplayBuffer(
+        #     obs_space=env.observation_space,
+        #     action_space=env.action_space,
+        #     capacity=args.replay_buffer_capacity,
+        #     device=device,
+        #     optimize_memory_usage=True,
+        # )
     elif args.env_type == 'dmc_locomotion':
         replay_buffer = buffers.ReplayBuffer(
             obs_shape=env.observation_space.shape,
@@ -257,9 +257,9 @@ def main(args):
         if step < args.init_steps:
             action = np.array(env.action_space.sample())
         else:
-            with utils.eval_mode(agent):
+            # with utils.eval_mode(agent):
                 # action = self.act(obs, deterministic=False)
-                action = agent.act(obs, False)
+            action = agent.act(obs, False)
 
         if 'dqn' in args.algo:
             agent.on_step(step, args.train_steps, logger)
@@ -276,13 +276,13 @@ def main(args):
         # if done[0] and info[0].get("terminal_observation") is not None:
         #     next_obs[0] = info[0]["terminal_observation"]
 
-        replay_buffer.add(obs, action, reward, next_obs, done)
+        # replay_buffer.add(obs, action, reward, next_obs, done)
         # replay_buffer.add(obs, next_obs, action, reward, done)
-        # self.replay_buffer.add(np.expand_dims(obs, axis=0),
-        #                        np.expand_dims(next_obs, axis=0),
-        #                        np.expand_dims(action, axis=0),
-        #                        np.expand_dims(reward, axis=0),
-        #                        np.expand_dims(done, axis=0))
+        replay_buffer.add(np.expand_dims(obs, axis=0),
+                          np.expand_dims(next_obs, axis=0),
+                          np.expand_dims(action, axis=0),
+                          np.expand_dims(reward, axis=0),
+                          np.expand_dims(done, axis=0))
         episode_reward += reward
         obs = next_obs
         episode_step += 1

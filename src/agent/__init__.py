@@ -13,10 +13,10 @@ def make_agent(obs_space, action_space, device, args):
         'obs_shape': obs_space.shape,
         'action_shape': action_space.n if args.env_type == 'atari' else action_space.shape,
         'discount': args.discount,
-        'use_fwd': args.use_fwd,
-        'use_inv': args.use_inv,
-        'ss_lr': args.ss_lr,
-        'ss_update_freq': args.ss_update_freq,
+        # 'use_fwd': args.use_fwd,
+        # 'use_inv': args.use_inv,
+        # 'ss_lr': args.ss_lr,
+        # 'ss_update_freq': args.ss_update_freq,
         'batch_size': args.batch_size,
         'device': device,
     }
@@ -33,7 +33,7 @@ def make_agent(obs_space, action_space, device, args):
         kwargs['q_net_lr'] = args.q_net_lr
         kwargs['q_net_tau'] = args.q_net_tau
 
-        agent = DqnCnnSSEnsembleAgent(**kwargs)
+        agent = DqnCnnAgent(**kwargs)
     elif 'sac' in args.algo:
         kwargs['hidden_dim'] = args.hidden_dim
         kwargs['init_temperature'] = args.init_temperature

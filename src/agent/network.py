@@ -59,7 +59,7 @@ class DQNCnn(nn.Module):
             nn.Linear(feature_dim, action_shape)
         )
 
-        self.apply(weight_init)
+        # self.apply(weight_init)
 
     def forward(self, obs):
         h = self.encoder(obs)
@@ -126,7 +126,7 @@ class QNetwork(BasePolicy):
             nn.Linear(features_dim, action_space.n)
         )
 
-        self.apply(weight_init)
+        # self.apply(weight_init)
 
     def forward(self, obs):
         """
@@ -184,7 +184,7 @@ class DQNDuelingCnn(nn.Module):
             nn.Linear(feature_dim, action_shape)
         )
 
-        self.apply(weight_init)
+        # self.apply(weight_init)
 
         self.outputs = dict()  # log placeholder
 

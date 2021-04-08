@@ -74,21 +74,21 @@ class DqnCnnAgent:
         self.q_net_optimizer = torch.optim.Adam(
             self.q_net.parameters(), lr=self.q_net_lr)
 
-        self.train()
-
-    def train(self, training=True):
-        self.training = training
-        self.q_net.train(training)
-        self.target_q_net.train(training)
+    #     self.train()
+    #
+    # def train(self, training=True):
+    #     self.training = training
+    #     self.q_net.train(training)
+    #     self.target_q_net.train(training)
 
     def act(self, obs, deterministic=False):
         if not deterministic and np.random.rand() < self.exploration_rate:
             action = np.random.randint(self.action_shape)
         else:
             with torch.no_grad():
-                # observation = th.as_tensor(observation).to(self.device)
+                obs = torch.as_tensor(obs).to(self.device).unsqueeze(0)
                 # observation = th.FloatTensor(observation).to(self.device)
-                obs = torch.FloatTensor(obs).to(self.device).unsqueeze(0)
+                # obs = torch.FloatTensor(obs).to(self.device).unsqueeze(0)
                 q_values = self.q_net(obs)
                 # Greedy action
                 action = q_values.argmax(dim=1).reshape(-1)
@@ -135,21 +135,23 @@ class DqnCnnAgent:
         logger.log('train/q_net_loss', q_net_loss, step)
 
         # optimize the Q network
-        self.q_net.zero_grad()
+        self.q_net_optimizer.zero_grad()
         q_net_loss.backward()
         # TODO (chongyi zheng): Do we need to clip gradient norm?
         # clip gradient norm
-        torch.nn.utils.clip_grad_norm_(self.q_net.parameters(), self.max_grad_norm)
+        torch.nn.utils.clip_grad_norm_(list(self.q_net.parameters()) +
+                                       list(self.target_q_net.parameters()),
+                                       self.max_grad_norm)
         self.q_net_optimizer.step()
 
     def update(self, replay_buffer, logger, step):
-        obs, action, reward, next_obs, not_done = replay_buffer.sample(self.batch_size)
-        # samples = replay_buffer.sample(self.batch_size)
-        # obs = samples.observations
-        # action = samples.actions
-        # next_obs = samples.next_observations
-        # not_done = 1.0 - samples.dones
-        # reward = samples.rewards
+        # obs, action, reward, next_obs, not_done = replay_buffer.sample(self.batch_size)
+        samples = replay_buffer.sample(self.batch_size)
+        obs = samples.observations
+        action = samples.actions
+        next_obs = samples.next_observations
+        not_done = 1.0 - samples.dones
+        reward = samples.rewards
 
         logger.log('train/batch_reward', reward.mean(), step)
 
@@ -301,13 +303,13 @@ class DqnCnnSSEnsembleAgent(DqnCnnAgent):
 
     def update(self, replay_buffer, logger, step):
         # TODO (chongyi zheng): fix duplication
-        obs, action, reward, next_obs, not_done = replay_buffer.sample(self.batch_size)
-        # samples = replay_buffer.sample(self.batch_size)
-        # obs = samples.observations
-        # action = samples.actions
-        # next_obs = samples.next_observations
-        # not_done = 1.0 - samples.dones
-        # reward = samples.rewards
+        # obs, action, reward, next_obs, not_done = replay_buffer.sample(self.batch_size)
+        samples = replay_buffer.sample(self.batch_size)
+        obs = samples.observations
+        action = samples.actions
+        next_obs = samples.next_observations
+        not_done = 1.0 - samples.dones
+        reward = samples.rewards
 
         logger.log('train/batch_reward', reward.mean(), step)
 

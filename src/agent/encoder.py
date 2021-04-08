@@ -26,7 +26,7 @@ class CenterCrop(nn.Module):
 class NormalizeImg(nn.Module):
 	"""Normalize observation"""
 	def forward(self, x):
-		return x.float() / 255.
+		return x.float() / 255.0
 
 
 class PixelEncoder(nn.Module):
