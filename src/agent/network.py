@@ -11,8 +11,19 @@ class QFunction(nn.Module):
     def __init__(self, obs_dim, action_dim, hidden_dim):
         super().__init__()
 
+        # self.trunk = nn.Sequential(
+        #     nn.Linear(obs_dim + action_dim, hidden_dim),
+        #     nn.ReLU(),
+        #     nn.Linear(hidden_dim, hidden_dim),
+        #     nn.ReLU(),
+        #     nn.Linear(hidden_dim, 1)
+        # )
+
+        # (chongyi zheng): add another layer
         self.trunk = nn.Sequential(
             nn.Linear(obs_dim + action_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, hidden_dim),
             nn.ReLU(),
             nn.Linear(hidden_dim, hidden_dim),
             nn.ReLU(),
@@ -209,8 +220,19 @@ class ActorMlp(nn.Module):
         self.log_std_min = log_std_min
         self.log_std_max = log_std_max
 
+        # self.trunk = nn.Sequential(
+        #     nn.Linear(obs_shape[0], hidden_dim),
+        #     nn.ReLU(),
+        #     nn.Linear(hidden_dim, hidden_dim),
+        #     nn.ReLU(),
+        #     nn.Linear(hidden_dim, 2 * action_shape[0])
+        # )
+
+        # (chongyi zheng): add another layer
         self.trunk = nn.Sequential(
             nn.Linear(obs_shape[0], hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, hidden_dim),
             nn.ReLU(),
             nn.Linear(hidden_dim, hidden_dim),
             nn.ReLU(),

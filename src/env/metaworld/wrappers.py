@@ -34,17 +34,18 @@ class SingleMT1Wrapper(gym.Wrapper):
         return obs, reward, done, info
 
 
-class SuccessTruncatedTimeLimitWrapper(gym.wrappers.TimeLimit):
-    def __init__(self, env, max_episode_steps):
-        super().__init__(env, max_episode_steps=max_episode_steps)
-
-    def step(self, action):
-        obs, reward, done, info = super().step(action)
-        success = info.get('success')
-        if success == 1.0:
-            done = True
-
-        return obs, reward, done, info
+# TODO (chongyi zheng): truncate episode when success hurt performance, may delete this
+# class SuccessTruncatedTimeLimitWrapper(gym.wrappers.TimeLimit):
+#     def __init__(self, env, max_episode_steps):
+#         super().__init__(env, max_episode_steps=max_episode_steps)
+#
+#     def step(self, action):
+#         obs, reward, done, info = super().step(action)
+#         success = info.get('success')
+#         if success == 1.0:
+#             done = True
+#
+#         return obs, reward, done, info
 
 
 class NormalizedEnv(gym.Wrapper):

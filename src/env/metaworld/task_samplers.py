@@ -2,8 +2,9 @@
 
 import abc
 import numpy as np
+from gym.wrappers import TimeLimit
 
-from env.metaworld.wrappers import TaskNameWrapper, TaskOnehotWrapper, SuccessTruncatedTimeLimitWrapper
+from env.metaworld.wrappers import TaskNameWrapper, TaskOnehotWrapper
 from env.metaworld.env_updates import SetTaskUpdate
 
 
@@ -141,8 +142,8 @@ class MetaWorldTaskSampler(TaskSampler):
             Returns:
                 garage.Env: The wrapped environment.
             """
-            # (chongyi zheng): use gym SuccessTruncatedTimeLimitWrapper wrapper
-            env = SuccessTruncatedTimeLimitWrapper(env, max_episode_steps=env.max_path_length)
+            # (chongyi zheng): use gym TimeLimit wrapper
+            env = TimeLimit(env, max_episode_steps=env.max_path_length)
             env = TaskNameWrapper(env, task_name=task.env_name)
             if add_env_onehot:
                 env = TaskOnehotWrapper(env,
