@@ -332,6 +332,7 @@ def main(args):
                     obs = env.reset()
                 episode_reward = 0
                 episode_step = 0
+                episode_successes.clear()
                 episode += 1
 
             # Sample action for data collection
