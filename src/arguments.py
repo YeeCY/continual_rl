@@ -81,7 +81,7 @@ def parse_args():
 	parser.add_argument('--actor_lr', default=3e-4, type=float)  # 1e-3
 	parser.add_argument('--actor_log_std_min', default=-20, type=float)  # -10
 	parser.add_argument('--actor_log_std_max', default=2, type=float)
-	parser.add_argument('--actor_update_freq', default=2, type=int)
+	parser.add_argument('--actor_update_freq', default=1, type=int)  # (chongyi zheng): default = 2
 
 	# sac critic
 	parser.add_argument('--critic_lr', default=3e-4, type=float)  # 1e-3
