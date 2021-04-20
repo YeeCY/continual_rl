@@ -340,7 +340,7 @@ def main(args):
                 action = np.array(env.action_space.sample())
             else:
                 with utils.eval_mode(agent):
-                    action = agent.act(obs, False)
+                    action = agent.act(obs, True)
 
             if 'dqn' in args.algo:
                 agent.on_step(step, args.train_steps, logger)
