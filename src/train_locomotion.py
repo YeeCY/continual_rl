@@ -2,6 +2,8 @@ import torch
 import numpy as np
 import os
 from collections import deque
+import copy
+
 
 from arguments import parse_args
 from env import make_atari_env, make_locomotion_env, make_single_metaworld_env, make_continual_metaworld_env
@@ -146,10 +148,11 @@ def main(args):
             env_names=args.env_names,
             seed=args.seed
         )
-        eval_env = make_continual_metaworld_env(
-            env_names=args.env_names,
-            seed=args.seed
-        )
+        eval_env = copy.deepcopy(env)
+        # eval_env = make_continual_metaworld_env(
+        #     env_names=args.env_names,
+        #     seed=args.seed
+        # )
 
     utils.set_seed_everywhere(args.seed)
     utils.make_dir(args.work_dir)
