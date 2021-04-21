@@ -24,7 +24,6 @@ def evaluate(env, agent, video, num_episodes, logger, step):
         for task_name in env.env_names:
             episode_rewards = []
             episode_successes = []
-            episode_success_rates = []
             episode_fwd_pred_vars = []
             episode_inv_pred_vars = []
             for episode in range(num_episodes):
@@ -69,7 +68,7 @@ def evaluate(env, agent, video, num_episodes, logger, step):
                     ))
                 video.save('%s_%d.mp4' % (task_name, step))
             logger.log('eval/episode_reward', np.mean(episode_rewards), step, sw_prefix=task_name + '_')
-            if len(episode_success_rates) > 0:
+            if len(episode_successes) > 0:
                 logger.log('eval/success_rate', np.mean(episode_successes), step)
             if agent.use_fwd:
                 logger.log('eval/episode_ss_pred_var', np.mean(episode_fwd_pred_vars), step)
