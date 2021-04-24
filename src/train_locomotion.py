@@ -52,14 +52,14 @@ def evaluate(env, agent, video, num_episodes, logger, step):
                 episode_rewards.append(episode_reward)
                 episode_successes.append(np.any(is_successes).astype(np.float))
 
-                if agent.use_fwd:
+                if getattr(agent, 'use_fwd', False):
                     episode_fwd_pred_vars.append(np.mean(
                         agent.ss_preds_var(
                             np.asarray(obs_buf, dtype=obs.dtype),
                             np.asarray(next_obs_buf, dtype=obs.dtype),
                             np.asarray(action_buf, dtype=action.dtype))
                     ))
-                if agent.use_inv:
+                if getattr(agent, 'use_inv', False):
                     episode_inv_pred_vars.append(np.mean(
                         agent.ss_preds_var(
                             np.asarray(obs_buf, dtype=obs.dtype),
@@ -70,9 +70,9 @@ def evaluate(env, agent, video, num_episodes, logger, step):
             logger.log('eval/episode_reward', np.mean(episode_rewards), step, sw_prefix=task_name + '_')
             if len(episode_successes) > 0:
                 logger.log('eval/success_rate', np.mean(episode_successes), step)
-            if agent.use_fwd:
+            if getattr(agent, 'use_fwd', False):
                 logger.log('eval/episode_ss_pred_var', np.mean(episode_fwd_pred_vars), step)
-            if agent.use_inv:
+            if getattr(agent, 'use_inv', False):
                 logger.log('eval/episode_ss_pred_var', np.mean(episode_inv_pred_vars), step)
             log_info = {
                 'train/task_name': task_name

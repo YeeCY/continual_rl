@@ -73,6 +73,8 @@ def make_agent(obs_space, action_space, device, args):
             kwargs['num_ensem_comps'] = args.num_ensem_comps
             agent = SacMlpSSEnsembleAgent(**kwargs)
         elif args.algo == 'ewc_sac_mlp':
+            kwargs['action_range'] = [float(action_space.low.min()),
+                                      float(action_space.high.max())]
             kwargs['ewc_lambda'] = args.ewc_lambda
             kwargs['ewc_fisher_sample_size'] = args.ewc_fisher_sample_size
             kwargs['online_ewc'] = args.online_ewc

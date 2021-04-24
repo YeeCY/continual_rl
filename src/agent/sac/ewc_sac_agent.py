@@ -80,7 +80,7 @@ class EwcSacMlpAgent(SacMlpAgent):
         ewc_losses = []
         if self.ewc_task_count >= 1:
             if self.online_ewc:
-                for name, param in zip(named_parameters):
+                for name, param in named_parameters:
                     if param.grad is not None:
                         name = name + '_prev_task'
                         mean = self.prev_task_params[name]
