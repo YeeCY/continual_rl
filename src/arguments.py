@@ -101,7 +101,7 @@ def parse_args():
 
 	# ewc
 	parser.add_argument('--ewc_lambda', default=5000, type=float)
-	parser.add_argument('--ewc_fisher_sample_size', default=100, type=int)
+	parser.add_argument('--ewc_fisher_sample_size', default=128, type=int)
 	parser.add_argument('--online_ewc', default=False, action='store_true')
 	parser.add_argument('--online_ewc_gamma', default=1.0, type=float)
 

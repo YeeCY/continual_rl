@@ -303,6 +303,10 @@ def main(args):
             # (chongyi zheng): force reset outside done = True when step reach train_steps_per_task
             if task_step >= train_steps_per_task:
                 obs = env.reset(sample_task=True)
+
+                if 'ewc' in args.algo:
+                    agent.estimate_fisher(replay_buffer)
+
                 replay_buffer.reset()
                 task_step = 0
 

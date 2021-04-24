@@ -59,23 +59,23 @@ class EwcSacMlpAgent(SacMlpAgent):
 
             for name, param in chain(self.critic.named_parameters(),
                                      self.actor.named_parameters(),
-                                     iter(('log_alpha', self.log_alpha))):
+                                     iter([('log_alpha', self.log_alpha)])):
                 if param.grad is not None:
                     if self.online_ewc:
                         name = name + '_prev_task'
-                        self.prev_task_params[name] = param.detach.clone()
+                        self.prev_task_params[name] = param.detach().clone()
                         self.prev_task_fishers[name] = \
                             param.grad.detach().clone() ** 2 + \
                             self.online_ewc_gamma * self.prev_task_fishers.get(name, torch.zeros_like(param.grad))
                     else:
                         name = name + f'_prev_task{self.ewc_task_count}'
                         self.prev_task_params[name] = param.detach().clone()
-                        self.prev_task_fishers[name] = param.grad.detach().clone ** 2
+                        self.prev_task_fishers[name] = param.grad.detach().clone() ** 2
 
             self.ewc_task_count += 1
 
     def _compute_ewc_loss(self, named_parameters):
-        assert isinstance(named_parameters, Iterable)
+        assert isinstance(named_parameters, Iterable), "'named_parameters' must be a iterator"
 
         ewc_losses = []
         if self.ewc_task_count >= 1:
@@ -91,7 +91,7 @@ class EwcSacMlpAgent(SacMlpAgent):
             else:
                 for task in range(self.ewc_task_count):
                     # compute ewc loss for each parameter
-                    for name, param in self.critic.named_parameters():
+                    for name, param in named_parameters:
                         if param.grad is not None:
                             name = name + f'_prev_task{task}'
                             mean = self.prev_task_params[name]
@@ -100,7 +100,8 @@ class EwcSacMlpAgent(SacMlpAgent):
                             ewc_losses.append(ewc_loss)
             return torch.sum(torch.stack(ewc_losses)) / 2.0
         else:
-            return torch.zeros(1)
+            _, param = next(named_parameters)
+            return torch.tensor(0.0, device=param.device)
 
     def compute_critic_loss(self, obs, action, reward, next_obs, not_done):
         critic_loss = super().compute_critic_loss(obs, action, reward, next_obs, not_done)
@@ -115,7 +116,7 @@ class EwcSacMlpAgent(SacMlpAgent):
 
         # actor and alpha ewc loss
         actor_ewc_loss = self._compute_ewc_loss(self.actor.named_parameters())
-        alpha_ewc_loss = self._compute_ewc_loss(iter(('log_alpha', self.log_alpha)))
+        alpha_ewc_loss = self._compute_ewc_loss(iter([('log_alpha', self.log_alpha)]))
 
         return log_pi, actor_loss + self.ewc_lambda * actor_ewc_loss, alpha_loss + self.ewc_lambda * alpha_ewc_loss
 
