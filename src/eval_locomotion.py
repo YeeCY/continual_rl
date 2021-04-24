@@ -1,14 +1,13 @@
 import numpy as np
 import torch
 import os
-from copy import deepcopy
 from tqdm import tqdm
 import utils
 from video import VideoRecorder
 
 from arguments import parse_args
 from env import make_locomotion_env
-from agent.sac_agent import make_agent
+from agent import make_agent
 
 
 def evaluate(env, agent, args, video):

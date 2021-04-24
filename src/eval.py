@@ -8,7 +8,7 @@ from video import VideoRecorder
 
 from arguments import parse_args
 from env import make_pad_env
-from agent.sac_agent import make_agent
+from agent import make_agent
 from utils import get_curl_pos_neg
 
 

@@ -99,6 +99,12 @@ def parse_args():
 	parser.add_argument('--q_net_lr', default=1e-4, type=float)  # try 3e-4?
 	parser.add_argument('--q_net_tau', default=1.0, type=float)
 
+	# ewc
+	parser.add_argument('--ewc_lambda', default=5000, type=float)
+	parser.add_argument('--ewc_fisher_sample_size', default=100, type=int)
+	parser.add_argument('--online_ewc', default=False, action='store_true')
+	parser.add_argument('--online_ewc_gamma', default=1.0, type=float)
+
 	# misc
 	parser.add_argument('--seed', default=1, type=int)
 	parser.add_argument('--work_dir', default=None, type=str)

@@ -1,5 +1,6 @@
 from agent.dqn_agent import DqnCnnSSEnsembleAgent
-from agent.sac_agent import SacMlpSSEnsembleAgent, SacCnnSSEnsembleAgent
+from agent.sac.sac_agent import SacMlpSSEnsembleAgent, SacCnnSSEnsembleAgent
+from agent.sac import EwcSacMlpAgent
 
 ALGOS = [
     'dqn_cnn_ss_ensem',
@@ -13,10 +14,10 @@ def make_agent(obs_space, action_space, device, args):
         'obs_shape': obs_space.shape,
         'action_shape': action_space.n if args.env_type == 'atari' else action_space.shape,
         'discount': args.discount,
-        'use_fwd': args.use_fwd,
-        'use_inv': args.use_inv,
-        'ss_lr': args.ss_lr,
-        'ss_update_freq': args.ss_update_freq,
+        # 'use_fwd': args.use_fwd,
+        # 'use_inv': args.use_inv,
+        # 'ss_lr': args.ss_lr,
+        # 'ss_update_freq': args.ss_update_freq,
         'batch_size': args.batch_size,
         'device': device,
     }
@@ -45,13 +46,13 @@ def make_agent(obs_space, action_space, device, args):
         kwargs['critic_lr'] = args.critic_lr
         kwargs['critic_tau'] = args.critic_tau
         kwargs['critic_target_update_freq'] = args.critic_target_update_freq
-        kwargs['use_fwd'] = args.use_fwd
-        kwargs['use_inv'] = args.use_inv
-        kwargs['ss_lr'] = args.ss_lr
-        kwargs['ss_update_freq'] = args.ss_update_freq
-        kwargs['num_ensem_comps'] = args.num_ensem_comps
 
         if args.algo == 'sac_cnn_ss_ensem':
+            kwargs['use_fwd'] = args.use_fwd
+            kwargs['use_inv'] = args.use_inv
+            kwargs['ss_lr'] = args.ss_lr
+            kwargs['ss_update_freq'] = args.ss_update_freq
+            kwargs['num_ensem_comps'] = args.num_ensem_comps
             kwargs['encoder_feature_dim'] = args.encoder_feature_dim
             kwargs['encoder_lr'] = args.encoder_lr
             kwargs['encoder_tau'] = args.encoder_tau
@@ -64,7 +65,18 @@ def make_agent(obs_space, action_space, device, args):
         elif args.algo == 'sac_mlp_ss_ensem':
             kwargs['action_range'] = [float(action_space.low.min()),
                                       float(action_space.high.max())]
+            kwargs['use_fwd'] = args.use_fwd
+            kwargs['use_inv'] = args.use_inv
+            kwargs['ss_lr'] = args.ss_lr
+            kwargs['ss_update_freq'] = args.ss_update_freq
+            kwargs['num_ensem_comps'] = args.num_ensem_comps
             agent = SacMlpSSEnsembleAgent(**kwargs)
+        elif args.algo == 'ewc_sac_mlp':
+            kwargs['ewc_lambda'] = args.ewc_lambda
+            kwargs['ewc_fisher_sample_size'] = args.ewc_fisher_sample_size
+            kwargs['online_ewc'] = args.online_ewc
+            kwargs['online_ewc_gamma'] = args.online_ewc_gamma
+            agent = EwcSacMlpAgent(**kwargs)
         else:
             raise ValueError(f"Unknown algorithm {args.algo}")
     else:
