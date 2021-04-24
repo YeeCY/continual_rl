@@ -70,6 +70,10 @@ class ReplayBuffer(object):
     def __len__(self):
         return self.capacity if self.full else self.idx
 
+    def reset(self):
+        self.idx = 0
+        self.full = False
+
     # TODO (chongyi zheng): delete this block
     # def _sample(self, idxs):
     #     obses, actions, rewards, next_obses, not_dones = [], [], [], [], []

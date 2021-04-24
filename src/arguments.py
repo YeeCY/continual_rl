@@ -46,7 +46,7 @@ def parse_args():
 	parser.add_argument('--save_freq', default=100000, type=int)
 	parser.add_argument('--eval_freq', default=100000, type=int)
 	parser.add_argument('--eval_freq_per_task', default=100000, type=int)
-	parser.add_argument('--num_eval_episodes', default=10, type=int)  # default = 3
+	parser.add_argument('--num_eval_episodes', default=5, type=int)  # default = 3
 	parser.add_argument('--eval_results', default=False, action='store_true')  # (chongyi zheng): save evalution results or not
 
 	# algorithm common
