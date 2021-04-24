@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 
 from agent.encoder import PixelEncoder, DqnEncoder
-from utils import weight_init, SquashedNormal, gaussian_logprob, squash
+from src.utils import weight_init, SquashedNormal, gaussian_logprob, squash
 
 
 class QFunction(nn.Module):
