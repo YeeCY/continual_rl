@@ -331,7 +331,7 @@ def main(args):
                     logger.log('train/duration', time.time() - start_time, total_step)
                     start_time = time.time()
                     # logger.dump(step, ty='train', save=(step > args.init_steps), info=log_info)
-                    logger.dump(step, ty='train', save=(task_step > args.init_steps), info=log_info)
+                    logger.dump(total_step, ty='train', save=(task_step > args.init_steps), info=log_info)
 
                 obs = env.reset()
                 episode_reward = 0

@@ -1,11 +1,12 @@
 from agent.dqn_agent import DqnCnnSSEnsembleAgent
 from agent.sac.sac_agent import SacMlpSSEnsembleAgent, SacCnnSSEnsembleAgent
-from agent.sac import EwcSacMlpAgent
+from agent.sac.ewc_sac_agent import EwcSacMlpAgent
 
 ALGOS = [
     'dqn_cnn_ss_ensem',
     'sac_cnn_ss_ensem',
     'sac_mlp_ss_ensem',
+    'ewc_sac_mlp',
 ]
 
 
