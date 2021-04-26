@@ -17,7 +17,8 @@ def parse_args():
 	# parser.add_argument('--domain_name', default='walker')
 	# parser.add_argument('--task_name', default='walk')
 	parser.add_argument('--env_name', default='walker_run')  # (chongyi zheng)
-	parser.add_argument('--env_names', nargs='+', default='reach-v2 window-close-v2 button-press-topdown-v2', type=str)
+	parser.add_argument('--env_names', nargs='+', type=str,
+						default=['reach-v2', 'window-close-v2', 'button-press-topdown-v2'])
 	parser.add_argument('--env_type', default='dmc_locomotion', type=str, choices=ENV_TYPES)
 	parser.add_argument('--algo', default='sac_mlp_ss_ensem', type=str, choices=list(ALGOS))
 	parser.add_argument('--video_camera_id', default=0, type=int)  # (chongyi zheng)

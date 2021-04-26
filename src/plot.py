@@ -11,16 +11,16 @@ SMOOTH_COEF = 0.25
 
 
 CURVE_FORMAT = {
-    'Env-0': ([139, 101, 8], '--'),
-    'Env-1': ([204, 153, 255], '--'),
-    'Env-2': ([0, 178, 238], '--'),
-    'Env-3': ([0, 100, 0], '-'),
-    'Env-4': ([160, 32, 240], '-'),
-    'Env-5': ([216, 30, 54], '-'),
-    'Env-6': ([55, 126, 184], '-'),
-    'a': ([180, 180, 180], '-'),
-    'b': ([0, 0, 0], '-'),
-    'c': ([254, 151, 0], '-'),
+    'task-0': ([139, 101, 8], '-'),
+    'task-1': ([204, 153, 255], '-'),
+    'task-2': ([0, 178, 238], '-'),
+    'task-3': ([0, 100, 0], '-'),
+    'task-4': ([160, 32, 240], '-'),
+    'task-5': ([216, 30, 54], '-'),
+    'task-6': ([55, 126, 184], '-'),
+    'task-7': ([180, 180, 180], '-'),
+    'task-8': ([0, 0, 0], '-'),
+    'task-9': ([254, 151, 0], '-'),
 }
 
 
@@ -43,9 +43,9 @@ def window_smooth(y):
     return np.array(yw).flatten()
 
 
-def plot(datas, envs, curve_format=CURVE_FORMAT):
-    for env in envs:
-        data = datas[env]
+def plot(datas, task_names, curve_format=CURVE_FORMAT):
+    for task_name in task_names:
+        data = datas[task_name]
         if len(data) == 1:
             continue
 
@@ -66,78 +66,90 @@ def plot(datas, envs, curve_format=CURVE_FORMAT):
 
         x = np.array(x)
 
-        name = 'Env-' + str(env)
-        c = np.array(curve_format[name][0]) / 255.
-        s = curve_format[name][1]
-        plt.plot(x, y_mean, color=c, label=name, linestyle=s)
-        plt.fill_between(x, y_mean - 0.5 * y_std, y_mean + 0.5 * y_std, facecolor=c, alpha=0.1)
+        key = 'task-' + str(task_names.index(task_name))
+        color = np.array(curve_format[key][0]) / 255.
+        style = curve_format[key][1]
+        plt.plot(x, y_mean, color=color, label=task_name, linestyle=style)
+        plt.fill_between(x, y_mean - 0.5 * y_std, y_mean + 0.5 * y_std, facecolor=color, alpha=0.1)
 
 
 def main(args):
     # exp_name = args.exp_name + '-setting-' + str(args.setting)
     exp_name = args.exp_name
+    task_names = args.task_names
+    data_dir = args.data_dir
     save_dir = args.save_dir
-    envs, stats, seeds = args.envs, args.statistics, args.seeds
+    stats = args.statistics
+    seeds = args.seeds
+    max_timesteps = args.max_timesteps
     num_fig = len(stats)
 
-    assert osp.exists(save_dir), "The directory to save figures doesn't exit"
-    plt.figure(figsize=(num_fig * 8, 6))
+    assert osp.exists(data_dir), print("The directory to load data doesn't exit")
+    os.makedirs(save_dir, exist_ok=True)
 
     for s in range(num_fig):
         stat = stats[s]
         ax = plt.subplot(1, len(stats), s+1)
         plt.xlabel('Total Timesteps', fontsize=14)
-        plt.ylabel(stat[1], fontsize=14)
+        plt.ylabel(stat, fontsize=14)
         data = {}
 
         for d in range(len(seeds)):
             seed = seeds[d]
-            file_dir = osp.join('data', exp_name, 's-' + str(seed), 'progress.csv')
-            file_dir = os.path.abspath(file_dir)
+            data_path = osp.join(data_dir, exp_name, str(seed), 'eval.csv')
+            data_path = os.path.abspath(data_path)
 
             try:
-                file = pd.read_csv(file_dir)
+                df = pd.read_csv(data_path)
             except:
-                print(file_dir + " not found!")
+                print(f"Data path not found: {data_path}!")
                 continue
 
-            file = file[file['exploration/all num steps total'] <= args.timesteps]
-            x = file['exploration/all num steps total'].values
+            # file = file[file['step'] <= args.timesteps]
+            # x = file['exploration/all num steps total'].values
 
-            for env in envs:
-                if env not in data:
-                    data[env] = [x]
+            for task_name in task_names:
+                task_df = df[df['task_name'] == task_name]
+                task_df = task_df[task_df['step'] <= max_timesteps]
+                x = task_df['step'].values
+
+                if task_name not in data:
+                    data[task_name] = [x]
                 try:
-                    st = stat[0] + '/env-' + str(env) + '/' + stat[1]
-                    v = file[st].values
-                    data[env].append(v)
+                    # st = stat[0] + '/env-' + str(env) + '/' + stat[1]
+                    # st = stat[0]
+                    y = task_df[stat].values
+                    data[task_name].append(y)
                 except:
-                    print('env-' + env + ' not exist')
-                    continue
+                    raise RuntimeError(f"Statistics '{stat}' doesn't exist in '{data_path}'!")
 
-        plot(data, envs)
+        plot(data, task_names)
 
+    fig_path = osp.abspath(osp.join(save_dir, exp_name + '.png'))
     plt.title(exp_name, fontsize=16)
     plt.legend(framealpha=0.)
-    plt.savefig(fname=osp.join(save_dir, exp_name + '.png'))
+    plt.savefig(fname=fig_path)
+    print(f"Save figure: {fig_path}")
 
 
 if __name__ == '__main__':
     # custom argument type
-    def str_pair(s):
-        splited_s = s.split(',')
-        assert splited_s, 'invalid string pair'
-        return (splited_s[0], splited_s[1])
+    # def str_pair(s):
+    #     splited_s = s.split(',')
+    #     assert splited_s, 'invalid string pair'
+    #     return (splited_s[0], splited_s[1])
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--exp_name', type=str, default='Skew-Fit-SawyerDoorHookEnv-setting-5-expl-3')
+    parser.add_argument('--data_dir', type=str, default='data')
     parser.add_argument('--save_dir', type=str, default='figures')
-    parser.add_argument('--setting', type=int, default=1)
-    parser.add_argument('--envs', type=int, nargs='+', default=[0, 1, 2, 3, 4, 5, 6])
+    # parser.add_argument('--setting', type=int, default=1)
+    parser.add_argument('--task_names', type=str, nargs='+',
+                        default=['reach-v2', 'window-close-v2', 'button-press-topdown-v2'])
     parser.add_argument('--seeds', type=int, nargs='+', default=[0, 1, 2, 3, 4, 5, 6])
-    parser.add_argument('--timesteps', type=int, default=int(5e5))
-    parser.add_argument('--statistics', type=str_pair, nargs='+',
-                        default=[('evaluation', 'Final angle_difference Mean')])
+    parser.add_argument('--max_timesteps', type=int, default=np.iinfo(np.int).max)
+    parser.add_argument('--statistics', type=str, nargs='+',
+                        default=['success_rate'])
     args = parser.parse_args()
 
     main(args)
