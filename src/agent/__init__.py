@@ -1,11 +1,12 @@
 from agent.dqn_agent import DqnCnnSSEnsembleAgent
 # from agent.sac.sac_agent import SacMlpSSEnsembleAgent, SacCnnSSEnsembleAgent
-from agent.sac import EwcSacMlpAgent, SacMlpSSEnsembleAgent, SacCnnSSEnsembleAgent
+from agent.sac import EwcSacMlpAgent, SacMlpAgent, SacMlpSSEnsembleAgent, SacCnnSSEnsembleAgent
 
 ALGOS = [
     'dqn_cnn_ss_ensem',
     'sac_cnn_ss_ensem',
     'sac_mlp_ss_ensem',
+    'sac_mlp',
     'ewc_sac_mlp',
 ]
 
@@ -37,6 +38,8 @@ def make_agent(obs_space, action_space, device, args):
 
         agent = DqnCnnSSEnsembleAgent(**kwargs)
     elif 'sac' in args.algo:
+        kwargs['action_range'] = [float(action_space.low.min()),
+                                  float(action_space.high.max())]
         kwargs['hidden_dim'] = args.hidden_dim
         kwargs['init_temperature'] = args.init_temperature
         kwargs['alpha_lr'] = args.alpha_lr
@@ -73,9 +76,9 @@ def make_agent(obs_space, action_space, device, args):
             kwargs['ss_update_freq'] = args.ss_update_freq
             kwargs['num_ensem_comps'] = args.num_ensem_comps
             agent = SacMlpSSEnsembleAgent(**kwargs)
+        elif args.algo == 'sac_mlp':
+            agent = SacMlpAgent(**kwargs)
         elif args.algo == 'ewc_sac_mlp':
-            kwargs['action_range'] = [float(action_space.low.min()),
-                                      float(action_space.high.max())]
             kwargs['ewc_lambda'] = args.ewc_lambda
             kwargs['ewc_fisher_sample_size'] = args.ewc_fisher_sample_size
             kwargs['online_ewc'] = args.online_ewc
