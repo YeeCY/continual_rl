@@ -83,6 +83,7 @@ def evaluate(env, agent, video, num_episodes, logger, step):
 def main(args):
     if args.seed is None:
         args.seed = np.random.randint(int(1e9))
+    print(f"seed: {args.seed}")
 
     # Initialize environment
     if args.env_type == 'atari':

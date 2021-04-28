@@ -77,6 +77,7 @@ def parse_args():
 	parser.add_argument('--hidden_dim', default=400, type=int)  # 1024
 	parser.add_argument('--init_temperature', default=1.0, type=float)  # 0.1
 	parser.add_argument('--alpha_lr', default=3e-4, type=float)  # (chongyi zheng): 1e-4, try 3e-4?
+	parser.add_argument('--grad_clip_norm', default=10.0, type=float)  # tuning this
 
 	# sac actor
 	parser.add_argument('--actor_lr', default=3e-4, type=float)  # 1e-3

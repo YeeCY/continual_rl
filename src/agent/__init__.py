@@ -47,6 +47,7 @@ def make_agent(obs_space, action_space, device, args):
         kwargs['critic_lr'] = args.critic_lr
         kwargs['critic_tau'] = args.critic_tau
         kwargs['critic_target_update_freq'] = args.critic_target_update_freq
+        kwargs['grad_clip_norm'] = args.grad_clip_norm
 
         if args.algo == 'sac_cnn_ss_ensem':
             kwargs['use_fwd'] = args.use_fwd
