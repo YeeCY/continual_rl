@@ -81,10 +81,6 @@ def evaluate(env, agent, video, num_episodes, logger, step):
 
 
 def main(args):
-    if args.seed is None:
-        args.seed = np.random.randint(int(1e9))
-    print(f"seed: {args.seed}")
-
     # Initialize environment
     if args.env_type == 'atari':
         # env = make_atari_env(
@@ -208,6 +204,11 @@ def main(args):
                     log_frequency=args.log_freq,
                     action_repeat=args.action_repeat,
                     save_tb=args.save_tb)
+
+    # log arguments
+    args_dict = vars(args)
+    logger.log_and_dump_arguments(args_dict)
+
     episode, episode_reward, episode_step, episode_successes, done, info = 0, 0, 0, [], True, {}
     task_step = 0
     recent_success = deque(maxlen=100)

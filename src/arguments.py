@@ -142,5 +142,9 @@ def parse_args():
 			args.load_checkpoint = int(args.load_checkpoint)
 		except:
 			return ValueError('load_checkpoint must be int, received', args.load_checkpoint)
-	
+
+	if args.seed is None:
+		args.seed = np.random.randint(int(1e9))
+	print(f"seed: {args.seed}")
+
 	return args

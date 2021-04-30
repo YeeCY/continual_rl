@@ -239,6 +239,17 @@ class Logger(object):
         assert key.startswith('train') or key.startswith('eval')
         self._try_sw_log_histogram(key, histogram, step)
 
+    def log_and_dump_arguments(self, args_dict, file_name='arguments.json'):
+        file_path = os.path.join(self._log_dir, file_name)
+        if os.path.exists(file_path):
+            os.remove(file_path)
+
+        args_str = json.dumps(args_dict, indent=4) + '\n'
+        print("Arguments: ")
+        print(args_str)
+        with open(file_path, 'w+') as f:
+            f.write(args_str)
+
     def dump(self, step, save=True, ty=None, info=None):
         # step = self._update_step(step)
         if ty is None:
