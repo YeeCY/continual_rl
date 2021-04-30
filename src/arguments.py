@@ -145,6 +145,5 @@ def parse_args():
 
 	if args.seed is None:
 		args.seed = np.random.randint(int(1e9))
-	print(f"seed: {args.seed}")
 
 	return args

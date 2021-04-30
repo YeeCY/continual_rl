@@ -39,13 +39,15 @@ class SiSacMlpAgent(SacMlpAgent):
         self.omegas = {}
         self.prev_task_params = {}
 
-        # set prev_params as weight initializations
+        # set prev_params and prev_task_params as weight initializations
         self.prev_params = {}
+        self.prev_task_params = {}
         for name, param in chain(self.critic.named_parameters(),
                                  self.actor.named_parameters(),
                                  iter([('log_alpha', self.log_alpha)])):
             if param.requires_grad:
                 self.prev_params[name] = param.detach().clone()
+                self.prev_task_params[name] = param.detach().clone()
 
     def update_omegas(self):
         for name, param in chain(self.critic.named_parameters(),
@@ -77,7 +79,7 @@ class SiSacMlpAgent(SacMlpAgent):
 
         si_losses = []
         for name, param in named_parameters:
-            prev_param = self.prev_task_params.get(name, param.detach.clone())
+            prev_param = self.prev_task_params.get(name, param.detach().clone())
             omega = self.omegas.get(name, torch.zeros_like(param))
             si_loss = torch.sum(omega * (param - prev_param) ** 2)
             si_losses.append(si_loss)
