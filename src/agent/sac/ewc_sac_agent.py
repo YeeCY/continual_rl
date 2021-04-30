@@ -7,7 +7,7 @@ from agent.sac.base_sac_agent import SacMlpAgent
 
 
 class EwcSacMlpAgent(SacMlpAgent):
-    """Adapt from https://github.com/GMvandeVen/continual-learning/blob/master/continual_learner.py"""
+    """Adapt https://github.com/GMvandeVen/continual-learning"""
     def __init__(self,
                  obs_shape,
                  action_shape,

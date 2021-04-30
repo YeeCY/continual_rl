@@ -307,6 +307,8 @@ def main(args):
 
                 if 'ewc' in args.algo:
                     agent.estimate_fisher(replay_buffer)
+                elif 'si' in args.algo:
+                    agent.update_omegas()
 
                 replay_buffer.reset()
                 task_step = 0

@@ -107,6 +107,10 @@ def parse_args():
 	parser.add_argument('--online_ewc', default=False, action='store_true')
 	parser.add_argument('--online_ewc_gamma', default=1.0, type=float)
 
+	# si
+	parser.add_argument('--si_c', default=1.0, type=float)
+	parser.add_argument('--si_epsilon', default=0.1, type=float)
+
 	# misc
 	parser.add_argument('--seed', default=1, type=int)
 	parser.add_argument('--work_dir', default=None, type=str)
