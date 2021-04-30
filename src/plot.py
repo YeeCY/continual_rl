@@ -6,7 +6,7 @@ import os
 import os.path as osp
 
 
-WINDOW_LENGTH = 20
+WINDOW_LENGTH = 10
 SMOOTH_COEF = 0.25
 
 
