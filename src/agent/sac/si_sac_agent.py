@@ -79,10 +79,11 @@ class SiSacMlpAgent(SacMlpAgent):
 
         si_losses = []
         for name, param in named_parameters:
-            prev_param = self.prev_task_params.get(name, param.detach().clone())
-            omega = self.omegas.get(name, torch.zeros_like(param))
-            si_loss = torch.sum(omega * (param - prev_param) ** 2)
-            si_losses.append(si_loss)
+            if param.grad is not None:
+                prev_param = self.prev_task_params[name]
+                omega = self.omegas.get(name, torch.zeros_like(param))
+                si_loss = torch.sum(omega * (param - prev_param) ** 2)
+                si_losses.append(si_loss)
 
         return torch.sum(torch.stack(si_losses))
 
