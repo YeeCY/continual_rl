@@ -11,7 +11,7 @@ from src.mnist_cl.agem_classifier import AgemClassifier
 
 
 def train_cl(model, train_datasets, replay_mode="none", scenario="class", classes_per_task=None, iters=2000,
-             batch_size=32):
+             batch_size=32, loss_cbs=None):
     # Set model in training-mode
     model.train()
 
@@ -125,7 +125,7 @@ def train_cl(model, train_datasets, replay_mode="none", scenario="class", classe
             if batch_index <= iters:
                 # Train the main model with this batch
                 if isinstance(model, EwcClassifier):
-                    model.train_a_batch(x, y, active_classes=active_classes)
+                    loss_dict = model.train_a_batch(x, y, active_classes=active_classes)
                 elif isinstance(model, SiClassifier):
                     pass
                 elif isinstance(model, AgemClassifier):
@@ -142,6 +142,9 @@ def train_cl(model, train_datasets, replay_mode="none", scenario="class", classe
                 #                 W[n].add_(-p.grad*(p.detach()-p_old[n]))
                 #             p_old[n] = p.detach().clone()
 
+                for loss_cb in loss_cbs:
+                    if loss_cb is not None:
+                        loss_cb(progress, batch_index, loss_dict, task=task)
 
         ##----------> UPON FINISHING EACH TASK...
 
@@ -169,8 +172,8 @@ def train_cl(model, train_datasets, replay_mode="none", scenario="class", classe
             # reduce examplar-sets
             model.reduce_exemplar_sets(exemplars_per_class)
             # for each new class trained on, construct examplar-set
-            new_classes = list(range(classes_per_task)) if scenario=="domain" else list(range(classes_per_task*(task-1),
-                                                                                              classes_per_task*task))
+            new_classes = list(range(classes_per_task)) if scenario == "domain" else \
+                list(range(classes_per_task * (task - 1), classes_per_task * task))
             for class_id in new_classes:
                 # create new dataset containing only all examples of this class
                 class_dataset = SubDataset(original_dataset=train_dataset, sub_labels=[class_id])

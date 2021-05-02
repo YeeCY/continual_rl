@@ -7,6 +7,7 @@ from src.mnist_cl import evaluate
 from src.mnist_cl.data import get_multitask_experiment
 from src.mnist_cl.train import train_cl
 from src.mnist_cl.ewc_classifier import EwcClassifier
+from src.mnist_cl import callbacks as cb
 
 
 def main(args):
@@ -29,7 +30,7 @@ def main(args):
         model = EwcClassifier(
             config['size'], config['channels'], config['classes'], hidden_units=args.hidden_units,
             lam=args.ewc_lambda, fisher_sample_size=args.ewc_fisher_sample_size,
-            online=args.ewc_online, gamma=args.ewc_gamma, emp_fi=args.ewc_emp_fi).to(device)
+            online=args.ewc_online, gamma=args.ewc_gamma).to(device)
     elif args.si:
         pass
     elif args.agem:
@@ -64,9 +65,14 @@ def main(args):
     #     if generator is not None:
     #         utils.print_model_info(generator, title="GENERATOR")
 
+    solver_loss_cbs = [
+        cb._solver_loss_cb(log=args.loss_log_intervals, visdom=None, model=model, tasks=args.num_tasks,
+                           iters_per_task=args.iters, replay=False if args.replay == "none" else True)
+    ]
+
     train_cl(
         model, train_datasets, replay_mode=args.replay, scenario=args.scenario, classes_per_task=classes_per_task,
-        iters=args.iters, batch_size=args.batch_size)
+        iters=args.iters, batch_size=args.batch_size, loss_cbs=solver_loss_cbs)
 
     precs = [evaluate.validate(
         model, test_datasets[i], verbose=False, test_size=None, task=i+1, with_exemplars=False,
@@ -95,6 +101,7 @@ if __name__ == "__main__":
     parser.add_argument('--lr', type=float, default=0.001, help="learning rate")  # splitMNIST = 0.001, permMNIST = 0.0001
     parser.add_argument('--batch_size', type=int, default=128, help="batch size")
     parser.add_argument('--hidden_units', type=int, default=400, help="fully connected layer hidden units")  # splitMNIST = 400, permMNIST = 1000
+    parser.add_argument('--loss_log_intervals', type=int, default=200, metavar="N", help="# iters after which to plot loss")
 
     # exemplars
     replay_choices = ['none', 'exemplars']
@@ -108,7 +115,6 @@ if __name__ == "__main__":
                         help="--> EWC: sample size estimating Fisher Information")
     parser.add_argument('--ewc_online', action='store_true', help="--> EWC: perform 'online EWC'")
     parser.add_argument('--ewc_gamma', type=float, help="--> EWC: forgetting coefficient (for 'online EWC')")
-    parser.add_argument('--ewc_emp_fi', action='store_true', help="--> EWC: estimate FI with provided labels")
 
     # si
     parser.add_argument('--si', action='store_true', help="use 'Synaptic Intelligence' (Zenke, Poole et al, 2017)")
