@@ -51,8 +51,8 @@ class EwcClassifier(nn.Module):
         self.eval()
 
         fisher_sample_size = self.fisher_sample_size if self.fisher_sample_size is not None else len(dataset)
-        data_loader = utils.get_data_loader(dataset, batch_size=fisher_sample_size, cuda=self._is_on_cuda())
-        x, y = next(data_loader)
+        data_loader = utils.get_data_loader(dataset, batch_size=fisher_sample_size, cuda=self.is_on_cuda())
+        x, y = list(data_loader[0])
 
         # run forward pass of model
         x = x.to(self._device())
