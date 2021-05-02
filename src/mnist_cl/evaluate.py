@@ -29,7 +29,7 @@ def validate(model, dataset, batch_size=128, test_size=1024, verbose=True, allow
             model.apply_XdGmask(task=task)
 
     # Loop over batches in [dataset]
-    data_loader = utils.get_data_loader(dataset, batch_size, cuda=model._is_on_cuda())
+    data_loader = utils.get_data_loader(dataset, batch_size, cuda=model.is_on_cuda())
     total_tested = total_correct = 0
     for data, labels in data_loader:
         # -break on [test_size] (if "None", full dataset is used)
@@ -37,7 +37,7 @@ def validate(model, dataset, batch_size=128, test_size=1024, verbose=True, allow
             if total_tested >= test_size:
                 break
         # -evaluate model (if requested, only on [allowed_classes])
-        data, labels = data.to(model._device()), labels.to(model._device())
+        data, labels = data.to(model.device()), labels.to(model.device())
         labels = labels - allowed_classes[0] if (allowed_classes is not None) else labels
         with torch.no_grad():
             if with_exemplars:
@@ -299,9 +299,9 @@ def show_reconstruction(model, dataset, config, pdf=None, visdom=None, size=32, 
     model.eval()
 
     # Get data
-    data_loader = utils.get_data_loader(dataset, size, cuda=model._is_on_cuda(), collate_fn=collate_fn)
+    data_loader = utils.get_data_loader(dataset, size, cuda=model.is_on_cuda(), collate_fn=collate_fn)
     (data, labels) = next(iter(data_loader))
-    data, labels = data.to(model._device()), labels.to(model._device())
+    data, labels = data.to(model.device()), labels.to(model.device())
 
     # Evaluate model
     with torch.no_grad():

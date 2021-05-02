@@ -95,13 +95,13 @@ class EwcClassifier(nn.Module):
     def _ewc_loss(self):
         ewc_losses = []
         if self.ewc_task_count >= 1:
-            if self.online_ewc:
+            if self.online:
                 for name, param in self.named_parameters():
                     if param.grad is not None:
                         name = name + '_prev_task'
                         mean = self.prev_task_params[name]
                         # apply decay-term to the running sum of the Fisher Information matrices
-                        fisher = self.online_ewc_gamma * self.prev_task_fishers[name]
+                        fisher = self.gamma * self.prev_task_fishers[name]
                         ewc_loss = torch.sum(fisher * (param - mean) ** 2)
                         ewc_losses.append(ewc_loss)
             else:

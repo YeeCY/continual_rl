@@ -75,15 +75,15 @@ def main(args):
         iters=args.iters, batch_size=args.batch_size, loss_cbs=solver_loss_cbs)
 
     precs = [evaluate.validate(
-        model, test_datasets[i], verbose=False, test_size=None, task=i+1, with_exemplars=False,
+        model, test_datasets[i], verbose=False, test_size=None, task=i + 1, with_exemplars=False,
         allowed_classes=list(range(classes_per_task*i, classes_per_task*(i+1))) if args.scenario == "task" else None
-    ) for i in range(args.tasks)]
-    average_precs = sum(precs) / args.tasks
+    ) for i in range(args.num_tasks)]
+    average_precs = sum(precs) / args.num_tasks
     # -print on screen
-    print("\n Precision on test-set{}:".format(" (softmax classification)" if args.use_exemplars else ""))
-    for i in range(args.tasks):
+    print("\n Precision on test-set")
+    for i in range(args.num_tasks):
         print(" - Task {}: {:.4f}".format(i + 1, precs[i]))
-    print('=> Average precision over all {} tasks: {:.4f}\n'.format(args.tasks, average_precs))
+    print('=> Average precision over all {} tasks: {:.4f}\n'.format(args.num_tasks, average_precs))
 
 
 if __name__ == "__main__":
