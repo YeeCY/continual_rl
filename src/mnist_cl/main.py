@@ -8,6 +8,7 @@ from src.mnist_cl.data import get_multitask_experiment
 from src.mnist_cl.train import train_cl
 from src.mnist_cl.ewc_classifier import EwcClassifier
 from src.mnist_cl.si_classifier import SiClassifier
+from src.mnist_cl.agem_classifier import AgemClassifier
 from src.mnist_cl import callbacks as cb
 from src.mnist_cl.param_stamp import get_param_stamp
 
@@ -38,7 +39,9 @@ def main(args):
             config['size'], config['channels'], config['classes'], hidden_units=args.hidden_units,
             c=args.si_c, epsilon=args.si_epsilon, device=device)
     elif args.agem:
-        pass
+        model = AgemClassifier(
+            config['size'], config['channels'], config['classes'], hidden_units=args.hidden_units,
+            memory_budget=args.budget, device=device)
     else:
         raise RuntimeError("Unknown algorithm")
 
