@@ -76,7 +76,7 @@ class EwcClassifier(nn.Module):
 
         for name, param in self.named_parameters():
             if param.grad is not None:
-                if self.online_ewc:
+                if self.online:
                     name = name + '_prev_task'
                     self.prev_task_params[name] = param.detach().clone()
                     self.prev_task_fishers[name] = \
