@@ -11,7 +11,7 @@ from src.mnist_cl import callbacks as cb
 
 
 def main(args):
-    cuda = torch.cuda.is_available() and args.cuda
+    cuda = torch.cuda.is_available()
     device = torch.device("cuda" if cuda else "cpu")
     print("CUDA is {}used".format("" if cuda else "NOT(!!) "))
 
