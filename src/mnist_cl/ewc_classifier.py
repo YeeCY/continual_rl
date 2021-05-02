@@ -53,10 +53,10 @@ class EwcClassifier(nn.Module):
 
         fisher_sample_size = self.fisher_sample_size if self.fisher_sample_size is not None else len(dataset)
         data_loader = utils.get_data_loader(dataset, batch_size=fisher_sample_size, cuda=self.is_on_cuda())
-        x, y = list(data_loader[0])
+        x, y = list(data_loader)[0]
 
         # run forward pass of model
-        x = x.to(self._device())
+        x = x.to(self.device())
         y_hat = self(x) if allowed_classes is None else self(x)[:, allowed_classes]
         label = y_hat.max(1)[1]  # use predicted label to calculate loglikelihood
         negloglikelihood = F.nll_loss(F.log_softmax(y_hat, dim=1), label)
