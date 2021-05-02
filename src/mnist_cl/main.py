@@ -116,16 +116,16 @@ if __name__ == "__main__":
 
     # ewc
     parser.add_argument('--ewc', action='store_true', help="use 'EWC' (Kirkpatrick et al, 2017)")
-    parser.add_argument('--ewc_lambda', type=float, help="--> EWC: regularisation strength")
+    parser.add_argument('--ewc_lambda', type=float, default=500, help="--> EWC: regularisation strength")
     parser.add_argument('--ewc_fisher_sample_size', type=int,
                         help="--> EWC: sample size estimating Fisher Information")
-    parser.add_argument('--ewc_online', action='store_true', help="--> EWC: perform 'online EWC'")
-    parser.add_argument('--ewc_gamma', type=float, help="--> EWC: forgetting coefficient (for 'online EWC')")
+    parser.add_argument('--ewc_online', action='store_true', default=False, help="--> EWC: perform 'online EWC'")
+    parser.add_argument('--ewc_gamma', type=float, default=1.0, help="--> EWC: forgetting coefficient (for 'online EWC')")
 
     # si
     parser.add_argument('--si', action='store_true', help="use 'Synaptic Intelligence' (Zenke, Poole et al, 2017)")
-    parser.add_argument('--si_c', type=float, help="--> SI: regularisation strength")
-    parser.add_argument('--si_epsilon', type=float, help="--> SI: dampening parameter")
+    parser.add_argument('--si_c', type=float, default=1.0, help="--> SI: regularisation strength")
+    parser.add_argument('--si_epsilon', type=float, default=0.1, help="--> SI: dampening parameter")
 
     # agem
     parser.add_argument('--agem', action='store_true', help="use gradient of replay as inequality constraint")

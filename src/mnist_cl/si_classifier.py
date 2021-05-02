@@ -59,7 +59,7 @@ class SiClassifier(nn.Module):
                 prev_param = self.prev_task_params[name]
                 current_param = param.detach().clone()
                 delta_param = current_param - prev_param
-                current_omega = self.params_w[name] / (delta_param ** 2 + self.si_epsilon)
+                current_omega = self.params_w[name] / (delta_param ** 2 + self.epsilon)
 
                 self.prev_task_params[name] = current_param
                 self.omegas[name] = current_omega + self.omegas.get(name, torch.zeros_like(param))
