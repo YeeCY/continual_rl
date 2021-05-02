@@ -127,7 +127,7 @@ def train_cl(model, train_datasets, replay_mode="none", scenario="class", classe
                 if isinstance(model, EwcClassifier):
                     loss_dict = model.train_a_batch(x, y, active_classes=active_classes)
                 elif isinstance(model, SiClassifier):
-                    pass
+                    loss_dict = model.train_a_batch(x, y, active_classes=active_classes)
                 elif isinstance(model, AgemClassifier):
                     pass
                 else:

@@ -53,7 +53,7 @@ class SiSacMlpAgent(SacMlpAgent):
         for name, param in chain(self.critic.named_parameters(),
                                  self.actor.named_parameters(),
                                  iter([('log_alpha', self.log_alpha)])):
-            if param.grad is not None:
+            if param.requires_grad:
                 prev_param = self.prev_task_params[name]
                 current_param = param.detach().clone()
                 delta_param = current_param - prev_param
@@ -69,7 +69,7 @@ class SiSacMlpAgent(SacMlpAgent):
         for name, param in chain(self.critic.named_parameters(),
                                  self.actor.named_parameters(),
                                  iter([('log_alpha', self.log_alpha)])):
-            if param.grad is not None:
+            if param.requires_grad:
                 self.params_w[name] = -param.grad * (param.detach() - self.prev_params[name]) + \
                                       self.params_w.get(name, torch.zeros_like(param))
                 self.prev_params[name] = param.detach().clone()
@@ -79,7 +79,7 @@ class SiSacMlpAgent(SacMlpAgent):
 
         si_losses = []
         for name, param in named_parameters:
-            if param.grad is not None:
+            if param.requires_grad:
                 prev_param = self.prev_task_params[name]
                 omega = self.omegas.get(name, torch.zeros_like(param))
                 si_loss = torch.sum(omega * (param - prev_param) ** 2)

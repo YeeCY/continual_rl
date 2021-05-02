@@ -47,52 +47,51 @@ def get_param_stamp_from_args(args):
 
 
 
-def get_param_stamp(args, model_name, verbose=True, replay=False, replay_model_name=None):
+def get_param_stamp(args, verbose=True, replay=False, replay_model_name=None):
     '''Based on the input-arguments, produce a "parameter-stamp".'''
 
     # -for task
-    multi_n_stamp = "{n}-{set}".format(n=args.tasks, set=args.scenario) if hasattr(args, "tasks") else ""
-    task_stamp = "{exp}{multi_n}".format(exp=args.experiment, multi_n=multi_n_stamp)
+    multi_n_stamp = "{n}-{set}".format(n=args.num_tasks, set=args.scenario) if hasattr(args, "tasks") else ""
+    task_stamp = "{exp}{multi_n}".format(exp=args.dataset, multi_n=multi_n_stamp)
     if verbose:
         print(" --> task:          "+task_stamp)
 
     # -for model
-    model_stamp = model_name
+    if args.ewc:
+        model_stamp = 'ewc'
+    elif args.si:
+        model_stamp = 'si'
+    elif args.agem:
+        model_stamp = 'agem'
+    else:
+        raise RuntimeError("Unknown algorithm")
     if verbose:
         print(" --> model:         "+model_stamp)
 
     # -for hyper-parameters
-    hyper_stamp = "{i_e}{num}-lr{lr}{lrg}-b{bsz}-{optim}".format(
+    hyper_stamp = "{i_e}{num}-lr{lr}-b{bsz}".format(
         i_e="e" if args.iters is None else "i", num=args.epochs if args.iters is None else args.iters, lr=args.lr,
-        lrg=("" if args.lr==args.lr_gen else "-lrG{}".format(args.lr_gen)) if hasattr(args, "lr_gen") else "",
-        bsz=args.batch, optim=args.optimizer,
+        bsz=args.batch_size,
     )
     if verbose:
         print(" --> hyper-params:  " + hyper_stamp)
 
     # -for EWC / SI
-    if hasattr(args, 'ewc') and ((args.ewc_lambda>0 and args.ewc) or (args.si_c>0 and args.si)):
+    if hasattr(args, 'ewc') and ((args.ewc and args.ewc_lambda > 0) or (args.si and args.si_c > 0)):
         ewc_stamp = "EWC{l}-{fi}{o}".format(
             l=args.ewc_lambda,
-            fi="{}{}".format("N" if args.fisher_n is None else args.fisher_n, "E" if args.emp_fi else ""),
-            o="-O{}".format(args.gamma) if args.online else "",
-        ) if (args.ewc_lambda>0 and args.ewc) else ""
-        si_stamp = "SI{c}-{eps}".format(c=args.si_c, eps=args.epsilon) if (args.si_c>0 and args.si) else ""
-        both = "--" if (args.ewc_lambda>0 and args.ewc) and (args.si_c>0 and args.si) else ""
-        if verbose and args.ewc_lambda>0 and args.ewc:
+            fi="{}".format("N" if args.ewc_fisher_sample_size is None else args.fisher_n),
+            o="-O{}".format(args.ewc_gamma) if args.online else "",
+        ) if (args.ewc and args.ewc_lambda > 0) else ""
+        si_stamp = "SI{c}-{eps}".format(c=args.si_c, eps=args.si_epsilon) if (args.si and args.si_c > 0) else ""
+        both = "--" if (args.ewc and args.ewc_lambda > 0) and (args.si and args.si_c > 0) else ""
+        if verbose and args.ewc and args.ewc_lambda > 0:
             print(" --> EWC:           " + ewc_stamp)
-        if verbose and args.si_c>0 and args.si:
+        if verbose and args.si and args.si_c > 0:
             print(" --> SI:            " + si_stamp)
     ewc_stamp = "--{}{}{}".format(ewc_stamp, both, si_stamp) if (
-            hasattr(args, 'ewc') and ((args.ewc_lambda>0 and args.ewc) or (args.si_c>0 and args.si))
+            hasattr(args, 'ewc') and ((args.ewc and args.ewc_lambda > 0) or (args.si and args.si_c > 0))
     ) else ""
-
-    # -for XdG
-    xdg_stamp = ""
-    if (hasattr(args, 'xdg') and args.xdg) and (hasattr(args, "gating_prop") and args.gating_prop>0):
-        xdg_stamp = "--XdG{}".format(args.gating_prop)
-        if verbose:
-            print(" --> XdG:           " + "gating = {}".format(args.gating_prop))
 
     # -for replay
     if replay:
@@ -109,23 +108,10 @@ def get_param_stamp(args, model_name, verbose=True, replay=False, replay_model_n
             print(" --> replay:        " + replay_stamp)
     replay_stamp = "--{}".format(replay_stamp) if replay else ""
 
-    # -for exemplars / iCaRL
-    exemplar_stamp = ""
-    if hasattr(args, 'use_exemplars') and (args.add_exemplars or args.use_exemplars or args.replay=="exemplars"):
-        exemplar_opts = "b{}{}{}".format(args.budget, "H" if args.herding else "", "N" if args.norm_exemplars else "")
-        use = "{}{}".format("addEx-" if args.add_exemplars else "", "useEx-" if args.use_exemplars else "")
-        exemplar_stamp = "--{}{}".format(use, exemplar_opts)
-        if verbose:
-            print(" --> exemplars:     " + "{}{}".format(use, exemplar_opts))
-
-    # -for binary classification loss
-    binLoss_stamp = ""
-    if hasattr(args, 'bce') and args.bce:
-        binLoss_stamp = '--BCE_dist' if (args.bce_distill and args.scenario=="class") else '--BCE'
 
     # --> combine
-    param_stamp = "{}--{}--{}{}{}{}{}{}{}".format(
-        task_stamp, model_stamp, hyper_stamp, ewc_stamp, xdg_stamp, replay_stamp, exemplar_stamp, binLoss_stamp,
+    param_stamp = "{}--{}--{}{}{}{}".format(
+        task_stamp, model_stamp, hyper_stamp, ewc_stamp, replay_stamp,
         "-s{}".format(args.seed) if not args.seed==0 else "",
     )
 

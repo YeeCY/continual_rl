@@ -53,7 +53,7 @@ class SiClassifier(nn.Module):
 
     def update_omegas(self):
         for name, param in self.named_parameters():
-            if param.grad is not None:
+            if param.requires_grad:
                 prev_param = self.prev_task_params[name]
                 current_param = param.detach().clone()
                 delta_param = current_param - prev_param
@@ -67,7 +67,7 @@ class SiClassifier(nn.Module):
 
     def _estimate_importance(self):
         for name, param in self.named_parameters():
-            if param.grad is not None:
+            if param.requires_grad:
                 self.params_w[name] = -param.grad * (param.detach() - self.prev_params[name]) + \
                                       self.params_w.get(name, torch.zeros_like(param))
                 self.prev_params[name] = param.detach().clone()
@@ -75,7 +75,7 @@ class SiClassifier(nn.Module):
     def _surrogate_loss(self):
         si_losses = []
         for name, param in self.named_parameters():
-            if param.grad is not None:
+            if param.requires_grad:
                 prev_param = self.prev_task_params[name]
                 omega = self.omegas.get(name, torch.zeros_like(param))
                 si_loss = torch.sum(omega * (param - prev_param) ** 2)
@@ -87,14 +87,11 @@ class SiClassifier(nn.Module):
         # Set model to training-mode
         self.train()
 
-        # Reset optimizer
-        self.optimizer.zero_grad()
-
         # Run model
         y_hat = self(x)
         # -if needed, remove predictions for classes not in current task
         if active_classes is not None:
-            class_entries = active_classes[-1] if type(active_classes[0])==list else active_classes
+            class_entries = active_classes[-1] if type(active_classes[0]) == list else active_classes
             y_hat = y_hat[:, class_entries]
 
         # Calculate prediction loss
@@ -107,6 +104,9 @@ class SiClassifier(nn.Module):
         si_loss = self._surrogate_loss()
         if self.c > 0:
             loss_total += self.c * si_loss
+
+        # Reset optimizer
+        self.optimizer.zero_grad()
 
         # Backpropagate errors (if not yet done)
         loss_total.backward()
