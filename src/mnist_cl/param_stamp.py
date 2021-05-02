@@ -95,14 +95,10 @@ def get_param_stamp(args, verbose=True, replay=False, replay_model_name=None):
 
     # -for replay
     if replay:
-        replay_stamp = "{rep}{KD}{agem}{model}{gi}".format(
+        replay_stamp = "{rep}{agem}{model}".format(
             rep=args.replay,
-            KD="-KD{}".format(args.temp) if args.distill else "",
             agem="-aGEM" if args.agem else "",
             model="" if (replay_model_name is None) else "-{}".format(replay_model_name),
-            gi="-gi{}".format(args.gen_iters) if (
-                    hasattr(args, "gen_iters") and (replay_model_name is not None) and (not args.iters==args.gen_iters)
-            ) else ""
         )
         if verbose:
             print(" --> replay:        " + replay_stamp)
@@ -112,7 +108,7 @@ def get_param_stamp(args, verbose=True, replay=False, replay_model_name=None):
     # --> combine
     param_stamp = "{}--{}--{}{}{}{}".format(
         task_stamp, model_stamp, hyper_stamp, ewc_stamp, replay_stamp,
-        "-s{}".format(args.seed) if not args.seed==0 else "",
+        "-s{}".format(args.seed) if not args.seed == 0 else "",
     )
 
     ## Print param-stamp on screen and return

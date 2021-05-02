@@ -126,27 +126,19 @@ class AgemClassifier(nn.Module):
             n_replays = len(y_) if (y_ is not None) else None
 
             # Prepare lists to store losses for each replay
-            loss_replay = [None]*n_replays
-            predL_r = [None]*n_replays
+            loss_replay = [None] * n_replays
 
             # Run model (if [x_] is not a list with separate replay per task and there is no task-specific mask)
-            if not isinstance(x_, list):
-                y_hat_all = self(x_)
+            y_hat_all = self(x_)
 
             # Loop to evalute predictions on replay according to each previous task
             for replay_id in range(n_replays):
-
-                # -if [x_] is a list with separate replay per task, evaluate model on this task's replay
-                if isinstance(x_, list):
-                    x_temp_ = x_[replay_id] if type(x_)==list else x_
-                    y_hat_all = self(x_temp_)
-
                 # -if needed (e.g., Task-IL or Class-IL scenario), remove predictions for classes not in replayed task
                 y_hat = y_hat_all if (active_classes is None) else y_hat_all[:, active_classes[replay_id]]
 
                 # Calculate losses
                 if (y_ is not None) and (y_[replay_id] is not None):
-                    predL_r[replay_id] = F.cross_entropy(y_hat, y_[replay_id], reduction='mean')
+                    loss_replay[replay_id] = F.cross_entropy(y_hat, y_[replay_id], reduction='mean')
 
         # Calculate total replay loss
         loss_replay = None if (x_ is None) else sum(loss_replay) / n_replays
@@ -190,8 +182,7 @@ class AgemClassifier(nn.Module):
 
 
         # Combine loss from current and replayed batch
-        if x_ is None:
-            loss_total = loss_cur
+        loss_total = loss_cur
 
         ##--(3)-- ALLOCATION LOSSES --##
         # Backpropagate errors (if not yet done)
@@ -225,7 +216,6 @@ class AgemClassifier(nn.Module):
         # Return the dictionary with different training-loss split in categories
         return {
             'loss_total': loss_total.item(),
-            'loss_current': loss_cur.item() if x is not None else 0,
             'pred': predL.item() if predL is not None else 0,
             'precision': precision if precision is not None else 0.,
         }

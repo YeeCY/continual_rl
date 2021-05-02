@@ -58,7 +58,7 @@ def train_cl(model, train_datasets, replay_mode="none", scenario="class", classe
             data_loader_previous = [None] * (task - 1)
 
         # Define tqdm progress bar(s)
-        progress = tqdm.tqdm(range(1, iters+1))
+        progress = tqdm.tqdm(range(1, iters + 1))
 
         # Loop over all iterations
         for batch_index in range(1, iters + 1):
@@ -100,11 +100,10 @@ def train_cl(model, train_datasets, replay_mode="none", scenario="class", classe
 
             #####-----REPLAYED BATCH-----#####
             if not exact:
-                x_ = y_ = scores_ = None
+                x_ = y_ = None
 
             ##-->> Exact Replay <<--##
             if exact:
-                scores_ = None
                 if scenario in ("domain", "class"):
                     # Sample replayed training data, move to correct device
                     x_, y_ = next(data_loader_previous)
@@ -114,8 +113,7 @@ def train_cl(model, train_datasets, replay_mode="none", scenario="class", classe
                     # Sample replayed training data, wrap in (cuda-)Variables and store in lists
                     x_ = list()
                     y_ = list()
-                    up_to_task = task if replay_mode=="offline" else task-1
-                    for task_id in range(up_to_task):
+                    for task_id in range(task - 1):
                         x_temp, y_temp = next(data_loader_previous[task_id])
                         x_.append(x_temp.to(device))
                         y_temp = y_temp - (classes_per_task*task_id) #-> adjust y-targets to 'active range'
@@ -129,7 +127,7 @@ def train_cl(model, train_datasets, replay_mode="none", scenario="class", classe
                 elif isinstance(model, SiClassifier):
                     loss_dict = model.train_a_batch(x, y, active_classes=active_classes)
                 elif isinstance(model, AgemClassifier):
-                    pass
+                    loss_dict = model.train_a_batch(x, y, x_=x_, y_=y_, active_classes=active_classes)
                 else:
                     raise RuntimeError(f"Unknown model type: {type(model)}")
 
@@ -178,7 +176,6 @@ def train_cl(model, train_datasets, replay_mode="none", scenario="class", classe
                 class_dataset = SubDataset(original_dataset=train_dataset, sub_labels=[class_id])
                 # based on this dataset, construct new exemplar-set for this class
                 model.construct_exemplar_set(dataset=class_dataset, n=exemplars_per_class)
-            model.compute_means = True
 
         # REPLAY: update source for replay
         # previous_model = copy.deepcopy(model).eval()
