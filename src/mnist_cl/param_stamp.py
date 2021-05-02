@@ -81,7 +81,7 @@ def get_param_stamp(args, verbose=True, replay=False, replay_model_name=None):
         ewc_stamp = "EWC{l}-{fi}{o}".format(
             l=args.ewc_lambda,
             fi="{}".format("N" if args.ewc_fisher_sample_size is None else args.fisher_n),
-            o="-O{}".format(args.ewc_gamma) if args.online else "",
+            o="-O{}".format(args.ewc_gamma) if args.ewc_online else "",
         ) if (args.ewc and args.ewc_lambda > 0) else ""
         si_stamp = "SI{c}-{eps}".format(c=args.si_c, eps=args.si_epsilon) if (args.si and args.si_c > 0) else ""
         both = "--" if (args.ewc and args.ewc_lambda > 0) and (args.si and args.si_c > 0) else ""
