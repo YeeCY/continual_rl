@@ -32,11 +32,11 @@ def main(args):
         model = EwcClassifier(
             config['size'], config['channels'], config['classes'], hidden_units=args.hidden_units,
             lam=args.ewc_lambda, fisher_sample_size=args.ewc_fisher_sample_size,
-            online=args.ewc_online, gamma=args.ewc_gamma).to(device)
+            online=args.ewc_online, gamma=args.ewc_gamma, device=device)
     elif args.si:
         model = SiClassifier(
             config['size'], config['channels'], config['classes'], hidden_units=args.hidden_units,
-            c=args.si_c, epsilon=args.si_epsilon).to(device)
+            c=args.si_c, epsilon=args.si_epsilon, device=device)
     elif args.agem:
         pass
     else:

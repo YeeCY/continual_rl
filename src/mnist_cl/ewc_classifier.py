@@ -9,7 +9,7 @@ from src.mnist_cl import utils
 class EwcClassifier(nn.Module):
     def __init__(self, image_size, image_channels, classes, hidden_units=400, lr=0.001,
                  lam=5000, fisher_sample_size=None,
-                 online=False, gamma=1.0):
+                 online=False, gamma=1.0, device=None):
 
         super().__init__()
         self.image_size = image_size
@@ -33,6 +33,8 @@ class EwcClassifier(nn.Module):
         )
 
         self.optimizer = optim.Adam(self.parameters(), lr=self.lr)
+
+        self.to(device)
 
         self.ewc_task_count = 0
         self.prev_task_params = {}

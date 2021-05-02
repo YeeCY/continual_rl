@@ -7,7 +7,7 @@ import utils
 
 class SiClassifier(nn.Module):
     def __init__(self, image_size, image_channels, classes, hidden_units=400, lr=0.001,
-                 c=1.0, epsilon=1.0):
+                 c=1.0, epsilon=1.0, device=None):
 
         super().__init__()
         self.image_size = image_size
@@ -29,6 +29,8 @@ class SiClassifier(nn.Module):
         )
 
         self.optimizer = optim.Adam(self.parameters(), lr=self.lr)
+
+        self.to(device)
 
         self.params_w = {}
         self.omegas = {}
