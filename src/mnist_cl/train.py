@@ -16,8 +16,8 @@ def train_cl(model, train_datasets, replay_mode="none", scenario="class", classe
     model.train()
 
     # Use cuda?
-    cuda = model._is_on_cuda()
-    device = model._device()
+    cuda = model.is_on_cuda()
+    device = model.device()
 
     # Initiate possible sources for replay (no replay for 1st task)
     exact = False
@@ -95,7 +95,7 @@ def train_cl(model, train_datasets, replay_mode="none", scenario="class", classe
 
             #####-----CURRENT BATCH-----#####
             x, y = next(data_loader)                                    #--> sample training data of current task
-            y = y - classes_per_task*(task-1) if scenario=="task" else y  #--> ITL: adjust y-targets to 'active range'
+            y = y - classes_per_task*(task-1) if scenario == "task" else y  #--> ITL: adjust y-targets to 'active range'
             x, y = x.to(device), y.to(device)                           #--> transfer them to correct device
 
             #####-----REPLAYED BATCH-----#####

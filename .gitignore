@@ -8,3 +8,5 @@ drq_logs
 vec_logs
 *.egg-info
 figures
+datasets
+results

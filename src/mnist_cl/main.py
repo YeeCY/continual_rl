@@ -22,13 +22,20 @@ def main(args):
         torch.cuda.manual_seed(args.seed)
 
     train_datasets, test_datasets, config, classes_per_task = get_multitask_experiment(
-        name=args.dataset, scenario=args.scenario, tasks=args.tasks, data_dir=args.data_dir, verbose=True)
+        name=args.dataset, scenario=args.scenario, num_tasks=args.num_tasks, data_dir=args.data_dir,
+        verbose=True, exception=True)
 
     if args.ewc:
         model = EwcClassifier(
-            image_size=config['size'], image_channels=config['channels'], classes=config['classes'],
-            lam=args.ewc_lambda, fisher_sample_size=args.ewc_fisher_sample_size, online=args.online,
-            gamma=args.ewc_gamma, emp_fi=args.ewc_emp_fi).to(device)
+            config['size'], config['channels'], config['classes'], hidden_units=args.hidden_units,
+            lam=args.ewc_lambda, fisher_sample_size=args.ewc_fisher_sample_size,
+            online=args.ewc_online, gamma=args.ewc_gamma, emp_fi=args.ewc_emp_fi).to(device)
+    elif args.si:
+        pass
+    elif args.agem:
+        pass
+    else:
+        raise RuntimeError("Unknown algorithm")
 
     # # Store in model whether, how many and in what way to store exemplars
     # if isinstance(model, ExemplarHandler) and (args.use_exemplars or args.add_exemplars or args.replay=="exemplars"):
@@ -79,7 +86,7 @@ if __name__ == "__main__":
     # common
     parser.add_argument('--dataset', type=str, default='splitMNIST', choices=['permMNIST', 'splitMNIST'])
     parser.add_argument('--scenario', type=str, default='class', choices=['task', 'domain', 'class'])
-    parser.add_argument('--num_tasks', type=int, help='number of tasks')
+    parser.add_argument('--num_tasks', type=int, default=5, help='number of tasks')  # splitMNIST = 5, permMNIST = 10
     parser.add_argument('--data_dir', type=str, default='./datasets', help="default: %(default)s")
     parser.add_argument('--result_dir', type=str, default='./results', help="default: %(default)s")
     parser.add_argument('--seed', type=int, default=0, help='random seed (for each random-module used)')
@@ -87,6 +94,7 @@ if __name__ == "__main__":
     parser.add_argument('--iters', type=int, default=2000, help="# batches to optimize solver")  # splitMNIST = 2000, permMNIST = 5000
     parser.add_argument('--lr', type=float, default=0.001, help="learning rate")  # splitMNIST = 0.001, permMNIST = 0.0001
     parser.add_argument('--batch_size', type=int, default=128, help="batch size")
+    parser.add_argument('--hidden_units', type=int, default=400, help="fully connected layer hidden units")  # splitMNIST = 400, permMNIST = 1000
 
     # exemplars
     replay_choices = ['none', 'exemplars']
