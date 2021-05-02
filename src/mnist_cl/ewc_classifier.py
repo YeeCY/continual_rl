@@ -7,7 +7,7 @@ from src.mnist_cl import utils
 
 
 class EwcClassifier(nn.Module):
-    def __init__(self, image_size, image_channels, classes, hidden_units=400,
+    def __init__(self, image_size, image_channels, classes, hidden_units=400, lr=0.001,
                  lam=5000, fisher_sample_size=None,
                  online=False, gamma=1.0):
 
@@ -16,6 +16,7 @@ class EwcClassifier(nn.Module):
         self.image_channels = image_channels
         self.classes = classes
         self.hidden_units = hidden_units
+        self.lr = lr
         self.lam = lam
         self.fisher_sample_size = fisher_sample_size
         self.online = online
@@ -31,7 +32,7 @@ class EwcClassifier(nn.Module):
             nn.Linear(self.hidden_units, self.classes)
         )
 
-        self.optimizer = optim.Adam(self.parameters(), betas=(0.9, 0.999))
+        self.optimizer = optim.Adam(self.parameters(), lr=self.lr)
 
         self.ewc_task_count = 0
         self.prev_task_params = {}
