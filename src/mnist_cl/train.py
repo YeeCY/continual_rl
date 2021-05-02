@@ -156,15 +156,14 @@ def train_cl(model, train_datasets, replay_mode="none", scenario="class", classe
             # -find allowed classes
             allowed_classes = list(
                 range(classes_per_task*(task-1), classes_per_task*task)
-            ) if scenario == "task" else (list(range(classes_per_task*task)) if scenario=="class" else None)
+            ) if scenario == "task" else (list(range(classes_per_task*task)) if scenario == "class" else None)
             # -estimate FI-matrix
             model.estimate_fisher(train_dataset, allowed_classes=allowed_classes)
 
         # SI: calculate and update the normalized path integral
         if isinstance(model, SiClassifier):
             # TODO (chongyi zheng)
-            W = None
-            model.update_omega(W, model.epsilon)
+            model.update_omegas()
 
         # EXEMPLARS: update exemplar sets
         if replay_mode == "exemplars":

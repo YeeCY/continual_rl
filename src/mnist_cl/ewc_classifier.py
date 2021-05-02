@@ -153,7 +153,7 @@ class EwcClassifier(nn.Module):
         # Return the dictionary with different training-loss split in categories
         return {
             'loss_total': loss_total.item(),
-            'ewc': ewc_loss.item(),
+            'ewc_loss': ewc_loss.item(),
             'precision': precision if precision is not None else 0.,
         }
 

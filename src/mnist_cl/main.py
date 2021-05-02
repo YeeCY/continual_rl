@@ -7,7 +7,9 @@ from src.mnist_cl import evaluate
 from src.mnist_cl.data import get_multitask_experiment
 from src.mnist_cl.train import train_cl
 from src.mnist_cl.ewc_classifier import EwcClassifier
+from src.mnist_cl.si_classifier import SiClassifier
 from src.mnist_cl import callbacks as cb
+from src.mnist_cl.param_stamp import get_param_stamp
 
 
 def main(args):
@@ -32,7 +34,9 @@ def main(args):
             lam=args.ewc_lambda, fisher_sample_size=args.ewc_fisher_sample_size,
             online=args.ewc_online, gamma=args.ewc_gamma).to(device)
     elif args.si:
-        pass
+        model = SiClassifier(
+            config['size'], config['channels'], config['classes'], hidden_units=args.hidden_units,
+            c=args.si_c, epsilon=args.si_epsilon).to(device)
     elif args.agem:
         pass
     else:
@@ -50,12 +54,10 @@ def main(args):
     #     if args.si:
     #         model.epsilon = args.epsilon
 
-    # if verbose:
-    #     print("\nParameter-stamp...")
-    # param_stamp = get_param_stamp(
-    #     args, model.name, verbose=verbose, replay=True if (not args.replay=="none") else False,
-    #     replay_model_name=generator.name if (args.replay=="generative" and not args.feedback) else None,
-    # )
+    print("\nParameter-stamp...")
+    param_stamp = get_param_stamp(
+        args, model.name, verbose=True, replay=True if (not args.replay == "none") else False,
+    )
     #
     # # Print some model-characteristics on the screen
     # if verbose:
@@ -84,6 +86,11 @@ def main(args):
     for i in range(args.num_tasks):
         print(" - Task {}: {:.4f}".format(i + 1, precs[i]))
     print('=> Average precision over all {} tasks: {:.4f}\n'.format(args.num_tasks, average_precs))
+
+    # Average precision on full test set
+    output_file = open("{}/prec-{}.txt".format(args.result_dir, param_stamp), 'w')
+    output_file.write('{}\n'.format(average_precs))
+    output_file.close()
 
 
 if __name__ == "__main__":
