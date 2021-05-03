@@ -149,8 +149,8 @@ class AgemClassifier(nn.Module):
 
         perm_idxs = np.random.permutation(concat_x.shape[0])
         sample_idxs = np.random.randint(0, len(concat_x), size=self.ref_grad_batch_size)
-        x_ = concat_x[perm_idxs][sample_idxs]
-        y_ = concat_y[perm_idxs][sample_idxs]
+        x_ = concat_x[perm_idxs][sample_idxs].to(self.device())
+        y_ = concat_y[perm_idxs][sample_idxs].to(self.device())
 
         # y_ = [y_]
         # active_classes = [active_classes]
