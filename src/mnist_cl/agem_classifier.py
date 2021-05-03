@@ -9,7 +9,7 @@ import utils
 
 class AgemClassifier(nn.Module):
     def __init__(self, image_size, image_channels, classes, hidden_units=400, lr=0.001,
-                 memory_budget=2000, device=None):
+                 memory_budget=2000, ref_grad_batch_size=128, device=None):
 
         super().__init__()
         self.image_size = image_size
@@ -18,6 +18,7 @@ class AgemClassifier(nn.Module):
         self.hidden_units = hidden_units
         self.lr = lr
         self.memory_budget = memory_budget
+        self.ref_grad_batch_size = ref_grad_batch_size
 
         # flatten image to 2D-tensor
         self.trunk = nn.Sequential(
@@ -52,8 +53,11 @@ class AgemClassifier(nn.Module):
     def _adjust_memory_size(self, size):
         # for y, p_y in enumerate(self.exemplar_sets):
         #     self.exemplar_sets[y] = p_y[:m]
-        for key, val in self.agem_memories.items():
-            self.agem_memories[key] = val[:size]
+        # for key, val in self.agem_memories.items():
+        #     self.agem_memories[key] = val[:size]
+        for mem in self.agem_memories.values():
+            mem['x'] = mem['x'][:size]
+            mem['y'] = mem['y'][:size]
 
     # def construct_exemplar_set(self, dataset, n):
     #     # set model to eval()-mode
@@ -133,25 +137,33 @@ class AgemClassifier(nn.Module):
             return None
 
         # sample memory transitions
-        x_ = []
-        y_ = []
+        # sample memory transitions
+        concat_x = []
+        concat_y = []
         for mem in self.agem_memories.values():
-            idxs = np.random.randint(0, len(mem['rewards']))
-            x_.append(mem['obses'][idxs])
-            y_.append(mem['actions'][idxs])
+            concat_x.append(mem['x'])
+            concat_y.append(mem['y'])
 
-        y_ = [y_]
-        active_classes = [active_classes]
+        concat_x = torch.cat(concat_x)
+        concat_y = torch.cat(concat_y)
+
+        perm_idxs = np.random.permutation(concat_x.shape[0])
+        sample_idxs = np.random.randint(0, len(concat_x), size=self.ref_grad_batch_size)
+        x_ = concat_x[perm_idxs][sample_idxs]
+        y_ = concat_y[perm_idxs][sample_idxs]
+
+        # y_ = [y_]
+        # active_classes = [active_classes]
 
         # Run model (if [x_] is not a list with separate replay per task and there is no task-specific mask)
         y_hat_all = self(x_)
 
         # Loop to evalute predictions on replay according to each previous task
-        y_hats = []
-        for replay_id in range(self.agem_task_count):
-            # -if needed (e.g., Task-IL or Class-IL scenario), remove predictions for classes not in replayed task
-            y_hats.append(y_hat_all[:, active_classes[replay_id]])
-        y_hats = torch.cat(y_hats)
+        # y_hats = []
+        # for replay_id in range(self.agem_task_count):
+        #     # -if needed (e.g., Task-IL or Class-IL scenario), remove predictions for classes not in replayed task
+        #     y_hats.append(y_hat_all[:, active_classes[replay_id]])
+        y_hats = y_hat_all[:, np.array(active_classes)[:-2]]
 
         # Calculate losses
         loss = F.cross_entropy(y_hats, y_, reduction='mean')
@@ -240,20 +252,25 @@ class AgemClassifier(nn.Module):
                     idx += num_param
 
     def construct_memory(self, dataset):
-        memory_size_per_task = self.agem_memory_budget // (self.agem_task_count + 1)
+        memory_size_per_task = self.memory_budget // (self.agem_task_count + 1)
         self._adjust_memory_size(memory_size_per_task)
 
         size_max = len(dataset)
         indeces_selected = np.random.choice(size_max, size=min(memory_size_per_task, size_max), replace=False)
-        memory = []
+        xs = []
+        ys = []
         for k in indeces_selected:
-            memory.append(dataset[k][0].numpy())
+            xs.append(dataset[k][0])
+            ys.append(dataset[k][1])
 
-        self.agem_memories[self.agem_task_count] = np.array(memory)
+        self.agem_memories[self.agem_task_count] = {
+            'x': torch.cat(xs),
+            'y': torch.tensor(ys)
+        }
 
         self.agem_task_count += 1
 
-    def train_a_batch(self, x, y, x_=None, y_=None, active_classes=None):
+    def train_a_batch(self, x, y, active_classes=None):
         # Set model to training-mode
         self.train()
 

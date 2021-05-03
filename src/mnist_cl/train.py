@@ -69,26 +69,26 @@ def train_cl(model, train_datasets, replay_mode="none", scenario="class", classe
                 # NOTE:  [train_dataset]  is training-set of current task
                 #      [training_dataset] is training-set of current task with stored exemplars added (if requested)
                 iters_left = len(data_loader)
-            if exact:
-                if scenario == "task":
-                    up_to_task = task - 1
-                    batch_size_replay = int(np.ceil(batch_size/up_to_task)) if (up_to_task > 1) else batch_size
-                    # -in Task-IL scenario, need separate replay for each task
-                    for task_id in range(up_to_task):
-                        batch_size_to_use = min(batch_size_replay, len(previous_datasets[task_id]))
-                        iters_left_previous[task_id] -= 1
-                        if iters_left_previous[task_id]==0:
-                            data_loader_previous[task_id] = iter(utils.get_data_loader(
-                                previous_datasets[task_id], batch_size_to_use, cuda=cuda, drop_last=True
-                            ))
-                            iters_left_previous[task_id] = len(data_loader_previous[task_id])
-                else:
-                    iters_left_previous -= 1
-                    if iters_left_previous == 0:
-                        batch_size_to_use = min(batch_size, len(ConcatDataset(previous_datasets)))
-                        data_loader_previous = iter(utils.get_data_loader(ConcatDataset(previous_datasets),
-                                                                          batch_size_to_use, cuda=cuda, drop_last=True))
-                        iters_left_previous = len(data_loader_previous)
+            # if exact:
+            #     if scenario == "task":
+            #         up_to_task = task - 1
+            #         batch_size_replay = int(np.ceil(batch_size/up_to_task)) if (up_to_task > 1) else batch_size
+            #         # -in Task-IL scenario, need separate replay for each task
+            #         for task_id in range(up_to_task):
+            #             batch_size_to_use = min(batch_size_replay, len(previous_datasets[task_id]))
+            #             iters_left_previous[task_id] -= 1
+            #             if iters_left_previous[task_id]==0:
+            #                 data_loader_previous[task_id] = iter(utils.get_data_loader(
+            #                     previous_datasets[task_id], batch_size_to_use, cuda=cuda, drop_last=True
+            #                 ))
+            #                 iters_left_previous[task_id] = len(data_loader_previous[task_id])
+            #     else:
+            #         iters_left_previous -= 1
+            #         if iters_left_previous == 0:
+            #             batch_size_to_use = min(batch_size, len(ConcatDataset(previous_datasets)))
+            #             data_loader_previous = iter(utils.get_data_loader(ConcatDataset(previous_datasets),
+            #                                                               batch_size_to_use, cuda=cuda, drop_last=True))
+            #             iters_left_previous = len(data_loader_previous)
 
 
             # -----------------Collect data------------------#
@@ -99,25 +99,25 @@ def train_cl(model, train_datasets, replay_mode="none", scenario="class", classe
             x, y = x.to(device), y.to(device)                           #--> transfer them to correct device
 
             #####-----REPLAYED BATCH-----#####
-            if not exact:
-                x_ = y_ = None
+            # if not exact:
+            #     x_ = y_ = None
 
             ##-->> Exact Replay <<--##
-            if exact:
-                if scenario in ("domain", "class"):
-                    # Sample replayed training data, move to correct device
-                    x_, y_ = next(data_loader_previous)
-                    x_ = x_.to(device)
-                    y_ = y_.to(device)
-                elif scenario == "task":
-                    # Sample replayed training data, wrap in (cuda-)Variables and store in lists
-                    x_ = list()
-                    y_ = list()
-                    for task_id in range(task - 1):
-                        x_temp, y_temp = next(data_loader_previous[task_id])
-                        x_.append(x_temp.to(device))
-                        y_temp = y_temp - (classes_per_task*task_id) #-> adjust y-targets to 'active range'
-                        y_.append(y_temp.to(device))
+            # if exact:
+            #     if scenario in ("domain", "class"):
+            #         # Sample replayed training data, move to correct device
+            #         x_, y_ = next(data_loader_previous)
+            #         x_ = x_.to(device)
+            #         y_ = y_.to(device)
+            #     elif scenario == "task":
+            #         # Sample replayed training data, wrap in (cuda-)Variables and store in lists
+            #         x_ = list()
+            #         y_ = list()
+            #         for task_id in range(task - 1):
+            #             x_temp, y_temp = next(data_loader_previous[task_id])
+            #             x_.append(x_temp.to(device))
+            #             y_temp = y_temp - (classes_per_task*task_id) #-> adjust y-targets to 'active range'
+            #             y_.append(y_temp.to(device))
 
             #---> Train MAIN MODEL
             if batch_index <= iters:
@@ -127,7 +127,7 @@ def train_cl(model, train_datasets, replay_mode="none", scenario="class", classe
                 elif isinstance(model, SiClassifier):
                     loss_dict = model.train_a_batch(x, y, active_classes=active_classes)
                 elif isinstance(model, AgemClassifier):
-                    loss_dict = model.train_a_batch(x, y, x_=x_, y_=y_, active_classes=active_classes)
+                    loss_dict = model.train_a_batch(x, y, active_classes=active_classes)
                 else:
                     raise RuntimeError(f"Unknown model type: {type(model)}")
 
@@ -165,35 +165,36 @@ def train_cl(model, train_datasets, replay_mode="none", scenario="class", classe
 
         # EXEMPLARS: update exemplar sets
         if replay_mode == "exemplars":
-            exemplars_per_class = int(np.floor(model.memory_budget / (classes_per_task*task)))
+            # exemplars_per_class = int(np.floor(model.memory_budget / (classes_per_task*task)))
             # reduce examplar-sets
-            model.reduce_exemplar_sets(exemplars_per_class)
+            # model.reduce_exemplar_sets(exemplars_per_class)
             # for each new class trained on, construct examplar-set
-            new_classes = list(range(classes_per_task)) if scenario == "domain" else \
-                list(range(classes_per_task * (task - 1), classes_per_task * task))
-            for class_id in new_classes:
-                # create new dataset containing only all examples of this class
-                class_dataset = SubDataset(original_dataset=train_dataset, sub_labels=[class_id])
-                # based on this dataset, construct new exemplar-set for this class
-                model.construct_exemplar_set(dataset=class_dataset, n=exemplars_per_class)
+            # new_classes = list(range(classes_per_task)) if scenario == "domain" else \
+            #     list(range(classes_per_task * (task - 1), classes_per_task * task))
+            # for class_id in new_classes:
+            #     # create new dataset containing only all examples of this class
+            #     class_dataset = SubDataset(original_dataset=train_dataset, sub_labels=[class_id])
+            #     # based on this dataset, construct new exemplar-set for this class
+            #     model.construct_exemplar_set(dataset=class_dataset, n=exemplars_per_class)
+            model.construct_memory(train_dataset)
 
-        # REPLAY: update source for replay
-        # previous_model = copy.deepcopy(model).eval()
-        if replay_mode in ('exemplars', 'exact'):
-            exact = True
-            if replay_mode == "exact":
-                previous_datasets = train_datasets[:task]
-            else:
-                if scenario == "task":
-                    previous_datasets = []
-                    for task_id in range(task):
-                        previous_datasets.append(
-                            ExemplarDataset(
-                                model.exemplar_sets[
-                                (classes_per_task * task_id):(classes_per_task * (task_id + 1))],
-                                target_transform=lambda y, x=classes_per_task * task_id: y + x)
-                        )
-                else:
-                    target_transform = (lambda y, x=classes_per_task: y % x) if scenario == "domain" else None
-                    previous_datasets = [
-                        ExemplarDataset(model.exemplar_sets, target_transform=target_transform)]
+        # # REPLAY: update source for replay
+        # # previous_model = copy.deepcopy(model).eval()
+        # if replay_mode in ('exemplars', 'exact'):
+        #     exact = True
+        #     if replay_mode == "exact":
+        #         previous_datasets = train_datasets[:task]
+        #     else:
+        #         if scenario == "task":
+        #             previous_datasets = []
+        #             for task_id in range(task):
+        #                 previous_datasets.append(
+        #                     ExemplarDataset(
+        #                         model.exemplar_sets[
+        #                         (classes_per_task * task_id):(classes_per_task * (task_id + 1))],
+        #                         target_transform=lambda y, x=classes_per_task * task_id: y + x)
+        #                 )
+        #         else:
+        #             target_transform = (lambda y, x=classes_per_task: y % x) if scenario == "domain" else None
+        #             previous_datasets = [
+        #                 ExemplarDataset(model.exemplar_sets, target_transform=target_transform)]

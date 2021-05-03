@@ -68,27 +68,34 @@ class AgemSacMlpAgent(SacMlpAgent):
             return None, None, None
 
         # sample memory transitions
-        obses = []
-        actions = []
-        rewards = []
-        next_obses = []
-        not_dones = []
+        concat_obses = []
+        concat_actions = []
+        concat_rewards = []
+        concat_next_obses = []
+        concat_not_dones = []
         for mem in self.agem_memories.values():
-            idxs = np.random.randint(0, len(mem['rewards']))
-            obses.append(mem['obses'][idxs])
-            actions.append(mem['actions'][idxs])
-            rewards.append(mem['rewards'][idxs])
-            next_obses.append(mem['next_obses'][idxs])
-            not_dones.append(mem['not_dones'][idxs])
+            concat_obses.append(mem['obses'])
+            concat_actions.append(mem['actions'])
+            concat_rewards.append(mem['rewards'])
+            concat_next_obses.append(mem['next_obses'])
+            concat_not_dones.append(mem['not_dones'])
 
-        obses = torch.cat(obses)
-        actions = torch.cat(actions)
-        rewards = torch.cat(rewards)
-        next_obses = torch.cat(next_obses)
-        not_dones = torch.cat(not_dones)
+        concat_obses = torch.cat(concat_obses)
+        concat_actions = torch.cat(concat_actions)
+        concat_rewards = torch.cat(concat_rewards)
+        concat_next_obses = torch.cat(concat_next_obses)
+        concat_not_dones = torch.cat(concat_not_dones)
+
+        perm_idxs = np.random.permutation(concat_obses.shape[0])
+        sample_idxs = np.random.randint(0, len(concat_obses), size=self.agem_ref_grad_batch_size)
+        obs = concat_obses[perm_idxs][sample_idxs]
+        action = concat_actions[perm_idxs][sample_idxs]
+        reward = concat_rewards[perm_idxs][sample_idxs]
+        next_obs = concat_next_obses[perm_idxs][sample_idxs]
+        not_done = concat_not_dones[perm_idxs][sample_idxs]
 
         # reference critic gradients
-        ref_critic_loss = self.compute_critic_loss(obses, actions, rewards, next_obses, not_dones)
+        ref_critic_loss = self.compute_critic_loss(obs, action, reward, next_obs, not_done)
         ref_critic_loss.backward()
 
         # reorganize the gradient of the memory transitions as a single vector
@@ -102,7 +109,7 @@ class AgemSacMlpAgent(SacMlpAgent):
 
         # reference actor and alpha gradients
         _, ref_actor_loss, ref_alpha_loss = self.compute_actor_and_alpha_loss(
-            obses, compute_alpha_loss=compute_alpha_ref_grad)
+            obs, compute_alpha_loss=compute_alpha_ref_grad)
         ref_actor_grad = []
         for name, param in self.actor.named_parameters():
             if param.requires_grad:
