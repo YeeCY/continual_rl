@@ -151,6 +151,8 @@ class AgemClassifier(nn.Module):
         sample_idxs = np.random.randint(0, len(concat_x), size=self.ref_grad_batch_size)
         x_ = concat_x[perm_idxs][sample_idxs].to(self.device())
         y_ = concat_y[perm_idxs][sample_idxs].to(self.device())
+        # x_ = concat_x[sample_idxs].to(self.device())
+        # y_ = concat_y[sample_idxs].to(self.device())
 
         # y_ = [y_]
         # active_classes = [active_classes]
@@ -173,7 +175,8 @@ class AgemClassifier(nn.Module):
         ref_grad = []
         for name, param in self.named_parameters():
             if param.requires_grad:
-                ref_grad.append(param.grad.detach().clone().flatten())
+                # ref_grad.append(param.grad.detach().clone().flatten())
+                ref_grad.append(param.grad.view(-1))
         ref_grad = torch.cat(ref_grad)
         # reset gradients (with A-GEM, gradients of memory transitions should only be used as inequality constraint)
         self.optimizer.zero_grad()
@@ -235,7 +238,8 @@ class AgemClassifier(nn.Module):
         grad = []
         for name, param in self.named_parameters():
             if param.requires_grad:
-                grad.append(param.grad.flatten())
+                # grad.append(param.grad.flatten())
+                grad.append(param.grad.view(-1))
         grad = torch.cat(grad)
 
         # inequality constrain
@@ -248,7 +252,8 @@ class AgemClassifier(nn.Module):
             for _, param in self.named_parameters():
                 if param.requires_grad:
                     num_param = param.numel()  # number of parameters in [p]
-                    param.grad.copy_(proj_grad[idx:idx + num_param].reshape(param.shape))
+                    # param.grad.copy_(proj_grad[idx:idx + num_param].reshape(param.shape))
+                    param.grad.copy_(proj_grad[idx:idx + num_param].view_as(param))
                     idx += num_param
 
     def construct_memory(self, dataset):
