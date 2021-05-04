@@ -1,7 +1,6 @@
 import torch
 import numpy as np
 import utils
-# from itertools import chain
 from collections.abc import Iterable
 
 from agent.sac.base_sac_agent import SacMlpAgent
@@ -27,8 +26,8 @@ class AgemSacMlpAgent(SacMlpAgent):
                  critic_target_update_freq=2,
                  grad_clip_norm=10.0,
                  batch_size=128,
-                 agem_memory_budget=2000,
-                 agem_ref_grad_batch_size=128,
+                 agem_memory_budget=3000,
+                 agem_ref_grad_batch_size=1024,
                  ):
         super().__init__(obs_shape, action_shape, action_range, device, hidden_dim, discount, init_temperature,
                          alpha_lr, actor_lr, actor_log_std_min, actor_log_std_max, actor_update_freq, critic_lr,

@@ -103,13 +103,17 @@ def parse_args():
 
 	# ewc
 	parser.add_argument('--ewc_lambda', default=5000, type=float)
-	parser.add_argument('--ewc_fisher_sample_size', default=128, type=int)
+	parser.add_argument('--ewc_fisher_sample_size', default=1024, type=int)
 	parser.add_argument('--online_ewc', default=False, action='store_true')
 	parser.add_argument('--online_ewc_gamma', default=1.0, type=float)
 
 	# si
 	parser.add_argument('--si_c', default=1.0, type=float)
 	parser.add_argument('--si_epsilon', default=0.1, type=float)
+
+	# agem
+	parser.add_argument('--agem_memory_budget', default=3000, type=int)
+	parser.add_argument('--agem_ref_grad_batch_size', default=1024)
 
 	# misc
 	parser.add_argument('--seed', default=1, type=int)

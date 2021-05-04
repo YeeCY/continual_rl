@@ -1,6 +1,7 @@
 from agent.dqn_agent import DqnCnnSSEnsembleAgent
 # from agent.sac.sac_agent import SacMlpSSEnsembleAgent, SacCnnSSEnsembleAgent
-from agent.sac import EwcSacMlpAgent, SiSacMlpAgent, SacMlpAgent, SacMlpSSEnsembleAgent, SacCnnSSEnsembleAgent
+from agent.sac import EwcSacMlpAgent, SiSacMlpAgent, AgemSacMlpAgent, SacMlpAgent, \
+    SacMlpSSEnsembleAgent, SacCnnSSEnsembleAgent
 
 ALGOS = [
     'dqn_cnn_ss_ensem',
@@ -9,6 +10,7 @@ ALGOS = [
     'sac_mlp',
     'ewc_sac_mlp',
     'si_sac_mlp',
+    'agem_sac_mlp',
 ]
 
 
@@ -89,6 +91,10 @@ def make_agent(obs_space, action_space, device, args):
             kwargs['si_c'] = args.si_c
             kwargs['si_epsilon'] = args.si_epsilon
             agent = SiSacMlpAgent(**kwargs)
+        elif args.algo == 'agem_sac_mlp':
+            kwargs['agem_memory_budget'] = args.agem_memory_budget
+            kwargs['agem_ref_grad_batch_size'] = args.agem_ref_grad_batch_size
+            agent = AgemSacMlpAgent(**kwargs)
         else:
             raise ValueError(f"Unknown algorithm {args.algo}")
     else:
