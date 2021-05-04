@@ -165,7 +165,8 @@ class AgemClassifier(nn.Module):
         # for replay_id in range(self.agem_task_count):
         #     # -if needed (e.g., Task-IL or Class-IL scenario), remove predictions for classes not in replayed task
         #     y_hats.append(y_hat_all[:, active_classes[replay_id]])
-        y_hats = y_hat_all[:, np.array(active_classes)[:-2]]
+        # y_hats = y_hat_all[:, np.array(active_classes)[:-2]]
+        y_hats = y_hat_all[:, active_classes]
 
         # Calculate losses
         loss = F.cross_entropy(y_hats, y_, reduction='mean')
@@ -175,8 +176,8 @@ class AgemClassifier(nn.Module):
         ref_grad = []
         for name, param in self.named_parameters():
             if param.requires_grad:
-                # ref_grad.append(param.grad.detach().clone().flatten())
-                ref_grad.append(param.grad.view(-1))
+                ref_grad.append(param.grad.detach().clone().flatten())
+                # ref_grad.append(param.grad.view(-1))
         ref_grad = torch.cat(ref_grad)
         # reset gradients (with A-GEM, gradients of memory transitions should only be used as inequality constraint)
         self.optimizer.zero_grad()
@@ -238,8 +239,8 @@ class AgemClassifier(nn.Module):
         grad = []
         for name, param in self.named_parameters():
             if param.requires_grad:
-                # grad.append(param.grad.flatten())
-                grad.append(param.grad.view(-1))
+                grad.append(param.grad.flatten())
+                # grad.append(param.grad.view(-1))
         grad = torch.cat(grad)
 
         # inequality constrain
@@ -252,8 +253,8 @@ class AgemClassifier(nn.Module):
             for _, param in self.named_parameters():
                 if param.requires_grad:
                     num_param = param.numel()  # number of parameters in [p]
-                    # param.grad.copy_(proj_grad[idx:idx + num_param].reshape(param.shape))
-                    param.grad.copy_(proj_grad[idx:idx + num_param].view_as(param))
+                    param.grad.copy_(proj_grad[idx:idx + num_param].reshape(param.shape))
+                    # param.grad.copy_(proj_grad[idx:idx + num_param].view_as(param))
                     idx += num_param
 
     def construct_memory(self, dataset):
