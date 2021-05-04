@@ -41,8 +41,6 @@ class AgemSacMlpAgent(SacMlpAgent):
         self.agem_memories = {}
 
     def _adjust_memory_size(self, size):
-        # for y, p_y in enumerate(self.exemplar_sets):
-        #     self.exemplar_sets[y] = p_y[:m]
         for mem in self.agem_memories.values():
             mem['obses'] = mem['obses'][:size]
             mem['actions'] = mem['actions'][:size]
@@ -110,6 +108,9 @@ class AgemSacMlpAgent(SacMlpAgent):
         # reference actor and alpha gradients
         _, ref_actor_loss, ref_alpha_loss = self.compute_actor_and_alpha_loss(
             obs, compute_alpha_loss=compute_alpha_ref_grad)
+        ref_actor_loss.backward()
+        ref_alpha_loss.backward()
+
         ref_actor_grad = []
         for name, param in self.actor.named_parameters():
             if param.requires_grad:
@@ -199,7 +200,7 @@ class AgemSacMlpAgent(SacMlpAgent):
             self.log_alpha_optimizer.zero_grad()
             alpha_loss.backward()
 
-            self._project_grad([self.log_alpha], ref_alpha_grad)
+            self._project_grad(iter([('log_alpha', self.log_alpha)]), ref_alpha_grad)
 
             torch.nn.utils.clip_grad_norm_([self.log_alpha], self.grad_clip_norm)
             self.log_alpha_optimizer.step()
