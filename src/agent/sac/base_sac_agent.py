@@ -65,7 +65,8 @@ class SacMlpAgent:
             self.obs_shape, self.action_shape, self.hidden_dim
         ).to(self.device)
 
-        self.critic_target.load_state_dict(self.critic.state_dict())
+        # self.critic_target.load_state_dict(self.critic.state_dict())
+        self.reset_target_critic()
 
         # TODO (chongyi zheng): delete this line
         # tie encoders between actor and criticp
@@ -87,6 +88,9 @@ class SacMlpAgent:
         self.actor.train(training)
         self.critic.train(training)
         self.critic_target.train(training)
+
+    def reset_target_critic(self):
+        self.critic_target.load_state_dict(self.critic.state_dict())
 
     @property
     def alpha(self):

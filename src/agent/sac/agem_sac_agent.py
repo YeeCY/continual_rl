@@ -27,7 +27,7 @@ class AgemSacMlpAgent(SacMlpAgent):
                  grad_clip_norm=10.0,
                  batch_size=128,
                  agem_memory_budget=3000,
-                 agem_ref_grad_batch_size=1024,
+                 agem_ref_grad_batch_size=128,
                  ):
         super().__init__(obs_shape, action_shape, action_range, device, hidden_dim, discount, init_temperature,
                          alpha_lr, actor_lr, actor_log_std_min, actor_log_std_max, actor_update_freq, critic_lr,
@@ -108,7 +108,6 @@ class AgemSacMlpAgent(SacMlpAgent):
         _, ref_actor_loss, ref_alpha_loss = self.compute_actor_and_alpha_loss(
             obs, compute_alpha_loss=compute_alpha_ref_grad)
         ref_actor_loss.backward()
-        ref_alpha_loss.backward()
 
         ref_actor_grad = []
         for name, param in self.actor.named_parameters():
@@ -119,6 +118,7 @@ class AgemSacMlpAgent(SacMlpAgent):
 
         ref_alpha_grad = None
         if compute_alpha_ref_grad:
+            ref_alpha_loss.backward()
             ref_alpha_grad = self.log_alpha.grad.detach().clone()
             self.log_alpha_optimizer.zero_grad()
 

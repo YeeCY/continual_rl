@@ -311,6 +311,7 @@ def main(args):
                 elif 'si' in args.algo:
                     agent.update_omegas()
 
+                agent.reset_target_critic()
                 replay_buffer.reset()
                 task_step = 0
 
