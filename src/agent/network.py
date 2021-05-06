@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 
 from agent.encoder import PixelEncoder, DqnEncoder
-from src.utils import weight_init, SquashedNormal, gaussian_logprob, squash
+from src.utils import weight_init, SquashedNormal, gaussian_logprob, squash, DiagGaussian
 
 
 class QFunction(nn.Module):
@@ -212,7 +212,7 @@ class CriticCnn(nn.Module):
         return q1, q2
 
 
-class ActorMlp(nn.Module):
+class SacActorMlp(nn.Module):
     """torch.distributions implementation of an diagonal Gaussian policy with MLP"""
     def __init__(self, obs_shape, action_shape, hidden_dim, log_std_min, log_std_max):
         super().__init__()
@@ -266,7 +266,7 @@ class ActorMlp(nn.Module):
         return mu, pi, log_pi, log_std
 
 
-class CriticMlp(nn.Module):
+class SacCriticMlp(nn.Module):
     """Critic network with MLP, employes two q-functions."""
     def __init__(self, obs_shape, action_shape, hidden_dim):
         super().__init__()
@@ -280,6 +280,67 @@ class CriticMlp(nn.Module):
         q2 = self.Q2(obs, action)
 
         return q1, q2
+
+
+class PpoActorMlp(nn.Module):
+    """torch.distributions implementation of an diagonal Gaussian policy with MLP"""
+    def __init__(self, obs_shape, action_shape, hidden_dim):
+        super().__init__()
+
+        self.trunk = nn.Sequential(
+            nn.Linear(obs_shape[0], hidden_dim),
+            nn.Tanh(),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.Tanh(),
+        )
+
+        self.dist = DiagGaussian(self.base.output_size, action_shape[0])
+
+        self.apply(weight_init)
+
+    def forward(self, obs, compute_pi=True, compute_log_pi=True):
+        hidden = self.trunk(obs)
+        dist = self.dist(hidden)
+
+        mu = dist.mode()
+        if compute_pi:
+            pi = dist.sample()
+        else:
+            pi = None
+
+        if compute_log_pi:
+            log_pi = dist.log_probs(pi)
+        else:
+            log_pi = None
+
+        return mu, pi, log_pi
+
+    def compute_log_probs(self, obs, action):
+        hidden = self.trunk(obs)
+        dist = self.dist(hidden)
+
+        log_pi = dist.log_probs(action)
+        entropy = dist.entropy().mean()
+
+        return log_pi, entropy
+
+
+class PpoCriticMlp(nn.Module):
+    """PPO critic network with MLP"""
+    def __init__(self, obs_shape, hidden_dim):
+        super().__init__()
+
+        self.trunk = nn.Sequential(
+            nn.Linear(obs_shape[0], hidden_dim),
+            nn.Tanh(),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.Tanh(),
+            nn.Linear(hidden_dim, 1)
+        )
+        self.apply(weight_init)
+
+    def forward(self, obs):
+        return self.trunk(obs)
 
 
 class CURL(nn.Module):

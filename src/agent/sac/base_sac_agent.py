@@ -3,7 +3,7 @@ import numpy as np
 import utils
 import torch.nn.functional as F
 
-from agent.network import ActorMlp, CriticMlp
+from agent.network import SacActorMlp, SacCriticMlp
 
 
 class SacMlpAgent:
@@ -52,16 +52,16 @@ class SacMlpAgent:
         self.train()
 
     def _setup_agent(self):
-        self.actor = ActorMlp(
+        self.actor = SacActorMlp(
             self.obs_shape, self.action_shape, self.hidden_dim,
             self.actor_log_std_min, self.actor_log_std_max
         ).to(self.device)
 
-        self.critic = CriticMlp(
+        self.critic = SacCriticMlp(
             self.obs_shape, self.action_shape, self.hidden_dim
         ).to(self.device)
 
-        self.critic_target = CriticMlp(
+        self.critic_target = SacCriticMlp(
             self.obs_shape, self.action_shape, self.hidden_dim
         ).to(self.device)
 
