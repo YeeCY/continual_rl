@@ -2,6 +2,7 @@ from agent.dqn_agent import DqnCnnSSEnsembleAgent
 # from agent.sac.sac_agent import SacMlpSSEnsembleAgent, SacCnnSSEnsembleAgent
 from agent.sac import EwcSacMlpAgent, SiSacMlpAgent, AgemSacMlpAgent, SacMlpAgent, \
     SacMlpSSEnsembleAgent, SacCnnSSEnsembleAgent
+from agent.ppo import PpoMlpAgent
 
 ALGOS = [
     'dqn_cnn_ss_ensem',
@@ -98,14 +99,17 @@ def make_agent(obs_space, action_space, device, args):
             agent = AgemSacMlpAgent(**kwargs)
     elif 'ppo' in args.algo:
         kwargs['hidden_dim'] = args.ppo_hidden_dim
-        kwargs['clip_param'] = args.ppo_clip_param,
-        kwargs['ppo_epoch'] = args.ppo_epoch,
+        kwargs['clip_param'] = args.ppo_clip_param
+        kwargs['ppo_epoch'] = args.ppo_epoch
         kwargs['critic_loss_coef'] = args.ppo_critic_loss_coef
         kwargs['entropy_coef'] = args.ppo_entropy_coef
         kwargs['lr'] = args.ppo_lr
         kwargs['eps'] = args.ppo_eps
         kwargs['grad_clip_norm'] = args.ppo_grad_clip_norm
-        kwargs['use_clipped_value_loss'] = args.ppo_use_clipped_value_loss
+        kwargs['use_clipped_critic_loss'] = args.ppo_use_clipped_critic_loss
+
+        if args.algo == 'ppo_mlp':
+            agent = PpoMlpAgent(**kwargs)
     else:
         raise ValueError(f"Unknown algorithm {args.algo}")
 

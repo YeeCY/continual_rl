@@ -7,12 +7,12 @@ import time
 
 
 from arguments import parse_args
-from env import make_atari_env, make_locomotion_env, make_single_metaworld_env, make_continual_metaworld_env, \
+from environment import make_atari_env, make_locomotion_env, make_single_metaworld_env, make_continual_metaworld_env, \
     make_vec_envs
-from env.metaworld import MultiEnvWrapper
+from environment.metaworld import MultiEnvWrapper
 from agent import make_agent
 import utils
-from src.env.utils import get_vec_normalize, get_render_func
+from environment.utils import get_vec_normalize, get_render_func
 import storages
 from logger import Logger
 from video import VideoRecorder
@@ -20,16 +20,16 @@ from video import VideoRecorder
 
 def evaluate(env, agent, video, obs_rms, num_episodes, logger, step):
     """Evaluate agent"""
-    # if isinstance(env, MultiEnvWrapper):
-    #     assert env.env_names is not None, "Environment name must exist!"
+    # if isinstance(environment, MultiEnvWrapper):
+    #     assert environment.env_names is not None, "Environment name must exist!"
     #
-    #     for task_name in env.env_names:
+    #     for task_name in environment.env_names:
     #         episode_rewards = []
     #         episode_successes = []
     #         episode_fwd_pred_vars = []
     #         episode_inv_pred_vars = []
     #         for episode in range(num_episodes):
-    #             obs = env.reset(sample_task=(episode == 0))
+    #             obs = environment.reset(sample_task=(episode == 0))
     #             video.init(enabled=(episode == 0))
     #             done = False
     #             episode_reward = 0
@@ -40,7 +40,7 @@ def evaluate(env, agent, video, obs_rms, num_episodes, logger, step):
     #             while not done:
     #                 with utils.eval_mode(agent):
     #                     action = agent.act(obs, False)
-    #                 next_obs, reward, done, info = env.step(action)
+    #                 next_obs, reward, done, info = environment.step(action)
     #
     #                 obs_buf.append(obs)
     #                 next_obs_buf.append(next_obs)
@@ -49,7 +49,7 @@ def evaluate(env, agent, video, obs_rms, num_episodes, logger, step):
     #                 if info.get('success') is not None:
     #                     is_successes.append(info.get('success'))
     #
-    #                 video.record(env)
+    #                 video.record(environment)
     #                 obs = next_obs
     #             episode_rewards.append(episode_reward)
     #             episode_successes.append(np.any(is_successes).astype(np.float))
@@ -114,9 +114,20 @@ def evaluate(env, agent, video, obs_rms, num_episodes, logger, step):
 
 
 def main(args):
-    # Initialize environment
+    utils.set_seed_everywhere(args.seed)
+    utils.make_dir(args.work_dir)
+    model_dir = utils.make_dir(os.path.join(args.work_dir, 'model'))
+    video_dir = utils.make_dir(os.path.join(args.work_dir, 'video'))
+    video = VideoRecorder(video_dir if args.save_video else None, args.env_type,
+                          height=448, width=448, camera_id=args.video_camera_id)
+
+    # Prepare agent
+    # assert torch.cuda.is_available(), 'must have cuda enabled'
+    device = torch.device(args.device)
+
+    # Create environments
     if args.env_type == 'atari':
-        # env = make_atari_env(
+        # environment = make_atari_env(
         #     env_name=args.env_name,
         #     seed=args.seed,
         #     action_repeat=args.action_repeat,
@@ -128,7 +139,7 @@ def main(args):
         #     action_repeat=args.action_repeat,
         #     frame_stack=args.frame_stack
         # )
-        # env = make_continual_atari_env(
+        # environment = make_continual_atari_env(
         #     env_names=args.env_names,
         #     seed=args.seed,
         #     action_repeat=args.action_repeat,
@@ -165,12 +176,12 @@ def main(args):
             mode=args.mode
         )
     elif args.env_type == 'mujoco':
-        env = make_vec_envs(args.env_name, args.seed, args.num_processes,
-                            args.gamma, args.work_dir)
-        eval_env = make_vec_envs(args.env_name, args.seed + args.num_processes, args.num_processes,
-                                 None, args.work_dir, True)
+        env = make_vec_envs(args.env_name, args.seed, args.ppo_num_processes,
+                            args.discount, args.work_dir)
+        eval_env = make_vec_envs(args.env_name, args.seed + args.ppo_num_processes,
+                                 args.ppo_num_processes, None, args.work_dir, True)
     elif args.env_type == 'metaworld':
-        # env = make_single_metaworld_env(
+        # environment = make_single_metaworld_env(
         #     env_name=args.env_name,
         #     seed=args.seed
         # )
@@ -188,21 +199,10 @@ def main(args):
         #     seed=args.seed
         # )
 
-    utils.set_seed_everywhere(args.seed)
-    utils.make_dir(args.work_dir)
-    model_dir = utils.make_dir(os.path.join(args.work_dir, 'model'))
-    video_dir = utils.make_dir(os.path.join(args.work_dir, 'video'))
-    video = VideoRecorder(video_dir if args.save_video else None, args.env_type,
-                          height=448, width=448, camera_id=args.video_camera_id)
-
-    # Prepare agent
-    # assert torch.cuda.is_available(), 'must have cuda enabled'
-    device = torch.device(args.device)
-
     # if args.env_type == 'atari':
     #     # replay_buffer = buffers.FrameStackReplayBuffer(
-    #     #     obs_space=env.observation_space,
-    #     #     action_space=env.action_space,
+    #     #     obs_space=environment.observation_space,
+    #     #     action_space=environment.action_space,
     #     #     capacity=args.replay_buffer_capacity,
     #     #     frame_stack=args.frame_stack,
     #     #     device=device,
@@ -211,28 +211,30 @@ def main(args):
     #     # from stable_baselines3.common.buffers import ReplayBuffer
     #     # replay_buffer = ReplayBuffer(
     #     #     args.replay_buffer_capacity,
-    #     #     env.observation_space,
-    #     #     env.action_space,
+    #     #     environment.observation_space,
+    #     #     environment.action_space,
     #     #     device,
     #     #     optimize_memory_usage=True,
     #     # )
     #     replay_buffer = buffers.ReplayBuffer(
-    #         obs_space=env.observation_space,
-    #         action_space=env.action_space,
+    #         obs_space=environment.observation_space,
+    #         action_space=environment.action_space,
     #         capacity=args.replay_buffer_capacity,
     #         device=device,
     #         optimize_memory_usage=True,
     #     )
     # elif args.env_type == 'dmc_locomotion' or 'metaworld':
     #     replay_buffer = buffers.ReplayBuffer(
-    #         obs_space=env.observation_space,
-    #         action_space=env.action_space,
+    #         obs_space=environment.observation_space,
+    #         action_space=environment.action_space,
     #         capacity=args.replay_buffer_capacity,
     #         device=device,
     #         optimize_memory_usage=True,
     #     )
-    rollouts = storages.RolloutStorage(args.num_steps, args.num_processes,
-                                       env.observation_space.shape, env.action_space,
+    rollouts = storages.RolloutStorage(args.ppo_num_rollout_steps_per_process,
+                                       args.ppo_num_processes,
+                                       env.observation_space.shape,
+                                       env.action_space,
                                        device)
 
     agent = make_agent(
@@ -251,12 +253,14 @@ def main(args):
     args_dict = vars(args)
     logger.log_and_dump_arguments(args_dict)
 
-    episode, episode_reward, episode_step, episode_successes, done, info = 0, 0, 0, [], True, {}
+    episode = 0
     # task_step = 0
     total_steps = 0
     recent_success = deque(maxlen=100)
     recent_episode_reward = deque(maxlen=100)
-    # start_time = time.time()
+    obs = env.reset()
+    rollouts.obs[0].copy_(torch.Tensor(obs).to(device))
+    start_time = time.time()
     # for step in range(args.train_steps + 1):
     #     # (chongyi zheng): we can also evaluate and save model when current episode is not finished
     #     # Evaluate agent periodically
@@ -280,7 +284,7 @@ def main(args):
     #         logger.log('train/recent_episode_reward', np.mean(recent_episode_reward), step)
     #         logger.log('train/episode_reward', episode_reward, step)
     #
-    #         obs = env.reset()
+    #         obs = environment.reset()
     #         episode_reward = 0
     #         episode_step = 0
     #         episode += 1
@@ -289,7 +293,7 @@ def main(args):
     #
     #     # Sample action for data collection
     #     if step < args.init_steps:
-    #         action = env.action_space.sample()
+    #         action = environment.action_space.sample()
     #     else:
     #         # with utils.eval_mode(agent):
     #         action = agent.act(obs, False)
@@ -307,7 +311,7 @@ def main(args):
     #             agent.update(replay_buffer, logger, step)
     #
     #     # Take step
-    #     next_obs, reward, done, _ = env.step(action)
+    #     next_obs, reward, done, _ = environment.step(action)
     #     # replay_buffer.add(obs, action, reward, next_obs, done)
     #     replay_buffer.add(np.expand_dims(obs, axis=0),
     #                       np.expand_dims(next_obs, axis=0),
@@ -318,8 +322,8 @@ def main(args):
     #     obs = next_obs
     #     episode_step += 1
     # train_steps_per_task = args.train_steps_per_task
-    # if isinstance(env, MultiEnvWrapper):
-    #     for step in range(train_steps_per_task * env.num_tasks):
+    # if isinstance(environment, MultiEnvWrapper):
+    #     for step in range(train_steps_per_task * environment.num_tasks):
     #         # (chongyi zheng): we can also evaluate and save model when current episode is not finished
     #         # Evaluate agent periodically
     #         if step % args.eval_freq_per_task == 0:
@@ -331,8 +335,8 @@ def main(args):
     #         if step % args.save_freq == 0 and step > 0:
     #             if args.save_model:
     #                 train_steps_per_task = args.train_steps_per_task
-    # if isinstance(env, MultiEnvWrapper):
-    #     for total_step in range(train_steps_per_task * env.num_tasks):
+    # if isinstance(environment, MultiEnvWrapper):
+    #     for total_step in range(train_steps_per_task * environment.num_tasks):
     #         # (chongyi zheng): we can also evaluate and save model when current episode is not finished
     #         # Evaluate agent periodically
     #         if total_step % args.eval_freq_per_task == 0:
@@ -347,7 +351,7 @@ def main(args):
     #
     #         # (chongyi zheng): force reset outside done = True when step reach train_steps_per_task
     #         if task_step >= train_steps_per_task:
-    #             obs = env.reset(sample_task=True)
+    #             obs = environment.reset(sample_task=True)
     #
     #             if 'ewc' in args.algo:
     #                 agent.estimate_fisher(replay_buffer)
@@ -385,7 +389,7 @@ def main(args):
     #                 # logger.dump(step, ty='train', save=(step > args.init_steps), info=log_info)
     #                 logger.dump(total_step, ty='train', save=(task_step > args.init_steps), info=log_info)
     #
-    #             obs = env.reset()
+    #             obs = environment.reset()
     #             episode_reward = 0
     #             episode_step = 0
     #             episode_successes.clear()
@@ -393,7 +397,7 @@ def main(args):
     #
     #         # Sample action for data collection
     #         if task_step < args.init_steps:
-    #             action = np.array(env.action_space.sample())
+    #             action = np.array(environment.action_space.sample())
     #         else:
     #             with utils.eval_mode(agent):
     #                 action = agent.act(obs, True)
@@ -409,7 +413,7 @@ def main(args):
     #                 agent.update(replay_buffer, logger, total_step)
     #
     #         # Take step
-    #         next_obs, reward, done, info = env.step(action)
+    #         next_obs, reward, done, info = environment.step(action)
     #
     #         if info.get('success') is not None:
     #             episode_successes.append(info.get('success'))
@@ -425,11 +429,11 @@ def main(args):
     #         obs = next_obs
     #         episode_step += 1
     #         task_step += 1
-    total_epochs = int(args.num_env_steps) // args.num_rollout_steps_per_process // args.num_processes
+    total_epochs = int(args.train_steps) // args.ppo_num_rollout_steps_per_process // args.ppo_num_processes
     for epoch in range(total_epochs):
         agent.update_learning_rate(epoch, total_epochs)
 
-        for step in range(args.num_rollout_steps_per_process):
+        for step in range(args.ppo_num_rollout_steps_per_process):
             with utils.eval_mode(agent):
                 action, log_pi = agent.act(obs, sample=True, compute_log_pi=True)
                 value = agent.predict_value(obs)
@@ -453,15 +457,19 @@ def main(args):
                  for info in infos])
             rollouts.insert(obs, action, log_pi, value, reward, masks, bad_masks)
 
-        total_steps += args.num_rollout_steps_per_process * args.num_processes
+        total_steps += args.ppo_num_rollout_steps_per_process * args.ppo_num_processes
         next_value = agent.predict_value(rollouts.obs[-1])
-        rollouts.compute_returns(next_value, args.ppo_use_gae, args.discount,
-                                 args.ppo_gae_lambda, args.ppo_use_proper_time_limits)
+        rollouts.compute_returns(next_value, args.discount,
+                                 args.ppo_gae_lambda,
+                                 args.ppo_use_proper_time_limits)
         agent.update(rollouts, logger, total_steps)
 
         if epoch % args.save_freq == 0:
             if args.save_model:
                 agent.save(model_dir, total_steps)
+
+        end_time = time.time()
+        print("FPS: ", int(total_steps / (end_time - start_time)))
 
         if epoch % args.eval_freq == 0:
             # obs_rms = utils.get_vec_normalize(envs).obs_rms
@@ -491,7 +499,7 @@ def main(args):
     #
     #     # (chongyi zheng): force reset outside done = True when step reach train_steps_per_task
     #     if task_step >= train_steps_per_task:
-    #         obs = env.reset(sample_task=True)
+    #         obs = environment.reset(sample_task=True)
     #
     #         if 'ewc' in args.algo:
     #             agent.estimate_fisher(replay_buffer)
@@ -529,7 +537,7 @@ def main(args):
     #             # logger.dump(step, ty='train', save=(step > args.init_steps), info=log_info)
     #             logger.dump(total_step, ty='train', save=(task_step > args.init_steps), info=log_info)
     #
-    #         obs = env.reset()
+    #         obs = environment.reset()
     #         episode_reward = 0
     #         episode_step = 0
     #         episode_successes.clear()
@@ -537,7 +545,7 @@ def main(args):
     #
     #     # Sample action for data collection
     #     if task_step < args.init_steps:
-    #         action = np.array(env.action_space.sample())
+    #         action = np.array(environment.action_space.sample())
     #     else:
     #         with utils.eval_mode(agent):
     #             action = agent.act(obs, True)
@@ -553,7 +561,7 @@ def main(args):
     #             agent.update(replay_buffer, logger, total_step)
     #
     #     # Take step
-    #     next_obs, reward, done, info = env.step(action)
+    #     next_obs, reward, done, info = environment.step(action)
     #
     #     if info.get('success') is not None:
     #         episode_successes.append(info.get('success'))

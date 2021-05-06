@@ -62,11 +62,11 @@ class RolloutStorage(object):
 
     def compute_returns(self,
                         next_value,
-                        use_gae,
                         gamma,
                         gae_lambda,
                         use_proper_time_limits=True):
-        assert isinstance(next_value, torch.Tensor)
+        if not isinstance(next_value, torch.Tensor):
+            next_value = torch.Tensor(next_value).to(self.device)
 
         # (chongyi zheng): force use GAE
         if use_proper_time_limits:

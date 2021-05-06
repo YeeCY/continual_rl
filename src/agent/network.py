@@ -294,7 +294,7 @@ class PpoActorMlp(nn.Module):
             nn.Tanh(),
         )
 
-        self.dist = DiagGaussian(self.base.output_size, action_shape[0])
+        self.dist = DiagGaussian(hidden_dim, action_shape[0])
 
         self.apply(weight_init)
 

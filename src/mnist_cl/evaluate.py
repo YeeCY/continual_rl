@@ -66,7 +66,7 @@ def precision(model, datasets, current_task, iteration, classes_per_task=None, s
 
     [classes_per_task]  <int> number of active classes er task
     [scenario]          <str> how to decide which classes to include during evaluating precision
-    [visdom]            None or <dict> with name of "graph" and "env" (if None, no visdom-plots are made)'''
+    [visdom]            None or <dict> with name of "graph" and "environment" (if None, no visdom-plots are made)'''
 
     n_tasks = len(datasets)
 

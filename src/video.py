@@ -3,8 +3,8 @@ import os
 from PIL import Image
 import numpy as np
 
-from src.env import VecNormalize
-from src.env.utils import get_render_func
+from environment.gym_wrapper import VecNormalize
+from environment.utils import get_render_func
 
 
 class VideoRecorder(object):

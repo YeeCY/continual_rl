@@ -116,7 +116,7 @@ def main(args):
                 if task_name not in data:
                     data[task_name] = [x]
                 try:
-                    # st = stat[0] + '/env-' + str(env) + '/' + stat[1]
+                    # st = stat[0] + '/environment-' + str(environment) + '/' + stat[1]
                     # st = stat[0]
                     y = task_df[stat].values
                     data[task_name].append(y)

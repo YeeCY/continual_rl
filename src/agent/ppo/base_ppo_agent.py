@@ -23,7 +23,7 @@ class PpoMlpAgent:
             lr=3e-4,
             eps=1e-5,
             grad_clip_norm=0.5,
-            use_clipped_value_loss=True,
+            use_clipped_critic_loss=True,
             batch_size=32,
     ):
         self.obs_shape = obs_shape
@@ -38,7 +38,7 @@ class PpoMlpAgent:
         self.lr = lr
         self.eps = eps
         self.grad_clip_norm = grad_clip_norm
-        self.use_clipped_value_loss = use_clipped_value_loss
+        self.use_clipped_critic_loss = use_clipped_critic_loss
         self.batch_size = batch_size
 
         self.training = False
@@ -79,15 +79,19 @@ class PpoMlpAgent:
         self.critic.train(training)
 
     def predict_value(self, obs):
+        if not isinstance(obs, torch.Tensor):
+            obs = torch.Tensor(obs).to(self.device)
+
         with torch.no_grad():
-            obs = torch.FloatTensor(obs).to(self.device)
             value = self.critic(obs)
 
         return utils.to_np(value)
 
     def act(self, obs, sample=False, compute_log_pi=True):
+        if not isinstance(obs, torch.Tensor):
+            obs = torch.Tensor(obs).to(self.device)
+
         with torch.no_grad():
-            obs = torch.FloatTensor(obs).to(self.device)
             mu, pi, log_pi = self.actor(obs, compute_log_pi=compute_log_pi)
             action = pi if sample else mu
 
@@ -108,7 +112,7 @@ class PpoMlpAgent:
         # return critic_loss
         value = self.critic(obs)
 
-        if self.use_clipped_value_loss:
+        if self.use_clipped_critic_loss:
             value_pred_clipped = value_pred + (value - value_pred).clamp(-self.clip_param, self.clip_param)
             critic_losses = (value - ret).pow(2)
             critic_losses_clipped = (value_pred_clipped - ret).pow(2)
@@ -232,18 +236,18 @@ class PpoMlpAgent:
         #
         # return value_loss_epoch, action_loss_epoch, dist_entropy_epoch
 
-    # def save(self, model_dir, step):
-    #     torch.save(
-    #         self.actor.state_dict(), '%s/actor_%s.pt' % (model_dir, step)
-    #     )
-    #     torch.save(
-    #         self.critic.state_dict(), '%s/critic_%s.pt' % (model_dir, step)
-    #     )
-    #
-    # def load(self, model_dir, step):
-    #     self.actor.load_state_dict(
-    #         torch.load('%s/actor_%s.pt' % (model_dir, step))
-    #     )
-    #     self.critic.load_state_dict(
-    #         torch.load('%s/critic_%s.pt' % (model_dir, step))
-    #     )
+    def save(self, model_dir, step):
+        torch.save(
+            self.actor.state_dict(), '%s/actor_%s.pt' % (model_dir, step)
+        )
+        torch.save(
+            self.critic.state_dict(), '%s/critic_%s.pt' % (model_dir, step)
+        )
+
+    def load(self, model_dir, step):
+        self.actor.load_state_dict(
+            torch.load('%s/actor_%s.pt' % (model_dir, step))
+        )
+        self.critic.load_state_dict(
+            torch.load('%s/critic_%s.pt' % (model_dir, step))
+        )

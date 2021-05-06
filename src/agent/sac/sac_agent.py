@@ -4,7 +4,7 @@ import torch
 import torch.nn.functional as F
 import utils
 
-from agent.network import ActorCnn, ActorMlp, CriticCnn, CriticMlp, CURL, \
+from agent.network import ActorCnn, SacActorMlp, CriticCnn, SacCriticMlp, CURL, \
     SelfSupervisedCnnInvPredictorEnsem, SelfSupervisedMlpInvPredictorEnsem, \
     SelfSupervisedCnnFwdPredictorEnsem, SelfSupervisedMlpFwdPredictorEnsem
 
@@ -1157,16 +1157,16 @@ class SacMlpSSEnsembleAgent:
         self.use_inv = use_inv
         self.num_ensem_comps = num_ensem_comps
 
-        self.actor = ActorMlp(
+        self.actor = SacActorMlp(
             obs_shape, action_shape, hidden_dim,
             actor_log_std_min, actor_log_std_max
         ).to(self.device)
 
-        self.critic = CriticMlp(
+        self.critic = SacCriticMlp(
             obs_shape, action_shape, hidden_dim
         ).to(self.device)
 
-        self.critic_target = CriticMlp(
+        self.critic_target = SacCriticMlp(
             obs_shape, action_shape, hidden_dim
         ).to(self.device)
 

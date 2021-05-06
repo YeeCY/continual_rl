@@ -6,8 +6,8 @@ import copy
 
 
 from arguments import parse_args
-from env import make_atari_env, make_locomotion_env, make_single_metaworld_env, make_continual_metaworld_env
-from env.metaworld import MultiEnvWrapper
+from environment import make_atari_env, make_locomotion_env, make_single_metaworld_env, make_continual_metaworld_env
+from environment.metaworld import MultiEnvWrapper
 from agent import make_agent
 import utils
 import buffers
@@ -83,7 +83,7 @@ def evaluate(env, agent, video, num_episodes, logger, step):
 def main(args):
     # Initialize environment
     if args.env_type == 'atari':
-        # env = make_atari_env(
+        # environment = make_atari_env(
         #     env_name=args.env_name,
         #     seed=args.seed,
         #     action_repeat=args.action_repeat,
@@ -95,7 +95,7 @@ def main(args):
         #     action_repeat=args.action_repeat,
         #     frame_stack=args.frame_stack
         # )
-        # env = make_continual_atari_env(
+        # environment = make_continual_atari_env(
         #     env_names=args.env_names,
         #     seed=args.seed,
         #     action_repeat=args.action_repeat,
@@ -132,7 +132,7 @@ def main(args):
             mode=args.mode
         )
     elif args.env_type == 'metaworld':
-        # env = make_single_metaworld_env(
+        # environment = make_single_metaworld_env(
         #     env_name=args.env_name,
         #     seed=args.seed
         # )
@@ -163,8 +163,8 @@ def main(args):
 
     if args.env_type == 'atari':
         # replay_buffer = buffers.FrameStackReplayBuffer(
-        #     obs_space=env.observation_space,
-        #     action_space=env.action_space,
+        #     obs_space=environment.observation_space,
+        #     action_space=environment.action_space,
         #     capacity=args.replay_buffer_capacity,
         #     frame_stack=args.frame_stack,
         #     device=device,
@@ -173,8 +173,8 @@ def main(args):
         # from stable_baselines3.common.buffers import ReplayBuffer
         # replay_buffer = ReplayBuffer(
         #     args.replay_buffer_capacity,
-        #     env.observation_space,
-        #     env.action_space,
+        #     environment.observation_space,
+        #     environment.action_space,
         #     device,
         #     optimize_memory_usage=True,
         # )
@@ -237,7 +237,7 @@ def main(args):
     #         logger.log('train/recent_episode_reward', np.mean(recent_episode_reward), step)
     #         logger.log('train/episode_reward', episode_reward, step)
     #
-    #         obs = env.reset()
+    #         obs = environment.reset()
     #         episode_reward = 0
     #         episode_step = 0
     #         episode += 1
@@ -246,7 +246,7 @@ def main(args):
     #
     #     # Sample action for data collection
     #     if step < args.init_steps:
-    #         action = env.action_space.sample()
+    #         action = environment.action_space.sample()
     #     else:
     #         # with utils.eval_mode(agent):
     #         action = agent.act(obs, False)
@@ -264,7 +264,7 @@ def main(args):
     #             agent.update(replay_buffer, logger, step)
     #
     #     # Take step
-    #     next_obs, reward, done, _ = env.step(action)
+    #     next_obs, reward, done, _ = environment.step(action)
     #     # replay_buffer.add(obs, action, reward, next_obs, done)
     #     replay_buffer.add(np.expand_dims(obs, axis=0),
     #                       np.expand_dims(next_obs, axis=0),
@@ -275,8 +275,8 @@ def main(args):
     #     obs = next_obs
     #     episode_step += 1
     train_steps_per_task = args.train_steps_per_task
-    # if isinstance(env, MultiEnvWrapper):
-    #     for step in range(train_steps_per_task * env.num_tasks):
+    # if isinstance(environment, MultiEnvWrapper):
+    #     for step in range(train_steps_per_task * environment.num_tasks):
     #         # (chongyi zheng): we can also evaluate and save model when current episode is not finished
     #         # Evaluate agent periodically
     #         if step % args.eval_freq_per_task == 0:
