@@ -3,6 +3,9 @@ import os
 from PIL import Image
 import numpy as np
 
+from src.env import VecNormalize
+from src.env.utils import get_render_func
+
 
 class VideoRecorder(object):
     def __init__(self, dir_name, env_type, height=100, width=100, camera_id=0, fps=25):
@@ -38,6 +41,12 @@ class VideoRecorder(object):
                 if 'video' in env._mode:
                     video_background = env.env.env
                     frame = video_background.apply_to(frame, camera_id=self.camera_id)
+            elif self.env_type == 'mujoco':
+                assert isinstance(env, VecNormalize)
+                render_func = get_render_func(env)
+                frame = render_func(mode='rgb_array')
+                frame = Image.fromarray(frame).resize([self.width, self.height])
+                frame = np.asarray(frame)
             else:
                 raise ValueError(f"Unknown environment type {self.env_type}")
             self.frames.append(frame)

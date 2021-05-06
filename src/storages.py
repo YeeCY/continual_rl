@@ -1,3 +1,5 @@
+# Adapt from https://github.com/ikostrikov/pytorch-a2c-ppo-acktr-gail
+
 import torch
 from torch.utils.data.sampler import BatchSampler, SubsetRandomSampler
 
@@ -7,47 +9,49 @@ def _flatten_helper(T, N, _tensor):
 
 
 class RolloutStorage(object):
-    def __init__(self, num_steps, num_processes, obs_shape, action_space):
-        self.obs = torch.zeros(num_steps + 1, num_processes, *obs_shape)
-        self.rewards = torch.zeros(num_steps, num_processes, 1)
-        self.value_preds = torch.zeros(num_steps + 1, num_processes, 1)
-        self.returns = torch.zeros(num_steps + 1, num_processes, 1)
-        self.log_pis = torch.zeros(num_steps, num_processes, 1)
+    def __init__(self, num_steps, num_processes, obs_shape, action_space, device):
+        self.device = device
+
+        self.obs = torch.zeros(num_steps + 1, num_processes, *obs_shape).to(self.device)
+        self.rewards = torch.zeros(num_steps, num_processes, 1).to(self.device)
+        self.value_preds = torch.zeros(num_steps + 1, num_processes, 1).to(self.device)
+        self.returns = torch.zeros(num_steps + 1, num_processes, 1).to(self.device)
+        self.log_pis = torch.zeros(num_steps, num_processes, 1).to(self.device)
         if action_space.__class__.__name__ == 'Discrete':
             action_shape = 1
         else:
             action_shape = action_space.shape[0]
-        self.actions = torch.zeros(num_steps, num_processes, action_shape)
+        self.actions = torch.zeros(num_steps, num_processes, action_shape).to(self.device)
         if action_space.__class__.__name__ == 'Discrete':
             self.actions = self.actions.long()
-        self.masks = torch.ones(num_steps + 1, num_processes, 1)
+        self.masks = torch.ones(num_steps + 1, num_processes, 1).to(self.device)
 
         # Masks that indicate whether it's a true terminal state
         # or time limit end state
-        self.bad_masks = torch.ones(num_steps + 1, num_processes, 1)
+        self.bad_masks = torch.ones(num_steps + 1, num_processes, 1).to(self.device)
 
         self.num_steps = num_steps
         self.step = 0
 
-    def to(self, device):
-        self.obs = self.obs.to(device)
-        self.rewards = self.rewards.to(device)
-        self.value_preds = self.value_preds.to(device)
-        self.returns = self.returns.to(device)
-        self.log_pis = self.log_pis.to(device)
-        self.actions = self.actions.to(device)
-        self.masks = self.masks.to(device)
-        self.bad_masks = self.bad_masks.to(device)
+    # def to(self, device):
+    #     self.obs = self.obs.to(device)
+    #     self.rewards = self.rewards.to(device)
+    #     self.value_preds = self.value_preds.to(device)
+    #     self.returns = self.returns.to(device)
+    #     self.log_pis = self.log_pis.to(device)
+    #     self.actions = self.actions.to(device)
+    #     self.masks = self.masks.to(device)
+    #     self.bad_masks = self.bad_masks.to(device)
 
     def insert(self, obs, actions, log_pis,
                value_preds, rewards, masks, bad_masks):
-        self.obs[self.step + 1].copy_(obs)
-        self.actions[self.step].copy_(actions)
-        self.log_pis[self.step].copy_(log_pis)
-        self.value_preds[self.step].copy_(value_preds)
-        self.rewards[self.step].copy_(rewards)
-        self.masks[self.step + 1].copy_(masks)
-        self.bad_masks[self.step + 1].copy_(bad_masks)
+        self.obs[self.step + 1].copy_(torch.Tensor(obs).to(self.device))
+        self.actions[self.step].copy_(torch.Tensor(actions).to(self.device))
+        self.log_pis[self.step].copy_(torch.Tensor(log_pis).to(self.device))
+        self.value_preds[self.step].copy_(torch.Tensor(value_preds).to(self.device))
+        self.rewards[self.step].copy_(torch.Tensor(rewards).to(self.device))
+        self.masks[self.step + 1].copy_(torch.Tensor(masks).to(self.device))
+        self.bad_masks[self.step + 1].copy_(torch.Tensor(bad_masks).to(self.device))
 
         self.step = (self.step + 1) % self.num_steps
 
@@ -62,37 +66,40 @@ class RolloutStorage(object):
                         gamma,
                         gae_lambda,
                         use_proper_time_limits=True):
+        assert isinstance(next_value, torch.Tensor)
+
+        # (chongyi zheng): force use GAE
         if use_proper_time_limits:
-            if use_gae:
-                self.value_preds[-1] = next_value
-                gae = 0
-                for step in reversed(range(self.rewards.size(0))):
-                    delta = self.rewards[step] + gamma * self.value_preds[step + 1] \
-                            * self.masks[step + 1] - self.value_preds[step]
-                    gae = delta + gamma * gae_lambda * self.masks[step + 1] * gae
-                    gae = gae * self.bad_masks[step + 1]
-                    self.returns[step] = gae + self.value_preds[step]
-            else:
-                self.returns[-1] = next_value
-                for step in reversed(range(self.rewards.size(0))):
-                    self.returns[step] = (self.returns[step + 1] * \
-                                          gamma * self.masks[step + 1] + \
-                                          self.rewards[step]) * self.bad_masks[step + 1] \
-                                         + (1 - self.bad_masks[step + 1]) * self.value_preds[step]
+            # if use_gae:
+            self.value_preds[-1] = next_value
+            gae = 0
+            for step in reversed(range(self.rewards.size(0))):
+                delta = self.rewards[step] + gamma * self.value_preds[step + 1] \
+                        * self.masks[step + 1] - self.value_preds[step]
+                gae = delta + gamma * gae_lambda * self.masks[step + 1] * gae
+                gae = gae * self.bad_masks[step + 1]
+                self.returns[step] = gae + self.value_preds[step]
+            # else:
+            #     self.returns[-1] = next_value
+            #     for step in reversed(range(self.rewards.size(0))):
+            #         self.returns[step] = (self.returns[step + 1] * \
+            #                               gamma * self.masks[step + 1] + \
+            #                               self.rewards[step]) * self.bad_masks[step + 1] \
+            #                              + (1 - self.bad_masks[step + 1]) * self.value_preds[step]
         else:
-            if use_gae:
-                self.value_preds[-1] = next_value
-                gae = 0
-                for step in reversed(range(self.rewards.size(0))):
-                    delta = self.rewards[step] + gamma * self.value_preds[step + 1] \
-                            * self.masks[step + 1] - self.value_preds[step]
-                    gae = delta + gamma * gae_lambda * self.masks[step + 1] * gae
-                    self.returns[step] = gae + self.value_preds[step]
-            else:
-                self.returns[-1] = next_value
-                for step in reversed(range(self.rewards.size(0))):
-                    self.returns[step] = self.returns[step + 1] * gamma \
-                                         * self.masks[step + 1] + self.rewards[step]
+            # if use_gae:
+            self.value_preds[-1] = next_value
+            gae = 0
+            for step in reversed(range(self.rewards.size(0))):
+                delta = self.rewards[step] + gamma * self.value_preds[step + 1] \
+                        * self.masks[step + 1] - self.value_preds[step]
+                gae = delta + gamma * gae_lambda * self.masks[step + 1] * gae
+                self.returns[step] = gae + self.value_preds[step]
+            # else:
+            #     self.returns[-1] = next_value
+            #     for step in reversed(range(self.rewards.size(0))):
+            #         self.returns[step] = self.returns[step + 1] * gamma \
+            #                              * self.masks[step + 1] + self.rewards[step]
 
     def feed_forward_generator(self,
                                advantages,

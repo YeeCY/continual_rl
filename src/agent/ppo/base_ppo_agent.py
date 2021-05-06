@@ -78,15 +78,20 @@ class PpoMlpAgent:
         self.actor.train(training)
         self.critic.train(training)
 
-    def act(self, obs, sample=False):
+    def predict_value(self, obs):
         with torch.no_grad():
             obs = torch.FloatTensor(obs).to(self.device)
-            obs = obs.unsqueeze(0)
-            mu, pi, _, _ = self.actor(obs, compute_log_pi=False)
-            action = pi if sample else mu
-            assert action.ndim == 2 and action.shape[0] == 1
+            value = self.critic(obs)
 
-        return utils.to_np(action[0])
+        return utils.to_np(value)
+
+    def act(self, obs, sample=False, compute_log_pi=True):
+        with torch.no_grad():
+            obs = torch.FloatTensor(obs).to(self.device)
+            mu, pi, log_pi = self.actor(obs, compute_log_pi=compute_log_pi)
+            action = pi if sample else mu
+
+        return utils.to_np(action), utils.to_np(log_pi)
 
     def compute_critic_loss(self, obs, value_pred, ret):
         # with torch.no_grad():
@@ -151,6 +156,11 @@ class PpoMlpAgent:
     #         alpha_loss.backward()
     #         torch.nn.utils.clip_grad_norm_([self.log_alpha], self.grad_clip_norm)
     #         self.log_alpha_optimizer.step()
+
+    def update_learning_rate(self, epoch, total_epochs):
+        lr = self.lr - (self.lr * (epoch / float(total_epochs)))
+        for param_group in self.optimizer.param_groups:
+            param_group['lr'] = lr
 
     def update(self, rollouts, logger, step):
         # obs, action, reward, next_obs, not_done, ensem_kwargs = replay_buffer.sample_ensembles(

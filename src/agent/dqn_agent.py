@@ -90,7 +90,7 @@ class DqnCnnAgent:
             action = np.random.randint(low=0, high=self.action_shape)
         else:
             with torch.no_grad():
-                obs = torch.FloatTensor(obs).to(self.device)
+                obs = torch.Tensor(obs).to(self.device)
                 obs = obs.unsqueeze(0)
                 q_values = self.q_net(obs)
                 # greed action

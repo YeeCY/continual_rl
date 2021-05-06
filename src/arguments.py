@@ -111,6 +111,8 @@ def parse_args():
 	parser.add_argument('--ppo_eps', default=1e-5, type=float)
 	parser.add_argument('--ppo_grad_clip_norm', default=0.5, type=float)
 	parser.add_argument('--ppo_use_clipped_value_loss', default=False, action='store_true')
+	parser.add_argument('--ppo_gae_lambda', default=0.95, type=float)
+	parser.add_argument('--ppo_use_proper_time_limits', default=False, action='store_true')
 
 	# ewc
 	parser.add_argument('--ewc_lambda', default=5000, type=float)
