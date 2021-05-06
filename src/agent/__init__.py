@@ -11,6 +11,7 @@ ALGOS = [
     'ewc_sac_mlp',
     'si_sac_mlp',
     'agem_sac_mlp',
+    'ppo_mlp',
 ]
 
 
@@ -95,8 +96,16 @@ def make_agent(obs_space, action_space, device, args):
             kwargs['agem_memory_budget'] = args.agem_memory_budget
             kwargs['agem_ref_grad_batch_size'] = args.agem_ref_grad_batch_size
             agent = AgemSacMlpAgent(**kwargs)
-        else:
-            raise ValueError(f"Unknown algorithm {args.algo}")
+    elif 'ppo' in args.algo:
+        kwargs['hidden_dim'] = args.ppo_hidden_dim
+        kwargs['clip_param'] = args.ppo_clip_param,
+        kwargs['ppo_epoch'] = args.ppo_epoch,
+        kwargs['critic_loss_coef'] = args.ppo_critic_loss_coef
+        kwargs['entropy_coef'] = args.ppo_entropy_coef
+        kwargs['lr'] = args.ppo_lr
+        kwargs['eps'] = args.ppo_eps
+        kwargs['grad_clip_norm'] = args.ppo_grad_clip_norm
+        kwargs['use_clipped_value_loss'] = args.ppo_use_clipped_value_loss
     else:
         raise ValueError(f"Unknown algorithm {args.algo}")
 

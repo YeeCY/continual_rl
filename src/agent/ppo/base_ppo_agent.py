@@ -13,7 +13,6 @@ class PpoMlpAgent:
             self,
             obs_shape,
             action_shape,
-            action_range,
             device,
             hidden_dim=64,
             discount=0.99,
@@ -29,7 +28,6 @@ class PpoMlpAgent:
     ):
         self.obs_shape = obs_shape
         self.action_shape = action_shape
-        self.action_range = action_range
         self.device = device
         self.hidden_dim = hidden_dim
         self.discount = discount
@@ -76,9 +74,9 @@ class PpoMlpAgent:
                                           lr=self.lr, eps=self.eps)
 
     def train(self, training=True):
-            self.training = training
-            self.actor.train(training)
-            self.critic.train(training)
+        self.training = training
+        self.actor.train(training)
+        self.critic.train(training)
 
     def act(self, obs, sample=False):
         with torch.no_grad():
@@ -86,7 +84,6 @@ class PpoMlpAgent:
             obs = obs.unsqueeze(0)
             mu, pi, _, _ = self.actor(obs, compute_log_pi=False)
             action = pi if sample else mu
-            action = action.clamp(*self.action_range)
             assert action.ndim == 2 and action.shape[0] == 1
 
         return utils.to_np(action[0])

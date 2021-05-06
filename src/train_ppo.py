@@ -3,15 +3,16 @@ import numpy as np
 import os
 from collections import deque
 import copy
+import time
 
 
 from arguments import parse_args
-from env import make_atari_env, make_locomotion_env, make_single_metaworld_env, make_continual_metaworld_env
+from env import make_atari_env, make_locomotion_env, make_single_metaworld_env, make_continual_metaworld_env, \
+    make_vec_envs
 from env.metaworld import MultiEnvWrapper
 from agent import make_agent
 import utils
-import buffers
-import time
+import storages
 from logger import Logger
 from video import VideoRecorder
 
@@ -131,6 +132,9 @@ def main(args):
             camera_id=args.env_camera_id,
             mode=args.mode
         )
+    elif args.env_type == 'mujoco':
+        env = make_vec_envs(args.env_name, args.seed, args.num_processes,
+                            args.gamma, args.work_dir)
     elif args.env_type == 'metaworld':
         # env = make_single_metaworld_env(
         #     env_name=args.env_name,
@@ -161,38 +165,41 @@ def main(args):
     # assert torch.cuda.is_available(), 'must have cuda enabled'
     device = torch.device(args.device)
 
-    if args.env_type == 'atari':
-        # replay_buffer = buffers.FrameStackReplayBuffer(
-        #     obs_space=env.observation_space,
-        #     action_space=env.action_space,
-        #     capacity=args.replay_buffer_capacity,
-        #     frame_stack=args.frame_stack,
-        #     device=device,
-        #     optimize_memory_usage=True,
-        # )
-        # from stable_baselines3.common.buffers import ReplayBuffer
-        # replay_buffer = ReplayBuffer(
-        #     args.replay_buffer_capacity,
-        #     env.observation_space,
-        #     env.action_space,
-        #     device,
-        #     optimize_memory_usage=True,
-        # )
-        replay_buffer = buffers.ReplayBuffer(
-            obs_space=env.observation_space,
-            action_space=env.action_space,
-            capacity=args.replay_buffer_capacity,
-            device=device,
-            optimize_memory_usage=True,
-        )
-    elif args.env_type == 'dmc_locomotion' or 'metaworld':
-        replay_buffer = buffers.ReplayBuffer(
-            obs_space=env.observation_space,
-            action_space=env.action_space,
-            capacity=args.replay_buffer_capacity,
-            device=device,
-            optimize_memory_usage=True,
-        )
+    # if args.env_type == 'atari':
+    #     # replay_buffer = buffers.FrameStackReplayBuffer(
+    #     #     obs_space=env.observation_space,
+    #     #     action_space=env.action_space,
+    #     #     capacity=args.replay_buffer_capacity,
+    #     #     frame_stack=args.frame_stack,
+    #     #     device=device,
+    #     #     optimize_memory_usage=True,
+    #     # )
+    #     # from stable_baselines3.common.buffers import ReplayBuffer
+    #     # replay_buffer = ReplayBuffer(
+    #     #     args.replay_buffer_capacity,
+    #     #     env.observation_space,
+    #     #     env.action_space,
+    #     #     device,
+    #     #     optimize_memory_usage=True,
+    #     # )
+    #     replay_buffer = buffers.ReplayBuffer(
+    #         obs_space=env.observation_space,
+    #         action_space=env.action_space,
+    #         capacity=args.replay_buffer_capacity,
+    #         device=device,
+    #         optimize_memory_usage=True,
+    #     )
+    # elif args.env_type == 'dmc_locomotion' or 'metaworld':
+    #     replay_buffer = buffers.ReplayBuffer(
+    #         obs_space=env.observation_space,
+    #         action_space=env.action_space,
+    #         capacity=args.replay_buffer_capacity,
+    #         device=device,
+    #         optimize_memory_usage=True,
+    #     )
+    rollouts = storages.RolloutStorage(args.num_steps, args.num_processes,
+                                   env.observation_space.shape, env.action_space)
+
     agent = make_agent(
         obs_space=env.observation_space,
         action_space=env.action_space,
