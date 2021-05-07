@@ -579,8 +579,8 @@ def main(args):
     #     task_step += 1
 
     print('Final evaluating:', args.work_dir)
-    evaluate(eval_env, agent, video, args.num_eval_episodes, logger,
-             train_steps_per_task * env.num_tasks)
+    obs_rms = get_vec_normalize(env).obs_rms
+    evaluate(eval_env, agent, video, obs_rms, args.num_eval_episodes, logger, total_steps)
 
 
 if __name__ == '__main__':
