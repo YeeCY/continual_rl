@@ -10,8 +10,6 @@ def _flatten_helper(T, N, _tensor):
 
 class RolloutStorage(object):
     def __init__(self, num_steps, num_processes, obs_shape, action_space, device):
-        self.device = device
-
         self.obs = torch.zeros(num_steps + 1, num_processes, *obs_shape).to(self.device)
         self.rewards = torch.zeros(num_steps, num_processes, 1).to(self.device)
         self.value_preds = torch.zeros(num_steps + 1, num_processes, 1).to(self.device)
@@ -31,6 +29,8 @@ class RolloutStorage(object):
         self.bad_masks = torch.ones(num_steps + 1, num_processes, 1).to(self.device)
 
         self.num_steps = num_steps
+        self.num_processes = num_processes
+        self.device = device
         self.step = 0
 
     # def to(self, device):

@@ -1,6 +1,6 @@
 import torch
+import numpy as np
 from itertools import chain
-from collections.abc import Iterable
 
 import utils
 from agent.ppo.base_ppo_agent import PpoMlpAgent
@@ -23,17 +23,19 @@ class EwcPpoMlpAgent(PpoMlpAgent):
                  grad_clip_norm=0.5,
                  use_clipped_critic_loss=True,
                  batch_size=32,
+                 use_gae=True,
+                 gae_lambda=0.95,
                  ewc_lambda=5000,
-                 ewc_fisher_sample_size=100,
+                 ewc_estimate_fisher_epochs=100,
                  online_ewc=False,
                  online_ewc_gamma=1.0,
                  ):
         super().__init__(obs_shape, action_shape, device, hidden_dim, discount, clip_param, ppo_epoch,
                          critic_loss_coef, entropy_coef, lr, eps, grad_clip_norm, use_clipped_critic_loss,
-                         batch_size)
+                         batch_size, use_gae, gae_lambda)
 
         self.ewc_lambda = ewc_lambda
-        self.ewc_fisher_sample_size = ewc_fisher_sample_size
+        self.ewc_estimate_fisher_epochs = ewc_estimate_fisher_epochs
         self.online_ewc = online_ewc
         self.online_ewc_gamma = online_ewc_gamma
 
@@ -41,36 +43,89 @@ class EwcPpoMlpAgent(PpoMlpAgent):
         self.prev_task_params = {}
         self.prev_task_fishers = {}
 
-    def estimate_fisher(self, replay_buffer):
-        with utils.eval_mode(self):
-            obs, action, reward, next_obs, not_done = replay_buffer.sample(self.ewc_fisher_sample_size)
+    def estimate_fisher(self, env, rollouts, **kwargs):
+        assert 'compute_returns_kwargs' in kwargs
 
-            critic_loss = self.compute_critic_loss(obs, action, reward, next_obs, not_done)
-            self.critic_optimizer.zero_grad()
-            critic_loss.backward()
+        fishers = {}
+        for epoch in range(self.ewc_estimate_fisher_epochs):
+            for step in range(rollouts.num_steps):
+                with utils.eval_mode(self):
+                    action, log_pi = self.act(obs, sample=True, compute_log_pi=True)
+                    value = self.predict_value(obs)
 
-            _, actor_loss, alpha_loss = self.compute_actor_and_alpha_loss(obs)
-            self.actor_optimizer.zero_grad()
-            actor_loss.backward()
-            self.log_alpha_optimizer.zero_grad()
-            alpha_loss.backward()
+                obs, reward, done, infos = env.step(action)
 
-            for name, param in chain(self.critic.named_parameters(),
-                                     self.actor.named_parameters(),
-                                     iter([('log_alpha', self.log_alpha)])):
-                if param.grad is not None:
-                    if self.online_ewc:
-                        name = name + '_prev_task'
-                        self.prev_task_params[name] = param.detach().clone()
-                        self.prev_task_fishers[name] = \
-                            param.grad.detach().clone() ** 2 + \
-                            self.online_ewc_gamma * self.prev_task_fishers.get(name, torch.zeros_like(param.grad))
-                    else:
-                        name = name + f'_prev_task{self.ewc_task_count}'
-                        self.prev_task_params[name] = param.detach().clone()
-                        self.prev_task_fishers[name] = param.grad.detach().clone() ** 2
+                # If done then clean the history of observations.
+                masks = np.array(
+                    [[0.0] if done_ else [1.0] for done_ in done])
+                bad_masks = np.array(
+                    [[0.0] if 'bad_transition' in info.keys() else [1.0]
+                     for info in infos])
+                rollouts.insert(obs, action, log_pi, value, reward, masks, bad_masks)
 
-            self.ewc_task_count += 1
+            next_value = self.predict_value(rollouts.obs[-1])
+            rollouts.compute_returns(next_value, **kwargs['compute_return_kwargs'])
+
+            # critic_loss = self.compute_critic_loss(obs, action, reward, next_obs, not_done)
+            # self.critic_optimizer.zero_grad()
+            # critic_loss.backward()
+            #
+            # _, actor_loss, alpha_loss = self.compute_actor_and_alpha_loss(obs)
+            # self.actor_optimizer.zero_grad()
+            # actor_loss.backward()
+            # self.log_alpha_optimizer.zero_grad()
+            # alpha_loss.backward()
+            advantages = rollouts.returns[:-1] - rollouts.value_preds[:-1]
+            advantages = (advantages - advantages.mean()) / (
+                    advantages.std() + 1e-5)
+            data_generator = rollouts.feed_forward_generator(
+                advantages, self.batch_size)
+
+            for sample in data_generator:
+                obs_batch, actions_batch, value_preds_batch, \
+                return_batch, old_log_pis, adv_targets = sample
+
+                # Reshape to do in a single forward pass for all steps
+                actor_loss, entropy = self.compute_actor_loss(
+                    obs_batch, actions_batch, old_log_pis, adv_targets)
+                critic_loss = self.compute_critic_loss(
+                    obs_batch, value_preds_batch, return_batch)
+                loss = actor_loss + self.critic_loss_coef * critic_loss - \
+                       self.entropy_coef * entropy
+
+                self.optimizer.zero_grad()
+                loss.backward()
+                torch.nn.utils.clip_grad_norm_(
+                    chain(self.actor.parameters(), self.critic.parameters()),
+                    self.grad_clip_norm)
+
+                for name, param in chain(self.critic.named_parameters(),
+                                         self.actor.named_parameters()):
+                    if param.requires_grad:
+                        # TODO (chongyi zheng): Average this accumulated fishers over num_steps?
+                        fishers[name] += param.grad.detach().clone() ** 2
+
+            rollouts.after_update()
+
+        for ori_name, param in chain(self.critic.named_parameters(),
+                                     self.actor.named_parameters()):
+            if param.requires_grad:
+                if self.online_ewc:
+                    name = ori_name + '_prev_task'
+                    self.prev_task_params[name] = param.detach().clone()
+                    # (chongyi zheng): Only average over epochs now
+                    self.prev_task_fishers[name] = \
+                        fishers[ori_name] / self.ewc_estimate_fisher_epochs + \
+                        self.online_ewc_gamma * self.prev_task_fishers.get(
+                            name, torch.zeros_like(param.grad))
+                else:
+                    name = ori_name + f'_prev_task{self.ewc_task_count}'
+                    self.prev_task_params[name] = param.detach().clone()
+                    # (chongyi zheng): Only average over epochs now
+                    self.prev_task_fishers[name] = \
+                        fishers[ori_name] / self.ewc_estimate_fisher_epochs
+
+        self.ewc_task_count += 1
 
     def compute_ewc_loss(self):
         ewc_losses = []
@@ -78,7 +133,7 @@ class EwcPpoMlpAgent(PpoMlpAgent):
         if self.online_ewc:
             for name, param in chain(self.actor.named_parameters(),
                                      self.critic.parameters()):
-                if param.grad is not None:
+                if param.requires_grad:
                     name = name + '_prev_task'
                     mean = self.prev_task_params.get(name, torch.zeros_like(param))
                     # apply decay-term to the running sum of the Fisher Information matrices
@@ -91,7 +146,7 @@ class EwcPpoMlpAgent(PpoMlpAgent):
                 # compute ewc loss for each parameter
                 for name, param in chain(self.actor.named_parameters(),
                                          self.critic.parameters()):
-                    if param.grad is not None:
+                    if param.requires_grad:
                         name = name + f'_prev_task{task}'
                         mean = self.prev_task_params.get(name, torch.zeros_like(param))
                         fisher = self.prev_task_fishers.get(name, torch.zeros_like(param))

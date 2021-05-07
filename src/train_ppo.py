@@ -8,7 +8,7 @@ import time
 
 from arguments import parse_args
 from environment import make_atari_env, make_locomotion_env, make_single_metaworld_env, make_continual_metaworld_env, \
-    make_vec_envs
+    make_vec_envs, make_continual_vec_envs
 from environment.metaworld import MultiEnvWrapper
 from agent import make_agent
 import utils
@@ -176,10 +176,16 @@ def main(args):
             mode=args.mode
         )
     elif args.env_type == 'mujoco':
-        env = make_vec_envs(args.env_name, args.seed, args.ppo_num_processes,
-                            args.discount, args.work_dir)
-        eval_env = make_vec_envs(args.env_name, args.seed + args.ppo_num_processes,
-                                 args.ppo_num_processes, None, args.work_dir, True)
+        # env = make_vec_envs(args.env_name, args.seed, args.ppo_num_processes,
+        #                     args.discount, args.work_dir)
+        # eval_env = make_vec_envs(args.env_name, args.seed + args.ppo_num_processes,
+        #                          args.ppo_num_processes, None, args.work_dir, True)
+        train_env_log_dir = utils.make_dir(os.path.join(args.work_dir, 'train_env'))
+        eval_env_log_dir = utils.make_dir(os.path.join(args.work_dir, 'eval_env'))
+        env = make_continual_vec_envs(args.env_name, args.seed, args.ppo_num_processes,
+                                      args.discount, train_env_log_dir)
+        eval_env = make_vec_envs(args.env_nam, args.seed + args.ppo_num_processes,
+                                 args.ppo_num_processes, None, eval_env_log_dir, True)
     elif args.env_type == 'metaworld':
         # environment = make_single_metaworld_env(
         #     env_name=args.env_name,
@@ -463,6 +469,7 @@ def main(args):
                                  args.ppo_gae_lambda,
                                  args.ppo_use_proper_time_limits)
         agent.update(rollouts, logger, total_steps)
+        rollouts.after_update()
 
         if epoch % args.save_freq == 0:
             if args.save_model:
@@ -483,6 +490,18 @@ def main(args):
 
         logger.log('train/recent_episode_reward', np.mean(recent_episode_reward), total_steps)
         logger.dump(total_steps, ty='train', save=True)
+
+    est_fisher_rollouts = storages.RolloutStorage(args.ewc_rollout_steps_per_process,
+                                                  args.ppo_num_processes,
+                                                  env.observation_space.shape,
+                                                  env.action_space,
+                                                  device)
+    compute_rewards_kwargs = {
+        'gamma': args.discount,
+        'gae_lambda': args.ppo_gae_lambda,
+        'use_proper_time_limits': args.ppo_use_proper_time_limits
+    }
+    agent.estimate_fisher(env, est_fisher_rollouts, compute_rewards_kwargs=compute_rewards_kwargs)
 
     # for total_step in range(args.train_steps):
     #     # (chongyi zheng): we can also evaluate and save model when current episode is not finished

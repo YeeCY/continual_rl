@@ -204,3 +204,26 @@ def make_vec_envs(env_name,
     #     envs = VecPyTorchFrameStack(envs, 4, device)
 
     return envs
+
+
+def make_continual_vec_envs(env_names,
+                            seed,
+                            num_processes,
+                            discount,
+                            log_dir,
+                            allow_early_resets=False):
+    # TODO (chongyi zheng): We fork many processes here, optimize it
+    envs = []
+    for env_name in env_names:
+        log_dir = os.path.join(log_dir, env_name)
+        env = make_vec_envs(env_name, seed, num_processes, discount,
+                            log_dir, allow_early_resets=allow_early_resets)
+        envs.append(env)
+    continual_env = MultiEnvWrapper(envs,
+                                    sample_strategy=round_robin_strategy,
+                                    mode='vanilla',
+                                    env_names=env_names)
+    action_space = continual_env.action_space
+
+    return continual_env
+
