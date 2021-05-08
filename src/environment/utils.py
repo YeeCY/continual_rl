@@ -5,6 +5,7 @@ import torch.nn.functional as F
 import torchvision.transforms.functional as TF
 
 from environment.gym_wrapper import VecNormalize
+from environment.metaworld import MultiEnvWrapper
 
 
 def rgb_to_hsv(r, g, b):

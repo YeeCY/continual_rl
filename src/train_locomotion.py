@@ -75,7 +75,7 @@ def evaluate(env, agent, video, num_episodes, logger, step):
             if getattr(agent, 'use_inv', False):
                 logger.log('eval/episode_ss_pred_var', np.mean(episode_inv_pred_vars), step)
             log_info = {
-                'train/task_name': task_name
+                'eval/task_name': task_name
             }
             logger.dump(step, ty='eval', info=log_info)
 
@@ -292,7 +292,7 @@ def main(args):
         for total_step in range(train_steps_per_task * env.num_tasks):
             # (chongyi zheng): we can also evaluate and save model when current episode is not finished
             # Evaluate agent periodically
-            if total_step % args.eval_freq_per_task == 0:
+            if total_step % args.eval_freq == 0:
                 print('Evaluating:', args.work_dir)
                 logger.log('eval/episode', episode, total_step)
                 evaluate(eval_env, agent, video, args.num_eval_episodes, logger, total_step)

@@ -544,10 +544,15 @@ class MultiEnvWrapper(gym.Wrapper):
         else:  # self._mode == 'vanilla'
             obs = obs
 
-        if 'task_id' not in info:
+        if isinstance(info, dict) and 'task_id' not in info:
             info['task_id'] = self._active_task_index
-        if self._env_names is not None:
-            info['task_name'] = self._env_names[self._active_task_index]
+            if self._env_names is not None:
+                info['task_name'] = self._env_names[self._active_task_index]
+        elif isinstance(info, list) and 'task_id' not in info[0]:
+            for info_ in info:
+                info_['task_id'] = self._active_task_index
+                if self._env_names is not None:
+                    info_['task_name'] = self._env_names[self._active_task_index]
 
         return obs, reward, done, info
 
