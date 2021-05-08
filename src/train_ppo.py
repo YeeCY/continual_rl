@@ -129,10 +129,14 @@ def main(args):
         #                          args.ppo_num_processes, None, args.work_dir, True)
         train_env_log_dir = utils.make_dir(os.path.join(args.work_dir, 'train_env'))
         eval_env_log_dir = utils.make_dir(os.path.join(args.work_dir, 'eval_env'))
-        env = make_continual_vec_envs(args.env_names, args.seed, args.ppo_num_processes,
-                                      args.discount, train_env_log_dir)
-        eval_env = make_vec_envs(args.env_names, args.seed + args.ppo_num_processes,
-                                 args.ppo_num_processes, None, eval_env_log_dir, True)
+        env = make_continual_vec_envs(
+            args.env_names, args.seed, args.ppo_num_processes,
+            args.discount, train_env_log_dir
+        )
+        eval_env = make_continual_vec_envs(
+            args.env_names, args.seed + args.ppo_num_processes,
+            args.ppo_num_processes, None, eval_env_log_dir, True
+        )
     elif args.env_type == 'metaworld':
         # environment = make_single_metaworld_env(
         #     env_name=args.env_name,
@@ -191,7 +195,7 @@ def main(args):
                                        device)
     
     if 'ewc' in args.algo:
-        est_fisher_rollouts = storages.RolloutStorage(args.ewc_rollout_steps_per_process,
+        est_fisher_rollouts = storages.RolloutStorage(args.ppo_ewc_rollout_steps_per_process,
                                                       args.ppo_num_processes,
                                                       env.observation_space.shape,
                                                       env.action_space,

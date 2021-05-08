@@ -374,7 +374,7 @@ class MultiEnvWrapper(gym.Wrapper):
     Adapt from https://github.com/rlworkgroup/garage/blob/master/src/garage/envs/multi_env_wrapper.py
 
     A wrapper class to handle multiple environments.
-    This wrapper adds an integer 'task_id' to env_info every timestep.
+    This wrapper adds an integer 'task_id' and a string 'task_name' to env_info every timestep.
     Args:
         envs (list(Environment)):
             A list of objects implementing Environment.
@@ -426,7 +426,7 @@ class MultiEnvWrapper(gym.Wrapper):
         for i, env in enumerate(envs):
             if augment_observation:
                 assert len(env.observation_space.shape) == 1
-                if np.prod(env.observation_space.shape) >= max_observation_dim:
+                if np.prod(env.observation_space.shape) > max_observation_dim:
                     self._observation_space_index = i
                     max_observation_dim = np.prod(env.observation_space.shape)
             else:
@@ -436,7 +436,7 @@ class MultiEnvWrapper(gym.Wrapper):
 
             if augment_action:
                 assert len(env.action_space.shape) == 1
-                if np.prod(env.action_space.shape) >= max_action_dim:
+                if np.prod(env.action_space.shape) > max_action_dim:
                     self._action_space_index = i
                     max_action_dim = np.prod(env.action_space.shape)
             else:
@@ -458,24 +458,32 @@ class MultiEnvWrapper(gym.Wrapper):
         """
         # (chongyi zheng): avoid crash
         if self._mode == 'vanilla':
-            return self._task_envs[self.observation_space_index].observation_space
+            return self._task_envs[self._observation_space_index].observation_space
         elif self._mode == 'add-onehot':
             task_lb, task_ub = self.task_space.bounds
-            env_lb, env_ub = self._task_envs[self.observation_space_index].observation_space.bounds
+            env_lb, env_ub = self._task_envs[self._observation_space_index].observation_space.bounds
             return Box(np.concatenate([env_lb, task_lb]),
                        np.concatenate([env_ub, task_ub]))
         else:  # self._mode == 'del-onehot'
-            env_lb, env_ub = self._task_envs[self.observation_space_index].bounds
+            env_lb, env_ub = self._task_envs[self._observation_space_index].bounds
             num_tasks = self._num_tasks
             return Box(env_lb[:-num_tasks], env_ub[:-num_tasks])
 
     def _augment_observation(self, obs):
         # optionally zero-pad observation
-        if np.prod(obs.shape) < self._max_observation_dim:
-            zeros = np.zeros(
-                shape=(self._max_observation_dim - np.prod(obs.shape),)
-            )
-            obs = np.concatenate([obs, zeros])
+        if isinstance(obs, list):
+            for obs_ in obs:
+                if np.prod(obs.shape) < self._max_observation_dim:
+                    zeros = np.zeros(
+                        shape=(self._max_observation_dim - np.prod(obs.shape),)
+                    )
+                    obs = np.concatenate([obs, zeros])
+        else:
+            if np.prod(obs.shape) < self._max_observation_dim:
+                zeros = np.zeros(
+                    shape=(self._max_observation_dim - np.prod(obs.shape),)
+                )
+                obs = np.concatenate([obs, zeros])
 
         return obs
 
@@ -486,17 +494,6 @@ class MultiEnvWrapper(gym.Wrapper):
             action = action[..., :env_action_dim]
 
         return action
-
-    # @property
-    # def spec(self):
-    #     """Describes the action and observation spaces of the wrapped envs.
-    #     Returns:
-    #         EnvSpec: the action and observation spaces of the
-    #             wrapped environments.
-    #     """
-    #     return EnvSpec(action_space=self.action_space,
-    #                    observation_space=self.observation_space,
-    #                    max_episode_length=self._env.spec.max_episode_length)
 
     def seed(self, seed=None):
         for idx, task_env in enumerate(self._task_envs):
@@ -567,7 +564,7 @@ class MultiEnvWrapper(gym.Wrapper):
         self.env = self._task_envs[self._active_task_index]
         obs = self.env.reset()
 
-        obs = self._augment_obs(obs)
+        obs = self._augment_observation(obs)
 
         if self._mode == 'vanilla':
             pass

@@ -10,23 +10,23 @@ def _flatten_helper(T, N, _tensor):
 
 class RolloutStorage(object):
     def __init__(self, num_steps, num_processes, obs_shape, action_space, device):
-        self.obs = torch.zeros(num_steps + 1, num_processes, *obs_shape).to(self.device)
-        self.rewards = torch.zeros(num_steps, num_processes, 1).to(self.device)
-        self.value_preds = torch.zeros(num_steps + 1, num_processes, 1).to(self.device)
-        self.returns = torch.zeros(num_steps + 1, num_processes, 1).to(self.device)
-        self.log_pis = torch.zeros(num_steps, num_processes, 1).to(self.device)
+        self.obs = torch.zeros(num_steps + 1, num_processes, *obs_shape).to(device)
+        self.rewards = torch.zeros(num_steps, num_processes, 1).to(device)
+        self.value_preds = torch.zeros(num_steps + 1, num_processes, 1).to(device)
+        self.returns = torch.zeros(num_steps + 1, num_processes, 1).to(device)
+        self.log_pis = torch.zeros(num_steps, num_processes, 1).to(device)
         if action_space.__class__.__name__ == 'Discrete':
             action_shape = 1
         else:
             action_shape = action_space.shape[0]
-        self.actions = torch.zeros(num_steps, num_processes, action_shape).to(self.device)
+        self.actions = torch.zeros(num_steps, num_processes, action_shape).to(device)
         if action_space.__class__.__name__ == 'Discrete':
             self.actions = self.actions.long()
-        self.masks = torch.ones(num_steps + 1, num_processes, 1).to(self.device)
+        self.masks = torch.ones(num_steps + 1, num_processes, 1).to(device)
 
         # Masks that indicate whether it's a true terminal state
         # or time limit end state
-        self.bad_masks = torch.ones(num_steps + 1, num_processes, 1).to(self.device)
+        self.bad_masks = torch.ones(num_steps + 1, num_processes, 1).to(device)
 
         self.num_steps = num_steps
         self.num_processes = num_processes

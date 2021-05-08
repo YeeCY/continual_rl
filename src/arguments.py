@@ -119,6 +119,7 @@ def parse_args():
 	# ppo ewc
 	parser.add_argument('--ppo_ewc_lambda', default=5000, type=float)
 	parser.add_argument('--ppo_ewc_estimate_fisher_epochs', default=100, type=int)
+	parser.add_argument('--ppo_ewc_rollout_steps_per_process', default=1024, type=int)
 	parser.add_argument('--ppo_online_ewc', default=False, action='store_true')
 	parser.add_argument('--ppo_online_ewc_gamma', default=1.0, type=float)
 
