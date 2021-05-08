@@ -116,6 +116,12 @@ def parse_args():
 	parser.add_argument('--ppo_gae_lambda', default=0.95, type=float)
 	parser.add_argument('--ppo_use_proper_time_limits', default=False, action='store_true')
 
+	# ppo ewc
+	parser.add_argument('--ppo_ewc_lambda', default=5000, type=float)
+	parser.add_argument('--ppo_ewc_estimate_fisher_epochs', default=100, type=int)
+	parser.add_argument('--ppo_online_ewc', default=False, action='store_true')
+	parser.add_argument('--ppo_online_ewc_gamma', default=1.0, type=float)
+
 	# ewc
 	parser.add_argument('--ewc_lambda', default=5000, type=float)
 	parser.add_argument('--ewc_fisher_sample_size', default=1024, type=int)

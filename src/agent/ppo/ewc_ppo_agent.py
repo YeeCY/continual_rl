@@ -23,8 +23,6 @@ class EwcPpoMlpAgent(PpoMlpAgent):
                  grad_clip_norm=0.5,
                  use_clipped_critic_loss=True,
                  batch_size=32,
-                 use_gae=True,
-                 gae_lambda=0.95,
                  ewc_lambda=5000,
                  ewc_estimate_fisher_epochs=100,
                  online_ewc=False,
@@ -32,7 +30,7 @@ class EwcPpoMlpAgent(PpoMlpAgent):
                  ):
         super().__init__(obs_shape, action_shape, device, hidden_dim, discount, clip_param, ppo_epoch,
                          critic_loss_coef, entropy_coef, lr, eps, grad_clip_norm, use_clipped_critic_loss,
-                         batch_size, use_gae, gae_lambda)
+                         batch_size)
 
         self.ewc_lambda = ewc_lambda
         self.ewc_estimate_fisher_epochs = ewc_estimate_fisher_epochs

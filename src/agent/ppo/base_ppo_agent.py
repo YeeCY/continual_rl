@@ -25,8 +25,6 @@ class PpoMlpAgent:
             grad_clip_norm=0.5,
             use_clipped_critic_loss=True,
             batch_size=32,
-            use_gae=True,
-            gae_lambda=0.95,
     ):
         self.obs_shape = obs_shape
         self.action_shape = action_shape
@@ -42,8 +40,6 @@ class PpoMlpAgent:
         self.grad_clip_norm = grad_clip_norm
         self.use_clipped_critic_loss = use_clipped_critic_loss
         self.batch_size = batch_size
-        self.use_gae = use_gae
-        self.gae_lambda = gae_lambda
 
         self.training = False
 

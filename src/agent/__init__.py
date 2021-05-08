@@ -2,7 +2,7 @@ from agent.dqn_agent import DqnCnnSSEnsembleAgent
 # from agent.sac.sac_agent import SacMlpSSEnsembleAgent, SacCnnSSEnsembleAgent
 from agent.sac import EwcSacMlpAgent, SiSacMlpAgent, AgemSacMlpAgent, SacMlpAgent, \
     SacMlpSSEnsembleAgent, SacCnnSSEnsembleAgent
-from agent.ppo import PpoMlpAgent
+from agent.ppo import PpoMlpAgent, EwcPpoMlpAgent
 
 ALGOS = [
     'dqn_cnn_ss_ensem',
@@ -13,6 +13,7 @@ ALGOS = [
     'si_sac_mlp',
     'agem_sac_mlp',
     'ppo_mlp',
+    'ewc_ppo_mlp'
 ]
 
 
@@ -110,6 +111,12 @@ def make_agent(obs_space, action_space, device, args):
 
         if args.algo == 'ppo_mlp':
             agent = PpoMlpAgent(**kwargs)
+        if args.algo == 'ewc_ppo_mlp':
+            kwargs['ewc_lambda'] = args.ppo_ewc_lambda
+            kwargs['ewc_estimate_fisher_epochs'] = args.ppo_ewc_estimate_fisher_epochs
+            kwargs['online_ewc'] = args.ppo_online_ewc
+            kwargs['online_ewc_gamma'] = args.ppo_online_ewc_gamma
+            agent = EwcPpoMlpAgent(**kwargs)
     else:
         raise ValueError(f"Unknown algorithm {args.algo}")
 
