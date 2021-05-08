@@ -129,9 +129,9 @@ def main(args):
         #                          args.ppo_num_processes, None, args.work_dir, True)
         train_env_log_dir = utils.make_dir(os.path.join(args.work_dir, 'train_env'))
         eval_env_log_dir = utils.make_dir(os.path.join(args.work_dir, 'eval_env'))
-        env = make_continual_vec_envs(args.env_name, args.seed, args.ppo_num_processes,
+        env = make_continual_vec_envs(args.env_names, args.seed, args.ppo_num_processes,
                                       args.discount, train_env_log_dir)
-        eval_env = make_vec_envs(args.env_nam, args.seed + args.ppo_num_processes,
+        eval_env = make_vec_envs(args.env_names, args.seed + args.ppo_num_processes,
                                  args.ppo_num_processes, None, eval_env_log_dir, True)
     elif args.env_type == 'metaworld':
         # environment = make_single_metaworld_env(

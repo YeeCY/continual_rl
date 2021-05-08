@@ -19,6 +19,8 @@ from environment.gym_wrapper import TransposeImage, TimeLimitMask, VecNormalize
 from environment.metaworld import MetaWorldTaskSampler, SingleMT1Wrapper, MultiEnvWrapper, NormalizedEnv
 from environment.metaworld import uniform_random_strategy, round_robin_strategy
 
+import utils
+
 
 def make_pad_env(
         domain_name,
@@ -215,15 +217,17 @@ def make_continual_vec_envs(env_names,
     # TODO (chongyi zheng): We fork many processes here, optimize it
     envs = []
     for env_name in env_names:
-        log_dir = os.path.join(log_dir, env_name)
+        env_log_dir = utils.make_dir(os.path.join(log_dir, env_name))
         env = make_vec_envs(env_name, seed, num_processes, discount,
-                            log_dir, allow_early_resets=allow_early_resets)
+                            env_log_dir, allow_early_resets=allow_early_resets)
+        env.reward_range = env.get_attr('reward_range')  # prevent wrapper error
         envs.append(env)
     continual_env = MultiEnvWrapper(envs,
                                     sample_strategy=round_robin_strategy,
                                     mode='vanilla',
+                                    augment_observation=True,
+                                    augment_action=True,
                                     env_names=env_names)
-    action_space = continual_env.action_space
 
     return continual_env
 

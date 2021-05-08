@@ -1,8 +1,6 @@
 import torch
-import numpy as np
 from itertools import chain
 import utils
-import torch.nn.functional as F
 
 from agent.network import PpoActorMlp, PpoCriticMlp
 
