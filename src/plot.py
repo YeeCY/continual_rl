@@ -149,6 +149,7 @@ def main(args):
 
     fig_path = osp.abspath(osp.join(save_dir, exp_name + '.png'))
     # plt.title(exp_name, fontsize=16)
+    fig.suptitle(exp_name, fontsize=20).set_y(0.9875)
     plt.tight_layout()
     plt.legend(framealpha=0.)
     plt.savefig(fname=fig_path)
