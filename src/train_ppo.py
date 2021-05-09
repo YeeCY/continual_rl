@@ -459,6 +459,7 @@ def main(args):
                     'gae_lambda': args.ppo_gae_lambda,
                     'use_proper_time_limits': args.ppo_use_proper_time_limits
                 }
+                print(f"Estimating fisher: {infos[0]['task_name']}")
                 agent.estimate_fisher(env, est_fisher_rollouts, compute_returns_kwargs=compute_returns_kwargs)
 
     # for total_step in range(args.train_steps):

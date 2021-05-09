@@ -103,7 +103,8 @@ class EwcPpoMlpAgent(PpoMlpAgent):
                                          self.actor.named_parameters()):
                     if param.requires_grad:
                         # TODO (chongyi zheng): Average this accumulated fishers over num_steps?
-                        fishers[name] += param.grad.detach().clone() ** 2
+                        fishers[name] = param.grad.detach().clone() ** 2 + \
+                                        fishers.get(name, torch.zeros_like(param.grad))
 
             rollouts.after_update()
 
@@ -132,7 +133,7 @@ class EwcPpoMlpAgent(PpoMlpAgent):
         if self.ewc_task_count >= 1:
             if self.online_ewc:
                 for name, param in chain(self.actor.named_parameters(),
-                                         self.critic.parameters()):
+                                         self.critic.named_parameters()):
                     if param.requires_grad:
                         name = name + '_prev_task'
                         mean = self.prev_task_params[name]
@@ -144,7 +145,7 @@ class EwcPpoMlpAgent(PpoMlpAgent):
                 for task in range(self.ewc_task_count):
                     # compute ewc loss for each parameter
                     for name, param in chain(self.actor.named_parameters(),
-                                             self.critic.parameters()):
+                                             self.critic.named_parameters()):
                         if param.requires_grad:
                             name = name + f'_prev_task{task}'
                             mean = self.prev_task_params[name]
