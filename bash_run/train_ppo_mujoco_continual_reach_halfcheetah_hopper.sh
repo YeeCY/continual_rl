@@ -16,6 +16,6 @@ python src/ppo.py \
   --ppo_use_clipped_critic_loss \
   --ppo_use_proper_time_limits \
   --seed 0 \
-  --work_dir vec_logs/reacher_halfcheetah_hopper/0 \
+  --work_dir $PWD/vec_logs/reacher_halfcheetah_hopper/0 \
   --save_model \
   --save_video
