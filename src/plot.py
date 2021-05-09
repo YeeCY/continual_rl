@@ -27,10 +27,26 @@ CURVE_FORMAT = {
         'style': '-',
         'label': 'SI',
     },
-    'task-3': ([0, 100, 0], '-'),
-    'task-4': ([160, 32, 240], '-'),
-    'task-5': ([216, 30, 54], '-'),
-    'task-6': ([55, 126, 184], '-'),
+    'ewc_lambda5': {
+        'color': [0, 100, 0],
+        'style': '-',
+        'label': 'EWC_lambda5',
+    },
+    'ewc_lambda50': {
+        'color': [160, 32, 240],
+        'style': '-',
+        'label': 'EWC_lambda50'
+    },
+    'ewc_lambda500': {
+        'color': [216, 30, 54],
+        'style': '-',
+        'label': 'EWC_lambda500'
+    },
+    'ewc_lambda5000': {
+        'color': [55, 126, 184],
+        'style': '-',
+        'label': 'EWC_lambda5000'
+    },
     'task-7': ([180, 180, 180], '-'),
     'task-8': ([0, 0, 0], '-'),
     'task-9': ([254, 151, 0], '-'),
