@@ -12,7 +12,7 @@ from environment import make_atari_env, make_locomotion_env, make_single_metawor
 from environment.metaworld import MultiEnvWrapper
 from agent import make_agent
 import utils
-from environment.utils import get_vec_normalize, get_render_func
+from environment.utils import get_vec_normalize
 import storages
 from logger import Logger
 from video import VideoRecorder

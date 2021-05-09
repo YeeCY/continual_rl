@@ -4,7 +4,6 @@ from PIL import Image
 import numpy as np
 
 from environment.gym_wrapper import VecNormalize
-from environment.utils import get_render_func
 
 
 class VideoRecorder(object):
@@ -43,8 +42,7 @@ class VideoRecorder(object):
                     frame = video_background.apply_to(frame, camera_id=self.camera_id)
             elif self.env_type == 'mujoco':
                 assert isinstance(env, VecNormalize)
-                render_func = get_render_func(env)
-                frame = render_func(mode='rgb_array')
+                frame = env.render(mode='rgb_array')
                 frame = Image.fromarray(frame).resize([self.width, self.height])
                 frame = np.asarray(frame)
             else:
