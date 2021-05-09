@@ -8,12 +8,25 @@ import os.path as osp
 
 WINDOW_LENGTH = 10
 SMOOTH_COEF = 0.25
+CM = 1 / 2.54  # centimeters in inches
 
 
 CURVE_FORMAT = {
-    'task-0': ([139, 101, 8], '-'),
-    'task-1': ([204, 153, 255], '-'),
-    'task-2': ([0, 178, 238], '-'),
+    'sgd': {
+        'color': [0, 178, 238],
+        'style': '-',
+        'label': 'SGD',
+    },
+    'ewc': {
+        'color': [204, 153, 255],
+        'style': '-',
+        'label': 'EWC',
+    },
+    'si': {
+        'color': [139, 101, 8],
+        'style': '-',
+        'label': 'SI',
+    },
     'task-3': ([0, 100, 0], '-'),
     'task-4': ([160, 32, 240], '-'),
     'task-5': ([216, 30, 54], '-'),
@@ -43,90 +56,100 @@ def window_smooth(y):
     return np.array(yw).flatten()
 
 
-def plot(datas, task_names, curve_format=CURVE_FORMAT):
-    for task_name in task_names:
-        data = datas[task_name]
-        if len(data) == 1:
+def plot(ax, data, algos, curve_format=CURVE_FORMAT):
+    for algo in algos:
+        algo_data = data[algo]
+        # if len(data['y']) == 1:
+        #     continue
+        if 'y' not in algo_data:
             continue
 
-        x = data[0]
-        y_len = 1E10
+        assert len(algo_data['x']) == len(algo_data['y'][0])
 
-        for y in data:
-            y_len = min(len(y), y_len)
+        x = np.array(algo_data['x'])
+        # y_len = 1E10
+        #
+        # for y in algo_data:
+        #     y_len = min(len(y), y_len)
+        #
+        # for y in range(len(data)):
+        #     data[y] = data[y][:y_len]
+        # x = x[:y_len]
 
-        for y in range(len(data)):
-            data[y] = data[y][:y_len]
-        x = x[:y_len]
-
-        y_mean = np.mean(np.array(data[1:]), axis=0)
-        y_std = np.std(np.array(data[1:]), axis=0)
+        y_mean = np.mean(np.array(algo_data['y']), axis=0)
+        y_std = np.std(np.array(algo_data['y']), axis=0)
 
         y_mean = window_smooth(y_mean)
 
-        x = np.array(x)
+        # x = np.array(x)
 
-        key = 'task-' + str(task_names.index(task_name))
-        color = np.array(curve_format[key][0]) / 255.
-        style = curve_format[key][1]
-        plt.plot(x, y_mean, color=color, label=task_name, linestyle=style)
-        plt.fill_between(x, y_mean - 0.5 * y_std, y_mean + 0.5 * y_std, facecolor=color, alpha=0.1)
+        # key = 'task-' + str(task_names.index(task_name))
+        color = np.array(curve_format[algo]['color']) / 255.
+        style = curve_format[algo]['style']
+        label = curve_format[algo]['label']
+        ax.plot(x, y_mean, color=color, label=label, linestyle=style)
+        ax.fill_between(x, y_mean - 0.5 * y_std, y_mean + 0.5 * y_std, facecolor=color, alpha=0.1)
 
 
 def main(args):
     # exp_name = args.exp_name + '-setting-' + str(args.setting)
     exp_name = args.exp_name
     task_names = args.task_names
+    algos = args.algos
     data_dir = args.data_dir
     save_dir = args.save_dir
     stats = args.statistics
     seeds = args.seeds
     max_timesteps = args.max_timesteps
-    num_fig = len(stats)
+    # num_fig = len(stats)
 
     assert osp.exists(data_dir), print("The directory to load data doesn't exit")
     os.makedirs(save_dir, exist_ok=True)
 
-    for s in range(num_fig):
-        stat = stats[s]
-        ax = plt.subplot(1, len(stats), s+1)
-        plt.xlabel('Total Timesteps', fontsize=14)
-        plt.ylabel(stat, fontsize=14)
-        data = {}
+    fig, _ = plt.subplots(len(task_names), len(stats))
+    fig.set_size_inches(15, 15)
+    for task_idx, task_name in enumerate(task_names):
+        for stat_idx, stat in enumerate(stats):
+            ax = plt.subplot(len(task_names), len(stats), task_idx * len(stats) + stat_idx + 1)
+            ax.set_title(task_name, fontsize=15)
+            ax.set_xlabel('Total Timesteps', fontsize=15)
+            ax.set_ylabel(stat, fontsize=15)
+            data = {}
 
-        for d in range(len(seeds)):
-            seed = seeds[d]
-            data_path = osp.join(data_dir, exp_name, str(seed), 'eval.csv')
-            data_path = os.path.abspath(data_path)
+            for algo in algos:
+                data[algo] = {}
 
-            try:
-                df = pd.read_csv(data_path)
-            except:
-                print(f"Data path not found: {data_path}!")
-                continue
+                for seed in seeds:
+                    data_path = osp.join(data_dir, exp_name, algo, str(seed), 'eval.csv')
+                    data_path = os.path.abspath(data_path)
 
-            # file = file[file['step'] <= args.timesteps]
-            # x = file['exploration/all num steps total'].values
+                    try:
+                        df = pd.read_csv(data_path)
+                    except:
+                        print(f"Data path not found: {data_path}!")
+                        continue
 
-            for task_name in task_names:
-                task_df = df[df['task_name'] == task_name]
-                task_df = task_df[task_df['step'] <= max_timesteps]
-                x = task_df['step'].values
+                    # file = file[file['step'] <= args.timesteps]
+                    # x = file['exploration/all num steps total'].values
 
-                if task_name not in data:
-                    data[task_name] = [x]
-                try:
-                    # st = stat[0] + '/environment-' + str(environment) + '/' + stat[1]
-                    # st = stat[0]
-                    y = task_df[stat].values
-                    data[task_name].append(y)
-                except:
-                    raise RuntimeError(f"Statistics '{stat}' doesn't exist in '{data_path}'!")
+                    task_df = df[df['task_name'] == task_name]
+                    task_df = task_df[task_df['step'] <= max_timesteps]
+                    data[algo].update(x=task_df['step'].values)
 
-        plot(data, task_names)
+                    try:
+                        y = task_df[stat].values
+                        if 'y' not in data[algo]:
+                            data[algo].update(y=[y])
+                        else:
+                            data[algo]['y'].append(y)
+                    except:
+                        raise RuntimeError(f"Statistics '{stat}' doesn't exist in '{data_path}'!")
+
+            plot(ax, data, algos)
 
     fig_path = osp.abspath(osp.join(save_dir, exp_name + '.png'))
-    plt.title(exp_name, fontsize=16)
+    # plt.title(exp_name, fontsize=16)
+    plt.tight_layout()
     plt.legend(framealpha=0.)
     plt.savefig(fname=fig_path)
     print(f"Save figure: {fig_path}")
@@ -140,12 +163,14 @@ if __name__ == '__main__':
     #     return (splited_s[0], splited_s[1])
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--exp_name', type=str, default='Skew-Fit-SawyerDoorHookEnv-setting-5-expl-3')
+    parser.add_argument('--exp_name', type=str, default='reach_window-close_button-press-topdown')
     parser.add_argument('--data_dir', type=str, default='data')
     parser.add_argument('--save_dir', type=str, default='figures')
     # parser.add_argument('--setting', type=int, default=1)
     parser.add_argument('--task_names', type=str, nargs='+',
                         default=['reach-v2', 'window-close-v2', 'button-press-topdown-v2'])
+    parser.add_argument('--algos', type=str, nargs='+',
+                        default=['sgd', 'ewc', 'si'])
     parser.add_argument('--seeds', type=int, nargs='+', default=[0, 1, 2, 3, 4, 5, 6])
     parser.add_argument('--max_timesteps', type=int, default=np.iinfo(np.int).max)
     parser.add_argument('--statistics', type=str, nargs='+',
