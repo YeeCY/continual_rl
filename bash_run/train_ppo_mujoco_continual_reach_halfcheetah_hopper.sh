@@ -2,7 +2,7 @@ export PYTHONPATH=$HOME/policy-adaptation-during-deployment/
 export PWD=$HOME/policy-adaptation-during-deployment
 export CUDA_VISIBLE_DEVICES=0
 
-python $PWD/src/ppo.py \
+xvfb-run -a -s "-screen 0 1400x900x24" python $PWD/src/train_ppo.py \
   --env_names Reacher-v2 HalfCheetah-v3 Hopper-v3 \
   --env_type mujoco \
   --algo ppo_mlp \
