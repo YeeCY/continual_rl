@@ -437,14 +437,14 @@ def main(args):
                 agent.update(rollouts, logger, total_steps)
                 rollouts.after_update()
 
-                if task_epoch % args.save_freq == 0 and task_epoch > 0:
+                if task_epoch % args.save_freq == 0:
                     if args.save_model:
                         agent.save(model_dir, total_steps)
 
                 end_time = time.time()
                 print("FPS: ", int(task_steps / (end_time - start_time)))
 
-                if task_epoch % args.eval_freq == 0 and task_epoch > 0:
+                if task_epoch % args.eval_freq == 0:
                     print('Evaluating:', args.work_dir)
                     logger.log('eval/episode', episode, total_steps)
                     evaluate(env, eval_env, agent, video, args.num_eval_episodes, logger, total_steps)
