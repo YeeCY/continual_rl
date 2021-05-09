@@ -2,7 +2,7 @@ export PYTHONPATH=$HOME/policy-adaptation-during-deployment/
 export PWD=$HOME/policy-adaptation-during-deployment
 export CUDA_VISIBLE_DEVICES=0
 
-python src/ppo.py \
+python $PWD/src/ppo.py \
   --env_names Reacher-v2 HalfCheetah-v3 Hopper-v3 \
   --env_type mujoco \
   --algo ppo_mlp \
