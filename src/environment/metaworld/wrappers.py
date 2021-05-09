@@ -470,28 +470,27 @@ class MultiEnvWrapper(gym.Wrapper):
             return Box(env_lb[:-num_tasks], env_ub[:-num_tasks])
 
     def _augment_observation(self, obs):
+        if obs.shape == self.observation_space.shape:
+            obs = np.expand_dims(obs, axis=0)
+
         # optionally zero-pad observation
-        if isinstance(obs, list):
-            for obs_ in obs:
-                if np.prod(obs.shape) < self._max_observation_dim:
-                    zeros = np.zeros(
-                        shape=(self._max_observation_dim - np.prod(obs.shape),)
-                    )
-                    obs = np.concatenate([obs, zeros])
-        else:
-            if np.prod(obs.shape) < self._max_observation_dim:
-                zeros = np.zeros(
-                    shape=(self._max_observation_dim - np.prod(obs.shape),)
-                )
-                obs = np.concatenate([obs, zeros])
+        if np.prod(obs.shape[1:]) < self._max_observation_dim:
+            zeros = np.zeros([
+                obs.shape[0],
+                self._max_observation_dim - np.prod(obs.shape[1:])
+            ])
+            obs = np.concatenate([obs, zeros], axis=-1)
 
         return obs
 
     def _curtail_action(self, action):
+        if action.shape == self.action_space.shape:
+            action = np.expand_dims(action, axis=0)
+
         # optionally curtail action
         env_action_dim = np.prod(self.env.action_space.shape)
-        if np.prod(action.shape) > env_action_dim:
-            action = action[..., :env_action_dim]
+        if np.prod(action.shape[1:]) > env_action_dim:
+            action = action[:, :env_action_dim]
 
         return action
 

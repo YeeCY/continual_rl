@@ -45,6 +45,8 @@ class EwcPpoMlpAgent(PpoMlpAgent):
         assert 'compute_returns_kwargs' in kwargs
 
         fishers = {}
+        obs = env.reset()
+        rollouts.obs[0].copy_(torch.Tensor(obs).to(self.device))
         for epoch in range(self.ewc_estimate_fisher_epochs):
             for step in range(rollouts.num_steps):
                 with utils.eval_mode(self):
@@ -62,7 +64,7 @@ class EwcPpoMlpAgent(PpoMlpAgent):
                 rollouts.insert(obs, action, log_pi, value, reward, masks, bad_masks)
 
             next_value = self.predict_value(rollouts.obs[-1])
-            rollouts.compute_returns(next_value, **kwargs['compute_return_kwargs'])
+            rollouts.compute_returns(next_value, **kwargs['compute_returns_kwargs'])
 
             # critic_loss = self.compute_critic_loss(obs, action, reward, next_obs, not_done)
             # self.critic_optimizer.zero_grad()
@@ -127,33 +129,31 @@ class EwcPpoMlpAgent(PpoMlpAgent):
 
     def compute_ewc_loss(self):
         ewc_losses = []
-        # if self.ewc_task_count >= 1:
-        if self.online_ewc:
-            for name, param in chain(self.actor.named_parameters(),
-                                     self.critic.parameters()):
-                if param.requires_grad:
-                    name = name + '_prev_task'
-                    mean = self.prev_task_params.get(name, torch.zeros_like(param))
-                    # apply decay-term to the running sum of the Fisher Information matrices
-                    fisher = self.online_ewc_gamma * \
-                             self.prev_task_fishers.get(name, torch.zeros_like(param))
-                    ewc_loss = torch.sum(fisher * (param - mean) ** 2)
-                    ewc_losses.append(ewc_loss)
-        else:
-            for task in range(self.ewc_task_count):
-                # compute ewc loss for each parameter
+        if self.ewc_task_count >= 1:
+            if self.online_ewc:
                 for name, param in chain(self.actor.named_parameters(),
                                          self.critic.parameters()):
                     if param.requires_grad:
-                        name = name + f'_prev_task{task}'
-                        mean = self.prev_task_params.get(name, torch.zeros_like(param))
-                        fisher = self.prev_task_fishers.get(name, torch.zeros_like(param))
+                        name = name + '_prev_task'
+                        mean = self.prev_task_params[name]
+                        # apply decay-term to the running sum of the Fisher Information matrices
+                        fisher = self.online_ewc_gamma * self.prev_task_fishers[name]
                         ewc_loss = torch.sum(fisher * (param - mean) ** 2)
                         ewc_losses.append(ewc_loss)
-        return torch.sum(torch.stack(ewc_losses)) / 2.0
-        # else:
-        #     _, param = next(named_parameters)
-        #     return torch.tensor(0.0, device=param.device)
+            else:
+                for task in range(self.ewc_task_count):
+                    # compute ewc loss for each parameter
+                    for name, param in chain(self.actor.named_parameters(),
+                                             self.critic.parameters()):
+                        if param.requires_grad:
+                            name = name + f'_prev_task{task}'
+                            mean = self.prev_task_params[name]
+                            fisher = self.prev_task_fishers[name]
+                            ewc_loss = torch.sum(fisher * (param - mean) ** 2)
+                            ewc_losses.append(ewc_loss)
+            return torch.sum(torch.stack(ewc_losses)) / 2.0
+        else:
+            return torch.tensor(0.0, device=self.device)
 
     # def compute_critic_loss(self, obs, value_pred, ret):
     #     critic_loss = super().compute_critic_loss(obs, action, reward, next_obs, not_done)

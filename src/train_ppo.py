@@ -18,29 +18,32 @@ from logger import Logger
 from video import VideoRecorder
 
 
-def evaluate(env, agent, video, obs_rms, num_episodes, logger, step):
+def evaluate(train_env, eval_env, agent, video, num_episodes, logger, step):
     """Evaluate agent"""
-    if isinstance(env, MultiEnvWrapper):
-        assert env.env_names is not None, "Environment name must exist!"
+    if isinstance(train_env, MultiEnvWrapper) and isinstance(eval_env, MultiEnvWrapper):
+        assert (train_env.env_names is not None) and (eval_env.env_names is not None), \
+            "Environment name must exist!"
 
-        for task_name in env.env_names:
-            vec_norm = get_vec_normalize(env.env)  # use actually vector env
-            if vec_norm is not None:
-                vec_norm.eval()
-                vec_norm.obs_rms = obs_rms
+        train_vec_norms = get_vec_normalize(train_env)
+        eval_vec_norms = get_vec_normalize(eval_env)
+        for train_vec_norm, eval_vec_norm in zip(train_vec_norms, eval_vec_norms):
+            if eval_vec_norm is not None:
+                eval_vec_norm.eval()
+                eval_vec_norm.obs_rms = train_vec_norm.obs_rms
 
+        for task_name in eval_env.env_names:
             episode_rewards = []
             episode_successes = []
             video.init(enabled=True)
-            obs = env.reset()
-            video.record(env.env)  # use actually vector env
+            obs = eval_env.reset(sample_task=True)
+            video.record(eval_env.env)  # use actually vector env
 
             while len(episode_rewards) < num_episodes:
                 with utils.eval_mode(agent):
                     action, _ = agent.act(obs, sample=False, compute_log_pi=False)
 
-                obs, _, done, infos = env.step(action)
-                video.record(env)
+                obs, _, done, infos = eval_env.step(action)
+                video.record(eval_env.env)  # use actually vector env
 
                 for done_ in done:
                     if done_ and len(episode_rewards) == 0:
@@ -55,7 +58,7 @@ def evaluate(env, agent, video, obs_rms, num_episodes, logger, step):
                 logger.log('eval/success_rate', np.mean(episode_successes), step)
             logger.log('eval/episode_reward', np.mean(episode_rewards), step, sw_prefix=task_name + '_')
             log_info = {
-                'train/task_name': task_name
+                'eval/task_name': task_name
             }
             logger.dump(step, ty='eval', info=log_info)
 
@@ -131,7 +134,7 @@ def main(args):
         eval_env_log_dir = utils.make_dir(os.path.join(args.work_dir, 'eval_env'))
         env = make_continual_vec_envs(
             args.env_names, args.seed, args.ppo_num_processes,
-            args.discount, train_env_log_dir
+            args.discount, train_env_log_dir, True
         )
         eval_env = make_continual_vec_envs(
             args.env_names, args.seed + args.ppo_num_processes,
@@ -442,26 +445,21 @@ def main(args):
                 print("FPS: ", int(task_steps / (end_time - start_time)))
 
                 if task_epoch % args.eval_freq == 0:
-                    # obs_rms = utils.get_vec_normalize(envs).obs_rms
-                    # evaluate(actor_critic, obs_rms, args.env_name, args.seed,
-                    #          args.num_processes, eval_log_dir, device)
-
                     print('Evaluating:', args.work_dir)
                     logger.log('eval/episode', episode, total_steps)
-                    obs_rms = get_vec_normalize(env).obs_rms
-                    evaluate(eval_env, agent, video, obs_rms, args.num_eval_episodes, logger, total_steps)
+                    evaluate(env, eval_env, agent, video, args.num_eval_episodes, logger, total_steps)
 
                 logger.log('train/recent_episode_reward', np.mean(recent_episode_reward), total_steps)
                 log_info = {'train/task_name': infos[0]['task_name']}
                 logger.dump(total_steps, ty='train', save=True, info=log_info)
 
             if 'ewc' in args.algo:
-                compute_rewards_kwargs = {
+                compute_returns_kwargs = {
                     'gamma': args.discount,
                     'gae_lambda': args.ppo_gae_lambda,
                     'use_proper_time_limits': args.ppo_use_proper_time_limits
                 }
-                agent.estimate_fisher(env, est_fisher_rollouts, compute_rewards_kwargs=compute_rewards_kwargs)
+                agent.estimate_fisher(env, est_fisher_rollouts, compute_returns_kwargs=compute_returns_kwargs)
 
     # for total_step in range(args.train_steps):
     #     # (chongyi zheng): we can also evaluate and save model when current episode is not finished
@@ -558,8 +556,7 @@ def main(args):
     #     task_step += 1
 
     print('Final evaluating:', args.work_dir)
-    obs_rms = get_vec_normalize(env).obs_rms
-    evaluate(eval_env, agent, video, obs_rms, args.num_eval_episodes, logger, total_steps)
+    evaluate(env, eval_env, agent, video, args.num_eval_episodes, logger, total_steps)
 
 
 if __name__ == '__main__':

@@ -103,6 +103,9 @@ def get_render_func(venv):
 
 
 def get_vec_normalize(venv):
+    if isinstance(venv, MultiEnvWrapper):
+        return [get_vec_normalize(task_venv) for task_venv in venv._task_envs]
+
     if isinstance(venv, VecNormalize):
         return venv
     elif hasattr(venv, 'venv'):
