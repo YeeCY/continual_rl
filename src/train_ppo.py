@@ -404,6 +404,15 @@ def main(args):
             for task_epoch in range(total_epochs_per_task):
                 agent.update_learning_rate(task_epoch, total_epochs_per_task)
 
+                if task_epoch % args.save_freq == 0:
+                    if args.save_model:
+                        agent.save(model_dir, total_steps)
+
+                if task_epoch % args.eval_freq == 0:
+                    print('Evaluating:', args.work_dir)
+                    logger.log('eval/episode', episode, total_steps)
+                    evaluate(env, eval_env, agent, video, args.num_eval_episodes, logger, total_steps)
+
                 for step in range(args.ppo_num_rollout_steps_per_process):
                     with utils.eval_mode(agent):
                         action, log_pi = agent.act(obs, sample=True, compute_log_pi=True)
@@ -437,17 +446,8 @@ def main(args):
                 agent.update(rollouts, logger, total_steps)
                 rollouts.after_update()
 
-                if task_epoch % args.save_freq == 0:
-                    if args.save_model:
-                        agent.save(model_dir, total_steps)
-
                 end_time = time.time()
                 print("FPS: ", int(task_steps / (end_time - start_time)))
-
-                if task_epoch % args.eval_freq == 0:
-                    print('Evaluating:', args.work_dir)
-                    logger.log('eval/episode', episode, total_steps)
-                    evaluate(env, eval_env, agent, video, args.num_eval_episodes, logger, total_steps)
 
                 logger.log('train/recent_episode_reward', np.mean(recent_episode_reward), total_steps)
                 log_info = {'train/task_name': infos[0]['task_name']}
