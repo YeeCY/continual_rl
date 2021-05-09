@@ -16,6 +16,6 @@ xvfb-run -a -s "-screen 0 1400x900x24" python $PWD/src/train_ppo.py \
   --ppo_use_clipped_critic_loss \
   --ppo_use_proper_time_limits \
   --ppo_ewc_lambda 50 \
-  --seed 0 \
-  --work_dir $PWD/vec_logs/walker2d_halfcheetah_hopper_ewc/0 \
+  --seed $1 \
+  --work_dir $PWD/vec_logs/walker2d_halfcheetah_hopper_ewc/$1 \
   --save_model
