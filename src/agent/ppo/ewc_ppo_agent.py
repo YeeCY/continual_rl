@@ -99,30 +99,32 @@ class EwcPpoMlpAgent(PpoMlpAgent):
 
                 for name, param in chain(self.critic.named_parameters(),
                                          self.actor.named_parameters()):
-                    if param.requires_grad:
+                    if param.requires_grad and param.grad is not None:
                         # TODO (chongyi zheng): Average this accumulated fishers over num_steps?
                         fishers[name] = param.grad.detach().clone() ** 2 + \
                                         fishers.get(name, torch.zeros_like(param.grad))
 
             rollouts.after_update()
 
-        for ori_name, param in chain(self.critic.named_parameters(),
-                                     self.actor.named_parameters()):
+        for name, param in chain(self.critic.named_parameters(),
+                                 self.actor.named_parameters()):
             if param.requires_grad:
+                fisher = fishers.get(name, torch.zeros_like(param.grad))
+
                 if self.online_ewc:
-                    name = ori_name + '_prev_task'
+                    name = name + '_prev_task'
                     self.prev_task_params[name] = param.detach().clone()
                     # (chongyi zheng): Only average over epochs now
                     self.prev_task_fishers[name] = \
-                        fishers[ori_name] / self.ewc_estimate_fisher_epochs + \
+                        fisher / self.ewc_estimate_fisher_epochs + \
                         self.online_ewc_gamma * self.prev_task_fishers.get(
                             name, torch.zeros_like(param.grad))
                 else:
-                    name = ori_name + f'_prev_task{self.ewc_task_count}'
+                    name = name + f'_prev_task{self.ewc_task_count}'
                     self.prev_task_params[name] = param.detach().clone()
                     # (chongyi zheng): Only average over epochs now
                     self.prev_task_fishers[name] = \
-                        fishers[ori_name] / self.ewc_estimate_fisher_epochs
+                        fisher / self.ewc_estimate_fisher_epochs
 
         self.ewc_task_count += 1
 
