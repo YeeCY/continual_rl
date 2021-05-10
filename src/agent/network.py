@@ -325,7 +325,68 @@ class PpoActorMlp(nn.Module):
         return log_pi, entropy
 
 
+class MultiHeadPpoActorMlp(nn.Module):
+    """torch.distributions implementation of an diagonal Gaussian policy with MLP"""
+    def __init__(self, obs_shape, action_shapes, hidden_dim):
+        super().__init__()
+
+        self.trunk = nn.Sequential(
+            nn.Linear(obs_shape[0], hidden_dim),
+            nn.Tanh(),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.Tanh(),
+        )
+
+        self.dist = DiagGaussian(hidden_dim, action_shape[0])
+
+        self.apply(weight_init)
+
+    def forward(self, obs, compute_pi=True, compute_log_pi=True):
+        hidden = self.trunk(obs)
+        dist = self.dist(hidden)
+
+        mu = dist.mode()
+        if compute_pi:
+            pi = dist.sample()
+        else:
+            pi = None
+
+        if compute_log_pi:
+            log_pi = dist.log_probs(pi)
+        else:
+            log_pi = None
+
+        return mu, pi, log_pi
+
+    def compute_log_probs(self, obs, action):
+        hidden = self.trunk(obs)
+        dist = self.dist(hidden)
+
+        log_pi = dist.log_probs(action)
+        entropy = dist.entropy().mean()
+
+        return log_pi, entropy
+
+
 class PpoCriticMlp(nn.Module):
+    """PPO critic network with MLP"""
+    def __init__(self, obs_shape, hidden_dim):
+        super().__init__()
+
+        self.trunk = nn.Sequential(
+            nn.Linear(obs_shape[0], hidden_dim),
+            nn.Tanh(),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.Tanh(),
+            nn.Linear(hidden_dim, 1)
+        )
+        self.apply(weight_init)
+
+    def forward(self, obs):
+        return self.trunk(obs)
+
+
+class MultiHeadPpoCriticMlp(nn.Module):
     """PPO critic network with MLP"""
     def __init__(self, obs_shape, hidden_dim):
         super().__init__()

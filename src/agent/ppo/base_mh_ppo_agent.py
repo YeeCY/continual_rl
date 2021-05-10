@@ -5,7 +5,7 @@ import utils
 from agent.network import PpoActorMlp, PpoCriticMlp
 
 
-class PpoMlpAgent:
+class MultiHeadPpoMlpAgent:
     """Adapt from https://github.com/ikostrikov/pytorch-a2c-ppo-acktr-gail"""
     def __init__(
             self,
