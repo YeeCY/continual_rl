@@ -18,8 +18,8 @@ for seed in "${seeds[@]}"; do
     --ppo_num_processes 1 \
     --ppo_use_clipped_critic_loss \
     --ppo_use_proper_time_limits \
-    --ppo_ewc_lambda 50 \
+    --ppo_ewc_lambda 500 \
     --seed $seed \
-    --work_dir $PWD/vec_logs/walker2d_halfcheetah_hopper/ewc_lambda50/$seed \
+    --work_dir $PWD/vec_logs/walker2d_halfcheetah_hopper/ewc_lambda500/$seed \
     --save_model
 done

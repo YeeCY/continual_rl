@@ -1,6 +1,6 @@
 export PYTHONPATH=$HOME/policy-adaptation-during-deployment/
 export PWD=$HOME/policy-adaptation-during-deployment
-export CUDA_VISIBLE_DEVICES=3
+export CUDA_VISIBLE_DEVICES=0
 
 declare -a seeds=(0 1 2)
 
