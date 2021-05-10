@@ -80,7 +80,14 @@ def plot(ax, data, algos, curve_format=CURVE_FORMAT):
         if 'y' not in algo_data:
             continue
 
-        assert len(algo_data['x']) == len(algo_data['y'][0])
+        if len(algo_data['x']) != len(algo_data['y'][0]):
+            min_len = len(algo_data['x'])
+            for y in algo_data['y']:
+                min_len = min(min_len, len(y))
+
+            algo_data['x'] = algo_data['x'][:min_len]
+            for idx, y in enumerate(algo_data['y']):
+                algo_data['y'][idx] = y[:min_len]
 
         x = np.array(algo_data['x'])
         # y_len = 1E10
