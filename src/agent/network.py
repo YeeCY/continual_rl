@@ -341,7 +341,7 @@ class MultiHeadPpoActorMlp(nn.Module):
         self.dist_heads = torch.nn.ModuleList()
         for action_shape in action_shapes:
             self.dist_heads.append(
-                DiagGaussian(hidden_dim, action_shape)
+                DiagGaussian(hidden_dim, action_shape[0])
             )
 
         self.apply(weight_init)

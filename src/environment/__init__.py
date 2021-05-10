@@ -213,7 +213,8 @@ def make_continual_vec_envs(env_names,
                             num_processes,
                             discount,
                             log_dir,
-                            allow_early_resets=False):
+                            allow_early_resets=False,
+                            multi_head=False):
     # TODO (chongyi zheng): We fork many processes here, optimize it
     envs = []
     for env_name in env_names:
@@ -226,7 +227,7 @@ def make_continual_vec_envs(env_names,
                                     sample_strategy=round_robin_strategy,
                                     mode='vanilla',
                                     augment_observation=True,
-                                    augment_action=True,
+                                    augment_action=not multi_head,
                                     env_names=env_names)
 
     return continual_env

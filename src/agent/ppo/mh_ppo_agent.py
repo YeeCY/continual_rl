@@ -29,6 +29,10 @@ class MultiHeadPpoMlpAgent(PpoMlpAgent):
             entropy_coef, lr, eps, grad_clip_norm, use_clipped_critic_loss, batch_size)
 
     def _setup_agent(self):
+        if hasattr(self, 'actor') and hasattr(self, 'critic') \
+                and hasattr(self, 'optimizer'):
+            return
+
         self.actor = MultiHeadPpoActorMlp(
             self.obs_shape, self.action_shape, self.hidden_dim
         ).to(self.device)

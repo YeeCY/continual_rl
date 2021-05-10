@@ -439,9 +439,10 @@ class MultiEnvWrapper(gym.Wrapper):
                 if np.prod(env.action_space.shape) > max_action_dim:
                     self._action_space_index = i
                     max_action_dim = np.prod(env.action_space.shape)
-            else:
-                if env.action_space.shape != self.env.action_space.shape:
-                    raise ValueError('Action space of all envs should be same.')
+            # TODO (chongyi zheng): to be compatible with multi-head agent
+            # else:
+            #     if env.action_space.shape != self.env.action_space.shape:
+            #         raise ValueError('Action space of all envs should be same.')
             self._task_envs.append(env)
         self._max_observation_dim = max_observation_dim
         self._max_action_dim = max_action_dim
@@ -544,6 +545,14 @@ class MultiEnvWrapper(gym.Wrapper):
             return self.env.active_task_index
         else:
             return self._active_task_index
+
+    @property
+    def all_observation_spaces(self):
+        return [self._task_envs[id].observation_space for id in range(self.num_tasks)]
+
+    @property
+    def all_action_spaces(self):
+        return [self._task_envs[id].action_space for id in range(self.num_tasks)]
 
     def reset(self, sample_task=False):
         """Sample new task and call reset on new task environment.

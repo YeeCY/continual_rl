@@ -46,6 +46,10 @@ class PpoMlpAgent:
         self.train()
 
     def _setup_agent(self):
+        if hasattr(self, 'actor') and hasattr(self, 'critic') \
+                and hasattr(self, 'optimizer'):
+            return
+
         self.actor = PpoActorMlp(
             self.obs_shape, self.action_shape, self.hidden_dim
         ).to(self.device)

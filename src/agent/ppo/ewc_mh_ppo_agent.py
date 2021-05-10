@@ -35,8 +35,8 @@ class EwcMultiHeadPpoMlpAgent(MultiHeadPpoMlpAgent, EwcPpoMlpAgent):
     def update(self, rollouts, logger, step, **kwargs):
         EwcPpoMlpAgent.update(self, rollouts, logger, step, **kwargs)
 
-    def save(self, model_dir, step):
-        EwcPpoMlpAgent.save(self, model_dir, step)
-
-    def load(self, model_dir, step):
-        EwcPpoMlpAgent.load(self, model_dir, step)
+    # def save(self, model_dir, step):
+    #     EwcPpoMlpAgent.save(self, model_dir, step)
+    #
+    # def load(self, model_dir, step):
+    #     EwcPpoMlpAgent.load(self, model_dir, step)
