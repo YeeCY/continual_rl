@@ -19,6 +19,6 @@ for seed in "${seeds[@]}"; do
     --ppo_use_clipped_critic_loss \
     --ppo_use_proper_time_limits \
     --seed $seed \
-    --work_dir $PWD/vec_logs/walker2d_halfcheetah_hopper/sgd/$seed \
+    --work_dir $PWD/vec_logs/mh_walker2d_halfcheetah_hopper/sgd/$seed \
     --save_model
 done

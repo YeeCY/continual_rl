@@ -20,6 +20,6 @@ for seed in "${seeds[@]}"; do
     --ppo_use_proper_time_limits \
     --ppo_ewc_lambda 5000 \
     --seed $seed \
-    --work_dir $PWD/vec_logs/walker2d_halfcheetah_hopper/ewc_lambda5000/$seed \
+    --work_dir $PWD/vec_logs/mh_walker2d_halfcheetah_hopper/ewc_lambda5000/$seed \
     --save_model
 done
