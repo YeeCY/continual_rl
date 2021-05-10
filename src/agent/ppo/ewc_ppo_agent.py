@@ -41,17 +41,15 @@ class EwcPpoMlpAgent(PpoMlpAgent):
         self.prev_task_params = {}
         self.prev_task_fishers = {}
 
-    def estimate_fisher(self, env, rollouts, **kwargs):
-        assert 'compute_returns_kwargs' in kwargs
-
+    def estimate_fisher(self, env, rollouts, compute_returns_kwargs, **kwargs):
         fishers = {}
         obs = env.reset()
         rollouts.obs[0].copy_(torch.Tensor(obs).to(self.device))
         for epoch in range(self.ewc_estimate_fisher_epochs):
             for step in range(rollouts.num_steps):
                 with utils.eval_mode(self):
-                    action, log_pi = self.act(obs, sample=True, compute_log_pi=True)
-                    value = self.predict_value(obs)
+                    action, log_pi = self.act(obs, sample=True, compute_log_pi=True, **kwargs)
+                    value = self.predict_value(obs, **kwargs)
 
                 obs, reward, done, infos = env.step(action)
 
@@ -63,8 +61,8 @@ class EwcPpoMlpAgent(PpoMlpAgent):
                      for info in infos])
                 rollouts.insert(obs, action, log_pi, value, reward, masks, bad_masks)
 
-            next_value = self.predict_value(rollouts.obs[-1])
-            rollouts.compute_returns(next_value, **kwargs['compute_returns_kwargs'])
+            next_value = self.predict_value(rollouts.obs[-1], **kwargs)
+            rollouts.compute_returns(next_value, **compute_returns_kwargs)
 
             # critic_loss = self.compute_critic_loss(obs, action, reward, next_obs, not_done)
             # self.critic_optimizer.zero_grad()
@@ -87,9 +85,9 @@ class EwcPpoMlpAgent(PpoMlpAgent):
 
                 # Reshape to do in a single forward pass for all steps
                 actor_loss, entropy = self.compute_actor_loss(
-                    obs_batch, actions_batch, old_log_pis, adv_targets)
+                    obs_batch, actions_batch, old_log_pis, adv_targets, **kwargs)
                 critic_loss = self.compute_critic_loss(
-                    obs_batch, value_preds_batch, return_batch)
+                    obs_batch, value_preds_batch, return_batch, **kwargs)
                 loss = actor_loss + self.critic_loss_coef * critic_loss - \
                        self.entropy_coef * entropy
 
@@ -173,7 +171,7 @@ class EwcPpoMlpAgent(PpoMlpAgent):
     #
     #     return log_pi, actor_loss + self.ewc_lambda * actor_ewc_loss, alpha_loss + self.ewc_lambda * alpha_ewc_loss
 
-    def update(self, rollouts, logger, step):
+    def update(self, rollouts, logger, step, **kwargs):
         advantages = rollouts.returns[:-1] - rollouts.value_preds[:-1]
         advantages = (advantages - advantages.mean()) / (
                 advantages.std() + 1e-5)
@@ -190,9 +188,9 @@ class EwcPpoMlpAgent(PpoMlpAgent):
 
                 # Reshape to do in a single forward pass for all steps
                 actor_loss, entropy = self.compute_actor_loss(
-                    obs_batch, actions_batch, old_log_pis, adv_targets)
+                    obs_batch, actions_batch, old_log_pis, adv_targets, **kwargs)
                 critic_loss = self.compute_critic_loss(
-                    obs_batch, value_preds_batch, return_batch)
+                    obs_batch, value_preds_batch, return_batch, **kwargs)
                 ewc_loss = self.compute_ewc_loss()
                 loss = actor_loss + self.critic_loss_coef * critic_loss - \
                        self.entropy_coef * entropy + self.ewc_lambda * ewc_loss

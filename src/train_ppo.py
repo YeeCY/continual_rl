@@ -17,6 +17,8 @@ import storages
 from logger import Logger
 from video import VideoRecorder
 
+from agent import PpoMlpAgent, MultiHeadPpoMlpAgent
+
 
 def evaluate(train_env, eval_env, agent, video, num_episodes, logger, step):
     """Evaluate agent"""
@@ -396,7 +398,7 @@ def main(args):
         total_epochs_per_task = int(args.train_steps_per_task) // args.ppo_num_rollout_steps_per_process \
                                 // args.ppo_num_processes
 
-        for _ in range(env.num_tasks):
+        for task_id in range(env.num_tasks):
             task_steps = 0
             start_time = time.time()
             obs = env.reset(sample_task=True)
@@ -415,8 +417,12 @@ def main(args):
 
                 for step in range(args.ppo_num_rollout_steps_per_process):
                     with utils.eval_mode(agent):
-                        action, log_pi = agent.act(obs, sample=True, compute_log_pi=True)
-                        value = agent.predict_value(obs)
+                        if isinstance(agent, PpoMlpAgent):
+                            action, log_pi = agent.act(obs, sample=True, compute_log_pi=True)
+                            value = agent.predict_value(obs)
+                        elif isinstance(agent, MultiHeadPpoMlpAgent):
+                            action, log_pi = agent.act(obs, sample=True, compute_log_pi=True, head_idx=task_id)
+                            value = agent.predict_value(obs, head_idx=task_id)
 
                     obs, reward, done, infos = env.step(action)
 
@@ -439,11 +445,17 @@ def main(args):
 
                 task_steps += args.ppo_num_rollout_steps_per_process * args.ppo_num_processes
                 total_steps += args.ppo_num_rollout_steps_per_process * args.ppo_num_processes
-                next_value = agent.predict_value(rollouts.obs[-1])
+                if isinstance(agent, PpoMlpAgent):
+                    next_value = agent.predict_value(rollouts.obs[-1])
+                elif isinstance(agent, MultiHeadPpoMlpAgent):
+                    next_value = agent.predict_value(rollouts.obs[-1], head_idx=task_id)
                 rollouts.compute_returns(next_value, args.discount,
                                          args.ppo_gae_lambda,
                                          args.ppo_use_proper_time_limits)
-                agent.update(rollouts, logger, total_steps)
+                if isinstance(agent, PpoMlpAgent):
+                    agent.update(rollouts, logger, total_steps)
+                elif isinstance(agent, MultiHeadPpoMlpAgent):
+                    agent.update(rollouts, logger, total_steps, head_idx=task_id)
                 rollouts.after_update()
 
                 end_time = time.time()
@@ -460,7 +472,10 @@ def main(args):
                     'use_proper_time_limits': args.ppo_use_proper_time_limits
                 }
                 print(f"Estimating fisher: {infos[0]['task_name']}")
-                agent.estimate_fisher(env, est_fisher_rollouts, compute_returns_kwargs=compute_returns_kwargs)
+                if isinstance(agent, PpoMlpAgent):
+                    agent.estimate_fisher(env, est_fisher_rollouts, compute_returns_kwargs)
+                elif isinstance(agent, MultiHeadPpoMlpAgent):
+                    agent.estimate_fisher(env, est_fisher_rollouts, compute_returns_kwargs, head_idx=task_id)
 
     # for total_step in range(args.train_steps):
     #     # (chongyi zheng): we can also evaluate and save model when current episode is not finished

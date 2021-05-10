@@ -76,26 +76,26 @@ class PpoMlpAgent:
         self.actor.train(training)
         self.critic.train(training)
 
-    def predict_value(self, obs):
+    def predict_value(self, obs, **kwargs):
         if not isinstance(obs, torch.Tensor):
             obs = torch.Tensor(obs).to(self.device)
 
         with torch.no_grad():
-            value = self.critic(obs)
+            value = self.critic(obs, **kwargs)
 
         return utils.to_np(value)
 
-    def act(self, obs, sample=False, compute_log_pi=True):
+    def act(self, obs, sample=False, compute_log_pi=True, **kwargs):
         if not isinstance(obs, torch.Tensor):
             obs = torch.Tensor(obs).to(self.device)
 
         with torch.no_grad():
-            mu, pi, log_pi = self.actor(obs, compute_log_pi=compute_log_pi)
+            mu, pi, log_pi = self.actor(obs, compute_log_pi=compute_log_pi, **kwargs)
             action = pi if sample else mu
 
         return utils.to_np(action), utils.to_np(log_pi)
 
-    def compute_critic_loss(self, obs, value_pred, ret):
+    def compute_critic_loss(self, obs, value_pred, ret, **kwargs):
         # with torch.no_grad():
         #     _, policy_action, log_pi, _ = self.actor(next_obs)
         #     target_Q1, target_Q2 = self.critic_target(next_obs, policy_action)
@@ -108,7 +108,7 @@ class PpoMlpAgent:
         # critic_loss = F.mse_loss(current_Q1, target_Q) + F.mse_loss(current_Q2, target_Q)
         #
         # return critic_loss
-        value = self.critic(obs)
+        value = self.critic(obs, **kwargs)
 
         if self.use_clipped_critic_loss:
             value_pred_clipped = value_pred + (value - value_pred).clamp(-self.clip_param, self.clip_param)
@@ -120,8 +120,8 @@ class PpoMlpAgent:
 
         return critic_loss
 
-    def compute_actor_loss(self, obs, action, old_log_pi, adv_target):
-        log_pi, entropy = self.actor.compute_log_probs(obs, action)
+    def compute_actor_loss(self, obs, action, old_log_pi, adv_target, **kwargs):
+        log_pi, entropy = self.actor.compute_log_probs(obs, action, **kwargs)
 
         ratio = torch.exp(log_pi - old_log_pi)
         surr1 = ratio * adv_target
@@ -164,7 +164,7 @@ class PpoMlpAgent:
         for param_group in self.optimizer.param_groups:
             param_group['lr'] = lr
 
-    def update(self, rollouts, logger, step):
+    def update(self, rollouts, logger, step, **kwargs):
         # obs, action, reward, next_obs, not_done, ensem_kwargs = replay_buffer.sample_ensembles(
         #     self.batch_size, num_ensembles=self.num_ensem_comps)
         # obs, action, reward, next_obs, not_done = replay_buffer.sample(self.batch_size)
@@ -205,9 +205,9 @@ class PpoMlpAgent:
                 #     obs_batch, recurrent_hidden_states_batch, masks_batch,
                 #     actions_batch)
                 actor_loss, entropy = self.compute_actor_loss(
-                    obs_batch, actions_batch, old_log_pis, adv_targets)
+                    obs_batch, actions_batch, old_log_pis, adv_targets, **kwargs)
                 critic_loss = self.compute_critic_loss(
-                    obs_batch, value_preds_batch, return_batch)
+                    obs_batch, value_preds_batch, return_batch, **kwargs)
                 loss = actor_loss + self.critic_loss_coef * critic_loss - \
                        self.entropy_coef * entropy
 

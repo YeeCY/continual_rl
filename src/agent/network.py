@@ -329,6 +329,7 @@ class MultiHeadPpoActorMlp(nn.Module):
     """torch.distributions implementation of an diagonal Gaussian policy with MLP"""
     def __init__(self, obs_shape, action_shapes, hidden_dim):
         super().__init__()
+        assert isinstance(action_shapes, list)
 
         self.trunk = nn.Sequential(
             nn.Linear(obs_shape[0], hidden_dim),
@@ -337,13 +338,17 @@ class MultiHeadPpoActorMlp(nn.Module):
             nn.Tanh(),
         )
 
-        self.dist = DiagGaussian(hidden_dim, action_shape[0])
+        self.dist_heads = torch.nn.ModuleList()
+        for action_shape in action_shapes:
+            self.dist_heads.append(
+                DiagGaussian(hidden_dim, action_shape)
+            )
 
         self.apply(weight_init)
 
-    def forward(self, obs, compute_pi=True, compute_log_pi=True):
+    def forward(self, obs, head_idx, compute_pi=True, compute_log_pi=True):
         hidden = self.trunk(obs)
-        dist = self.dist(hidden)
+        dist = self.dist_heads[head_idx](hidden)
 
         mu = dist.mode()
         if compute_pi:
@@ -358,9 +363,9 @@ class MultiHeadPpoActorMlp(nn.Module):
 
         return mu, pi, log_pi
 
-    def compute_log_probs(self, obs, action):
+    def compute_log_probs(self, obs, action, head_idx):
         hidden = self.trunk(obs)
-        dist = self.dist(hidden)
+        dist = self.dist_heads[head_idx](hidden)
 
         log_pi = dist.log_probs(action)
         entropy = dist.entropy().mean()
@@ -388,20 +393,27 @@ class PpoCriticMlp(nn.Module):
 
 class MultiHeadPpoCriticMlp(nn.Module):
     """PPO critic network with MLP"""
-    def __init__(self, obs_shape, hidden_dim):
+    def __init__(self, obs_shape, hidden_dim, head_num):
         super().__init__()
 
         self.trunk = nn.Sequential(
             nn.Linear(obs_shape[0], hidden_dim),
             nn.Tanh(),
             nn.Linear(hidden_dim, hidden_dim),
-            nn.Tanh(),
-            nn.Linear(hidden_dim, 1)
+            nn.Tanh()
         )
+        self.heads = torch.nn.ModuleList()
+        for _ in range(head_num):
+            self.heads.append(
+                nn.Linear(hidden_dim, 1)
+            )
+
         self.apply(weight_init)
 
-    def forward(self, obs):
-        return self.trunk(obs)
+    def forward(self, obs, head_idx):
+        hidden = self.trunk(obs)
+
+        return self.heads[head_idx](hidden)
 
 
 class CURL(nn.Module):
