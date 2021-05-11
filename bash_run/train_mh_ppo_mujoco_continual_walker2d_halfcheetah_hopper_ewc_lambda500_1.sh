@@ -4,7 +4,7 @@ SCRIPT_DIR=$(dirname "$BASH_SOURCE")
 PROJECT_DIR=$SCRIPT_DIR/..
 
 export PYTHONPATH=$PROJECT_DIR
-export CUDA_VISIBLE_DEVICES=1
+export CUDA_VISIBLE_DEVICES=6
 
 declare -a seeds=(0 1 2)
 
@@ -19,11 +19,12 @@ for seed in "${seeds[@]}"; do
     --discount 0.99 \
     --batch_size 32 \
     --ppo_num_rollout_steps_per_process 2048 \
-    --ppo_num_processes 1 \
+    --ppo_num_processes 4 \
+    --ppo_hidden_dim 256 \
     --ppo_use_clipped_critic_loss \
     --ppo_use_proper_time_limits \
-    --ppo_ewc_lambda 50 \
+    --ppo_ewc_lambda 500 \
     --seed $seed \
-    --work_dir $PROJECT_DIR/vec_logs/mh_walker2d_halfcheetah_hopper/ewc_lambda50/$seed \
+    --work_dir $PROJECT_DIR/vec_logs/mh_walker2d_halfcheetah_hopper/ewc_lambda500/$seed \
     --save_model
 done
