@@ -4,10 +4,9 @@ SCRIPT_DIR=$(dirname "$BASH_SOURCE")
 PROJECT_DIR=$SCRIPT_DIR/..
 
 export PYTHONPATH=$PROJECT_DIR
-export PWD=$PROJECT_DIR
 export CUDA_VISIBLE_DEVICES=7
 
-python src/train_locomotion.py \
+python $PROJECT_DIR/src/train_locomotion.py \
   --env_names reach-v2 window-close-v2 button-press-topdown-v2 \
   --env_type metaworld \
   --algo sac_mlp_ss_ensem \

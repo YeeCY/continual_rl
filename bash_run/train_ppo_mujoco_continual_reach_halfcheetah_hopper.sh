@@ -4,10 +4,9 @@ SCRIPT_DIR=$(dirname "$BASH_SOURCE")
 PROJECT_DIR=$SCRIPT_DIR/..
 
 export PYTHONPATH=$PROJECT_DIR
-export PWD=$PROJECT_DIR
 export CUDA_VISIBLE_DEVICES=0
 
-xvfb-run -a -s "-screen 0 1400x900x24" python $PWD/src/train_ppo.py \
+xvfb-run -a -s "-screen 0 1400x900x24" python $PROJECT_DIR/src/train_ppo.py \
   --env_names Reacher-v2 HalfCheetah-v3 Hopper-v3 \
   --env_type mujoco \
   --algo ppo_mlp \
@@ -21,6 +20,6 @@ xvfb-run -a -s "-screen 0 1400x900x24" python $PWD/src/train_ppo.py \
   --ppo_use_clipped_critic_loss \
   --ppo_use_proper_time_limits \
   --seed 0 \
-  --work_dir $PWD/vec_logs/reacher_halfcheetah_hopper/0 \
+  --work_dir $PROJECT_DIR/vec_logs/reacher_halfcheetah_hopper/0 \
   --save_model
 
