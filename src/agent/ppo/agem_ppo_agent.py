@@ -93,8 +93,8 @@ class AgemPpoMlpAgent(PpoMlpAgent):
             return
 
         grad = []
-        for name, param in chain(self.actor.named_parameters(),
-                                 self.critic.named_parameters()):
+        for param in chain(self.actor.parameters(),
+                           self.critic.parameters()):
             if param.requires_grad:
                 grad.append(param.grad.flatten())
         grad = torch.cat(grad)
@@ -189,11 +189,11 @@ class AgemPpoMlpAgent(PpoMlpAgent):
     def save(self, model_dir, step):
         super().save(model_dir, step)
         torch.save(
-            self.prev_task_params, '%s/prev_task_params_%s.pt' % (model_dir, step)
+            self.agem_memories, '%s/agem_memories_%s.pt' % (model_dir, step)
         )
 
     def load(self, model_dir, step):
         super().load(model_dir, step)
-        self.prev_task_params = torch.load(
-            '%s/prev_task_params_%s.pt' % (model_dir, step)
+        self.agem_memories = torch.load(
+            '%s/agem_memories_%s.pt' % (model_dir, step)
         )
