@@ -99,17 +99,20 @@ class EwcPpoMlpAgent(PpoMlpAgent):
 
                 for name, param in chain(self.critic.named_parameters(),
                                          self.actor.named_parameters()):
-                    if param.requires_grad and param.grad is not None:
+                    if param.requires_grad:
                         # TODO (chongyi zheng): Average this accumulated fishers over num_steps?
-                        fishers[name] = param.grad.detach().clone() ** 2 + \
-                                        fishers.get(name, torch.zeros_like(param.grad))
+                        if param.grad is not None:
+                            fishers[name] = param.grad.detach().clone() ** 2 + \
+                                            fishers.get(name, torch.zeros_like(param.grad))
+                        else:
+                            fishers[name] = torch.zeros_like(param)
 
             rollouts.after_update()
 
         for name, param in chain(self.critic.named_parameters(),
                                  self.actor.named_parameters()):
             if param.requires_grad:
-                fisher = fishers.get(name, torch.zeros_like(param.grad))
+                fisher = fishers[name]
 
                 if self.online_ewc:
                     name = name + '_prev_task'

@@ -197,18 +197,19 @@ def main(args):
     #         device=device,
     #         optimize_memory_usage=True,
     #     )
-    rollouts = storages.RolloutStorage(args.ppo_num_rollout_steps_per_process,
-                                       args.ppo_num_processes,
-                                       env.observation_space.shape,
-                                       env.action_space,
-                                       device)
-    
-    if 'ewc' in args.algo:
-        est_fisher_rollouts = storages.RolloutStorage(args.ppo_ewc_rollout_steps_per_process,
-                                                      args.ppo_num_processes,
-                                                      env.observation_space.shape,
-                                                      env.action_space,
-                                                      device)
+    if 'mh' not in args.algo:
+        rollouts = storages.RolloutStorage(args.ppo_num_rollout_steps_per_process,
+                                           args.ppo_num_processes,
+                                           env.observation_space.shape,
+                                           env.action_space,
+                                           device)
+
+        if 'ewc' in args.algo:
+            est_fisher_rollouts = storages.RolloutStorage(args.ppo_ewc_rollout_steps_per_process,
+                                                          args.ppo_num_processes,
+                                                          env.observation_space.shape,
+                                                          env.action_space,
+                                                          device)
 
     agent = make_agent(
         obs_space=env.observation_space,
@@ -238,6 +239,21 @@ def main(args):
             task_steps = 0
             start_time = time.time()
             obs = env.reset(sample_task=True)
+
+            if 'mh' in args.algo:
+                rollouts = storages.RolloutStorage(args.ppo_num_rollout_steps_per_process,
+                                                   args.ppo_num_processes,
+                                                   env.observation_space.shape,
+                                                   env.all_action_spaces[task_id],
+                                                   device)
+
+                if 'ewc' in args.algo:
+                    est_fisher_rollouts = storages.RolloutStorage(args.ppo_ewc_rollout_steps_per_process,
+                                                                  args.ppo_num_processes,
+                                                                  env.observation_space.shape,
+                                                                  env.all_action_spaces[task_id],
+                                                                  device)
+
             rollouts.obs[0].copy_(torch.Tensor(obs).to(device))
             for task_epoch in range(total_epochs_per_task):
                 agent.update_learning_rate(task_epoch, total_epochs_per_task)

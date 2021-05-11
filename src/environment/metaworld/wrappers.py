@@ -408,6 +408,8 @@ class MultiEnvWrapper(gym.Wrapper):
         self._num_tasks = len(envs)
         self._active_task_index = None
         self._mode = mode
+        self._aug_obs = augment_observation
+        self._aug_act = augment_action
         self._observation_space_index = 0
         self._action_space_index = 0
 
@@ -424,7 +426,7 @@ class MultiEnvWrapper(gym.Wrapper):
         max_observation_dim = np.prod(self.env.observation_space.shape)
         max_action_dim = np.prod(self.env.action_space.shape)
         for i, env in enumerate(envs):
-            if augment_observation:
+            if self._aug_obs:
                 assert len(env.observation_space.shape) == 1
                 if np.prod(env.observation_space.shape) > max_observation_dim:
                     self._observation_space_index = i
@@ -434,7 +436,7 @@ class MultiEnvWrapper(gym.Wrapper):
                     raise ValueError(
                         'Observation space of all envs should be same.')
 
-            if augment_action:
+            if self._aug_act:
                 assert len(env.action_space.shape) == 1
                 if np.prod(env.action_space.shape) > max_action_dim:
                     self._action_space_index = i
@@ -447,8 +449,8 @@ class MultiEnvWrapper(gym.Wrapper):
         self._max_observation_dim = max_observation_dim
         self._max_action_dim = max_action_dim
 
-        self.observation_space = self._update_observation_space()  # avoid crash
-        self.action_space = self._task_envs[self._action_space_index].action_space
+        self._update_observation_space()
+        self._update_action_space()
 
     def _update_observation_space(self):
         """Observation space.
@@ -458,17 +460,26 @@ class MultiEnvWrapper(gym.Wrapper):
 
         """
         # (chongyi zheng): avoid crash
+        idx = self._observation_space_index if self._aug_obs else \
+            (self._active_task_index or 0)
+
         if self._mode == 'vanilla':
-            return self._task_envs[self._observation_space_index].observation_space
+            self.observation_space = self._task_envs[idx].observation_space
         elif self._mode == 'add-onehot':
             task_lb, task_ub = self.task_space.bounds
-            env_lb, env_ub = self._task_envs[self._observation_space_index].observation_space.bounds
-            return Box(np.concatenate([env_lb, task_lb]),
-                       np.concatenate([env_ub, task_ub]))
+            env_lb, env_ub = self._task_envs[idx].observation_space.bounds
+            self.observation_space = Box(np.concatenate([env_lb, task_lb]),
+                                         np.concatenate([env_ub, task_ub]))
         else:  # self._mode == 'del-onehot'
-            env_lb, env_ub = self._task_envs[self._observation_space_index].bounds
+            env_lb, env_ub = self._task_envs[idx].bounds
             num_tasks = self._num_tasks
-            return Box(env_lb[:-num_tasks], env_ub[:-num_tasks])
+            self.observation_space = Box(env_lb[:-num_tasks], env_ub[:-num_tasks])
+
+    def _update_action_space(self):
+        idx = self._action_space_index if self._aug_act else \
+            (self._active_task_index or 0)
+
+        self.action_space = self._task_envs[idx].action_space
 
     def _augment_observation(self, obs):
         if obs.shape == self.observation_space.shape:
@@ -570,6 +581,9 @@ class MultiEnvWrapper(gym.Wrapper):
             self._active_task_index = self._sample_strategy(
                 self._num_tasks, self._active_task_index)
         self.env = self._task_envs[self._active_task_index]
+        self._update_observation_space()
+        self._update_action_space()
+
         obs = self.env.reset()
 
         obs = self._augment_observation(obs)
