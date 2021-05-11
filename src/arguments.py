@@ -115,6 +115,7 @@ def parse_args():
 	parser.add_argument('--ppo_use_clipped_critic_loss', default=False, action='store_true')
 	parser.add_argument('--ppo_gae_lambda', default=0.95, type=float)
 	parser.add_argument('--ppo_use_proper_time_limits', default=False, action='store_true')
+	parser.add_argument('--ppo_num_batch', default=32, type=int)
 
 	# ppo ewc
 	parser.add_argument('--ppo_ewc_lambda', default=5000, type=float)
@@ -122,6 +123,10 @@ def parse_args():
 	parser.add_argument('--ppo_ewc_rollout_steps_per_process', default=1024, type=int)
 	parser.add_argument('--ppo_online_ewc', default=False, action='store_true')
 	parser.add_argument('--ppo_online_ewc_gamma', default=1.0, type=float)
+
+	# ppo agem
+	parser.add_argument('--ppo_agem_memory_budget', default=3072, type=int)
+	parser.add_argument('--ppo_agem_ref_grad_batch_size', default=1024, type=int)
 
 	# ewc
 	parser.add_argument('--ewc_lambda', default=5000, type=float)

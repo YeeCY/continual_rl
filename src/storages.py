@@ -43,6 +43,18 @@ class RolloutStorage(object):
     #     self.masks = self.masks.to(device)
     #     self.bad_masks = self.bad_masks.to(device)
 
+    def update_num_steps(self, num_steps):
+        # (chongyi zheng): used for AGEM memory resize
+        self.num_steps = num_steps
+        self.obs = self.obs[:num_steps + 1]
+        self.rewards = self.rewards[:num_steps]
+        self.value_preds = self.value_preds[:num_steps + 1]
+        self.returns = self.returns[:num_steps + 1]
+        self.log_pis = self.log_pis[:num_steps]
+        self.actions = self.actions[:num_steps]
+        self.masks = self.masks[:num_steps + 1]
+        self.bad_masks = self.bad_masks[:num_steps + 1]
+
     def insert(self, obs, actions, log_pis,
                value_preds, rewards, masks, bad_masks):
         self.obs[self.step + 1].copy_(torch.Tensor(obs).to(self.device))

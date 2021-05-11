@@ -22,7 +22,7 @@ class EwcPpoMlpAgent(PpoMlpAgent):
                  eps=1e-5,
                  grad_clip_norm=0.5,
                  use_clipped_critic_loss=True,
-                 batch_size=32,
+                 num_batch=32,
                  ewc_lambda=5000,
                  ewc_estimate_fisher_epochs=100,
                  online_ewc=False,
@@ -30,7 +30,7 @@ class EwcPpoMlpAgent(PpoMlpAgent):
                  ):
         super().__init__(obs_shape, action_shape, device, hidden_dim, discount, clip_param, ppo_epoch,
                          critic_loss_coef, entropy_coef, lr, eps, grad_clip_norm, use_clipped_critic_loss,
-                         batch_size)
+                         num_batch)
 
         self.ewc_lambda = ewc_lambda
         self.ewc_estimate_fisher_epochs = ewc_estimate_fisher_epochs
@@ -77,7 +77,7 @@ class EwcPpoMlpAgent(PpoMlpAgent):
             advantages = (advantages - advantages.mean()) / (
                     advantages.std() + 1e-5)
             data_generator = rollouts.feed_forward_generator(
-                advantages, self.batch_size)
+                advantages, self.num_batch)
 
             for sample in data_generator:
                 obs_batch, actions_batch, value_preds_batch, \
@@ -97,8 +97,8 @@ class EwcPpoMlpAgent(PpoMlpAgent):
                     chain(self.actor.parameters(), self.critic.parameters()),
                     self.grad_clip_norm)
 
-                for name, param in chain(self.critic.named_parameters(),
-                                         self.actor.named_parameters()):
+                for name, param in chain(self.actor.named_parameters(),
+                                         self.critic.named_parameters()):
                     if param.requires_grad:
                         # TODO (chongyi zheng): Average this accumulated fishers over num_steps?
                         if param.grad is not None:
@@ -109,8 +109,8 @@ class EwcPpoMlpAgent(PpoMlpAgent):
 
             rollouts.after_update()
 
-        for name, param in chain(self.critic.named_parameters(),
-                                 self.actor.named_parameters()):
+        for name, param in chain(self.actor.named_parameters(),
+                                 self.critic.named_parameters()):
             if param.requires_grad:
                 fisher = fishers[name]
 
@@ -185,7 +185,7 @@ class EwcPpoMlpAgent(PpoMlpAgent):
 
         for e in range(self.ppo_epoch):
             data_generator = rollouts.feed_forward_generator(
-                advantages, self.batch_size)
+                advantages, self.num_batch)
 
             for sample in data_generator:
                 obs_batch, actions_batch, value_preds_batch, \

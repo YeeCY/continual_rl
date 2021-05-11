@@ -17,7 +17,7 @@ class EwcMultiHeadPpoMlpAgent(MultiHeadPpoMlpAgent, EwcPpoMlpAgent):
                  eps=1e-5,
                  grad_clip_norm=0.5,
                  use_clipped_critic_loss=True,
-                 batch_size=32,
+                 num_batch=32,
                  ewc_lambda=5000,
                  ewc_estimate_fisher_epochs=100,
                  online_ewc=False,
@@ -25,18 +25,9 @@ class EwcMultiHeadPpoMlpAgent(MultiHeadPpoMlpAgent, EwcPpoMlpAgent):
                  ):
         MultiHeadPpoMlpAgent.__init__(self, obs_shape, action_shape, device, hidden_dim, discount, clip_param,
                                       ppo_epoch, critic_loss_coef, entropy_coef, lr, eps, grad_clip_norm,
-                                      use_clipped_critic_loss, batch_size)
+                                      use_clipped_critic_loss, num_batch)
 
         EwcPpoMlpAgent.__init__(self, obs_shape, action_shape, device, hidden_dim, discount, clip_param,
                                 ppo_epoch, critic_loss_coef, entropy_coef, lr, eps, grad_clip_norm,
-                                use_clipped_critic_loss, batch_size, ewc_lambda, ewc_estimate_fisher_epochs,
+                                use_clipped_critic_loss, num_batch, ewc_lambda, ewc_estimate_fisher_epochs,
                                 online_ewc, online_ewc_gamma)
-
-    def update(self, rollouts, logger, step, **kwargs):
-        EwcPpoMlpAgent.update(self, rollouts, logger, step, **kwargs)
-
-    # def save(self, model_dir, step):
-    #     EwcPpoMlpAgent.save(self, model_dir, step)
-    #
-    # def load(self, model_dir, step):
-    #     EwcPpoMlpAgent.load(self, model_dir, step)

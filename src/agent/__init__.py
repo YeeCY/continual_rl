@@ -1,8 +1,8 @@
 from agent.dqn_agent import DqnCnnSSEnsembleAgent
-# from agent.sac.sac_agent import SacMlpSSEnsembleAgent, SacCnnSSEnsembleAgent
 from agent.sac import EwcSacMlpAgent, SiSacMlpAgent, AgemSacMlpAgent, SacMlpAgent, \
     SacMlpSSEnsembleAgent, SacCnnSSEnsembleAgent
-from agent.ppo import PpoMlpAgent, MultiHeadPpoMlpAgent, EwcPpoMlpAgent, EwcMultiHeadPpoMlpAgent
+from agent.ppo import PpoMlpAgent, EwcPpoMlpAgent, AgemPpoMlpAgent, \
+    MultiHeadPpoMlpAgent, EwcMultiHeadPpoMlpAgent, AgemMultiHeadPpoMlpAgent
 
 ALGOS = [
     'dqn_cnn_ss_ensem',
@@ -13,9 +13,11 @@ ALGOS = [
     'si_sac_mlp',
     'agem_sac_mlp',
     'ppo_mlp',
-    'mh_ppo_mlp',
     'ewc_ppo_mlp',
+    'agem_ppo_mlp',
+    'mh_ppo_mlp',
     'ewc_mh_ppo_mlp',
+    'agem_mh_ppo_mlp'
 ]
 
 
@@ -34,7 +36,7 @@ def make_agent(obs_space, action_space, device, args):
         # 'use_inv': args.use_inv,
         # 'ss_lr': args.ss_lr,
         # 'ss_update_freq': args.ss_update_freq,
-        'batch_size': args.batch_size,
+        # 'batch_size': args.batch_size,
         'device': device,
     }
 
@@ -49,6 +51,7 @@ def make_agent(obs_space, action_space, device, args):
         kwargs['max_grad_norm'] = args.max_grad_norm
         kwargs['q_net_lr'] = args.q_net_lr
         kwargs['q_net_tau'] = args.q_net_tau
+        kwargs['batch_size'] = args.batch_size
 
         agent = DqnCnnSSEnsembleAgent(**kwargs)
     elif 'sac' in args.algo:
@@ -65,6 +68,7 @@ def make_agent(obs_space, action_space, device, args):
         kwargs['critic_tau'] = args.critic_tau
         kwargs['critic_target_update_freq'] = args.critic_target_update_freq
         kwargs['grad_clip_norm'] = args.grad_clip_norm
+        kwargs['batch_size'] = args.batch_size
 
         if args.algo == 'sac_cnn_ss_ensem':
             kwargs['use_fwd'] = args.use_fwd
@@ -116,23 +120,32 @@ def make_agent(obs_space, action_space, device, args):
         kwargs['eps'] = args.ppo_eps
         kwargs['grad_clip_norm'] = args.ppo_grad_clip_norm
         kwargs['use_clipped_critic_loss'] = args.ppo_use_clipped_critic_loss
+        kwargs['num_batch'] = args.ppo_num_batch
 
         if args.algo == 'ppo_mlp':
             agent = PpoMlpAgent(**kwargs)
-        elif args.algo == 'mh_ppo_mlp':
-            agent = MultiHeadPpoMlpAgent(**kwargs)
         elif args.algo == 'ewc_ppo_mlp':
             kwargs['ewc_lambda'] = args.ppo_ewc_lambda
             kwargs['ewc_estimate_fisher_epochs'] = args.ppo_ewc_estimate_fisher_epochs
             kwargs['online_ewc'] = args.ppo_online_ewc
             kwargs['online_ewc_gamma'] = args.ppo_online_ewc_gamma
             agent = EwcPpoMlpAgent(**kwargs)
+        elif args.algo == 'agem_ppo_mlp':
+            kwargs['agem_memory_budget'] = args.ppo_agem_memory_budget
+            kwargs['agem_ref_grad_batch_size'] = args.ppo_agem_ref_grad_batch_size
+            agent = AgemPpoMlpAgent(**kwargs)
+        elif args.algo == 'mh_ppo_mlp':
+            agent = MultiHeadPpoMlpAgent(**kwargs)
         elif args.algo == 'ewc_mh_ppo_mlp':
             kwargs['ewc_lambda'] = args.ppo_ewc_lambda
             kwargs['ewc_estimate_fisher_epochs'] = args.ppo_ewc_estimate_fisher_epochs
             kwargs['online_ewc'] = args.ppo_online_ewc
             kwargs['online_ewc_gamma'] = args.ppo_online_ewc_gamma
             agent = EwcMultiHeadPpoMlpAgent(**kwargs)
+        elif args.algo == 'agem_mh_ppo_mlp':
+            kwargs['agem_memory_budget'] = args.ppo_agem_memory_budget
+            kwargs['agem_ref_grad_batch_size'] = args.ppo_agem_ref_grad_batch_size
+            agent = AgemMultiHeadPpoMlpAgent(**kwargs)
     else:
         raise ValueError(f"Unknown algorithm {args.algo}")
 

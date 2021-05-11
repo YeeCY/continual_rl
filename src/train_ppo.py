@@ -323,11 +323,22 @@ def main(args):
                     'gae_lambda': args.ppo_gae_lambda,
                     'use_proper_time_limits': args.ppo_use_proper_time_limits
                 }
-                print(f"Estimating fisher: {infos[0]['task_name']}")
+                print(f"Estimating EWC fisher: {infos[0]['task_name']}")
                 if 'mh' in args.algo:
                     agent.estimate_fisher(env, est_fisher_rollouts, compute_returns_kwargs, head_idx=task_id)
                 else:
                     agent.estimate_fisher(env, est_fisher_rollouts, compute_returns_kwargs)
+            elif 'agem' in args.algo:
+                compute_returns_kwargs = {
+                    'gamma': args.discount,
+                    'gae_lambda': args.ppo_gae_lambda,
+                    'use_proper_time_limits': args.ppo_use_proper_time_limits
+                }
+                print(f"Constructing AGEM fisher: {infos[0]['task_name']}")
+                if 'mh' in args.algo:
+                    agent.construct_memory(env, args.ppo_num_processes, compute_returns_kwargs, head_idx=task_id)
+                else:
+                    agent.construct_memory(env, args.ppo_num_processes, compute_returns_kwargs)
 
     print('Final evaluating:', args.work_dir)
     evaluate(env, eval_env, agent, video, args.num_eval_episodes, logger, total_steps)
