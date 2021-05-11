@@ -1,5 +1,10 @@
-export PYTHONPATH=$HOME/policy-adaptation-during-deployment/
-export PWD=$HOME/policy-adaptation-during-deployment
+#!/bin/bash
+
+SCRIPT_DIR=$(dirname "$BASH_SOURCE")
+PROJECT_DIR=$SCRIPT_DIR/..
+
+export PYTHONPATH=$PROJECT_DIR
+export PWD=$PROJECT_DIR
 export CUDA_VISIBLE_DEVICES=1
 
 declare -a seeds=(0 1 2)
