@@ -7,7 +7,7 @@ import storages
 from agent.ppo.base_ppo_agent import PpoMlpAgent
 
 
-class EwcPpoMlpAgent(PpoMlpAgent):
+class AgemPpoMlpAgent(PpoMlpAgent):
     """Adapt https://github.com/GMvandeVen/continual-learning"""
     def __init__(self,
                  obs_shape,
@@ -25,7 +25,7 @@ class EwcPpoMlpAgent(PpoMlpAgent):
                  use_clipped_critic_loss=True,
                  num_batch=32,
                  agem_memory_budget=3072,
-                 agem_ref_grad_batch_size=128,
+                 agem_ref_grad_batch_size=1024,
                  ):
         super().__init__(obs_shape, action_shape, device, hidden_dim, discount, clip_param, ppo_epoch,
                          critic_loss_coef, entropy_coef, lr, eps, grad_clip_norm, use_clipped_critic_loss,
@@ -52,68 +52,39 @@ class EwcPpoMlpAgent(PpoMlpAgent):
         if not self.agem_memories:
             return None
 
-        # # sample memory transitions
-        # concat_obses = []
-        # concat_actions = []
-        # concat_rewards = []
-        # concat_next_obses = []
-        # concat_not_dones = []
-        # for mem in self.agem_memories.values():
-        #     concat_obses.append(mem['obses'])
-        #     concat_actions.append(mem['actions'])
-        #     concat_rewards.append(mem['rewards'])
-        #     concat_next_obses.append(mem['next_obses'])
-        #     concat_not_dones.append(mem['not_dones'])
-        #
-        # concat_obses = torch.cat(concat_obses)
-        # concat_actions = torch.cat(concat_actions)
-        # concat_rewards = torch.cat(concat_rewards)
-        # concat_next_obses = torch.cat(concat_next_obses)
-        # concat_not_dones = torch.cat(concat_not_dones)
-        #
-        # perm_idxs = np.random.permutation(concat_obses.shape[0])
-        # sample_idxs = np.random.randint(0, len(concat_obses), size=self.agem_ref_grad_batch_size)
-        # obs = concat_obses[perm_idxs][sample_idxs]
-        # action = concat_actions[perm_idxs][sample_idxs]
-        # reward = concat_rewards[perm_idxs][sample_idxs]
-        # next_obs = concat_next_obses[perm_idxs][sample_idxs]
-        # not_done = concat_not_dones[perm_idxs][sample_idxs]
-
-        # # TODO (chongyi zheng): to be compatible with PPO
-        # # reference critic gradients
-        # ref_critic_loss = self.compute_critic_loss(obs, action, reward, next_obs, not_done)
-        # ref_critic_loss.backward()
-        #
-        # # reorganize the gradient of the memory transitions as a single vector
-        # ref_critic_grad = []
-        # for name, param in self.critic.named_parameters():
-        #     if param.requires_grad:
-        #         ref_critic_grad.append(param.grad.detach().clone().flatten())
-        # ref_critic_grad = torch.cat(ref_critic_grad)
-        # # reset gradients (with A-GEM, gradients of memory transitions should only be used as inequality constraint)
-        # self.critic_optimizer.zero_grad()
-        #
-        # # reference actor and alpha gradients
-        # _, ref_actor_loss, ref_alpha_loss = self.compute_actor_and_alpha_loss(
-        #     obs, compute_alpha_loss=compute_alpha_ref_grad)
-        # ref_actor_loss.backward()
-        #
-        # ref_actor_grad = []
-        # for name, param in self.actor.named_parameters():
-        #     if param.requires_grad:
-        #         ref_actor_grad.append(param.grad.detach().clone().flatten())
-        # ref_actor_grad = torch.cat(ref_actor_grad)
-        # self.actor_optimizer.zero_grad()
-
-        for memory in self.agem_memories:
+        ref_grad = []
+        for memory in self.agem_memories.values():
             advantages = memory.returns[:-1] - memory.value_preds[:-1]
             advantages = (advantages - advantages.mean()) / (
                     advantages.std() + 1e-5)
             data_generator = memory.feed_forward_generator(
-                advantages, self.num_batch)
+                advantages, mini_batch_size=self.agem_ref_grad_batch_size // self.agem_task_count)
 
+            # (chongyi zheng): we only use one batch of rollouts to compute ref_grad
+            obs_batch, actions_batch, value_preds_batch, \
+            return_batch, old_log_pis, adv_targets = next(data_generator)
 
-        ref_grad = None
+            actor_loss, entropy = self.compute_actor_loss(
+                obs_batch, actions_batch, old_log_pis, adv_targets)
+            critic_loss = self.compute_critic_loss(
+                obs_batch, value_preds_batch, return_batch)
+            loss = actor_loss + self.critic_loss_coef * critic_loss - \
+                   self.entropy_coef * entropy
+
+            self.optimizer.zero_grad()
+            loss.backward()
+
+            # compute reference gradient
+            single_ref_grad = []
+            for param in chain(self.actor.parameters(), self.critic.parameters()):
+                if param.requires_grad:
+                    single_ref_grad.append(param.grad.detach().clone().flatten())
+            single_ref_grad = torch.cat(single_ref_grad)
+            self.optimizer.zero_grad()
+
+            ref_grad.append(single_ref_grad)
+
+        ref_grad = torch.stack(ref_grad).mean(dim=0)
 
         return ref_grad
 

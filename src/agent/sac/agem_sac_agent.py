@@ -93,11 +93,12 @@ class AgemSacMlpAgent(SacMlpAgent):
 
         # reference critic gradients
         ref_critic_loss = self.compute_critic_loss(obs, action, reward, next_obs, not_done)
+        self.critic_optimizer.zero_grad()  # clear current gradient
         ref_critic_loss.backward()
 
         # reorganize the gradient of the memory transitions as a single vector
         ref_critic_grad = []
-        for name, param in self.critic.named_parameters():
+        for param in self.critic.parameters():
             if param.requires_grad:
                 ref_critic_grad.append(param.grad.detach().clone().flatten())
         ref_critic_grad = torch.cat(ref_critic_grad)
@@ -107,10 +108,11 @@ class AgemSacMlpAgent(SacMlpAgent):
         # reference actor and alpha gradients
         _, ref_actor_loss, ref_alpha_loss = self.compute_actor_and_alpha_loss(
             obs, compute_alpha_loss=compute_alpha_ref_grad)
+        self.actor_optimizer.zero_grad()  # clear current gradient
         ref_actor_loss.backward()
 
         ref_actor_grad = []
-        for name, param in self.actor.named_parameters():
+        for param in self.actor.parameters():
             if param.requires_grad:
                 ref_actor_grad.append(param.grad.detach().clone().flatten())
         ref_actor_grad = torch.cat(ref_actor_grad)
@@ -118,6 +120,7 @@ class AgemSacMlpAgent(SacMlpAgent):
 
         ref_alpha_grad = None
         if compute_alpha_ref_grad:
+            self.log_alpha_optimizer.zero_grad()  # clear current gradient
             ref_alpha_loss.backward()
             ref_alpha_grad = self.log_alpha.grad.detach().clone()
             self.log_alpha_optimizer.zero_grad()

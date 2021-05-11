@@ -2,7 +2,8 @@ from agent.dqn_agent import DqnCnnSSEnsembleAgent
 # from agent.sac.sac_agent import SacMlpSSEnsembleAgent, SacCnnSSEnsembleAgent
 from agent.sac import EwcSacMlpAgent, SiSacMlpAgent, AgemSacMlpAgent, SacMlpAgent, \
     SacMlpSSEnsembleAgent, SacCnnSSEnsembleAgent
-from agent.ppo import PpoMlpAgent, MultiHeadPpoMlpAgent, EwcPpoMlpAgent, EwcMultiHeadPpoMlpAgent
+from agent.ppo import PpoMlpAgent, EwcPpoMlpAgent, AgemPpoMlpAgent, \
+    MultiHeadPpoMlpAgent, EwcMultiHeadPpoMlpAgent
 
 ALGOS = [
     'dqn_cnn_ss_ensem',
@@ -13,8 +14,9 @@ ALGOS = [
     'si_sac_mlp',
     'agem_sac_mlp',
     'ppo_mlp',
-    'mh_ppo_mlp',
     'ewc_ppo_mlp',
+    'agem_ppo_mlp'
+    'mh_ppo_mlp',
     'ewc_mh_ppo_mlp',
 ]
 
@@ -122,14 +124,18 @@ def make_agent(obs_space, action_space, device, args):
 
         if args.algo == 'ppo_mlp':
             agent = PpoMlpAgent(**kwargs)
-        elif args.algo == 'mh_ppo_mlp':
-            agent = MultiHeadPpoMlpAgent(**kwargs)
         elif args.algo == 'ewc_ppo_mlp':
             kwargs['ewc_lambda'] = args.ppo_ewc_lambda
             kwargs['ewc_estimate_fisher_epochs'] = args.ppo_ewc_estimate_fisher_epochs
             kwargs['online_ewc'] = args.ppo_online_ewc
             kwargs['online_ewc_gamma'] = args.ppo_online_ewc_gamma
             agent = EwcPpoMlpAgent(**kwargs)
+        elif args.algo == 'agem_ppo_mlp':
+            kwargs['agem_memory_budget'] = args.ppo_agem_memory_budget
+            kwargs['agem_ref_grad_batch_size'] = args.ppo_agem_ref_grad_batch_size
+            agent = AgemPpoMlpAgent(**kwargs)
+        elif args.algo == 'mh_ppo_mlp':
+            agent = MultiHeadPpoMlpAgent(**kwargs)
         elif args.algo == 'ewc_mh_ppo_mlp':
             kwargs['ewc_lambda'] = args.ppo_ewc_lambda
             kwargs['ewc_estimate_fisher_epochs'] = args.ppo_ewc_estimate_fisher_epochs

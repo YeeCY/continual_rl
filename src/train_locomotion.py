@@ -310,6 +310,8 @@ def main(args):
                     agent.estimate_fisher(replay_buffer)
                 elif 'si' in args.algo:
                     agent.update_omegas()
+                elif 'agem' in args.algo:
+                    agent.construct_memory(replay_buffer)
 
                 agent.reset_target_critic()
                 replay_buffer.reset()

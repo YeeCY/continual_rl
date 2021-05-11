@@ -124,6 +124,10 @@ def parse_args():
 	parser.add_argument('--ppo_online_ewc', default=False, action='store_true')
 	parser.add_argument('--ppo_online_ewc_gamma', default=1.0, type=float)
 
+	# ppo agem
+	parser.add_argument('--ppo_agem_memory_budget', default=3072, type=int)
+	parser.add_argument('--ppo_agem_ref_grad_batch_size', default=1024, type=int)
+
 	# ewc
 	parser.add_argument('--ewc_lambda', default=5000, type=float)
 	parser.add_argument('--ewc_fisher_sample_size', default=1024, type=int)
