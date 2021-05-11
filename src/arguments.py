@@ -108,14 +108,14 @@ def parse_args():
 	parser.add_argument('--ppo_clip_param', default=0.2, type=float)
 	parser.add_argument('--ppo_epoch', default=10, type=int)
 	parser.add_argument('--ppo_critic_loss_coef', default=0.5, type=float)
-	parser.add_argument('--ppo_entropy_coef', default=0.5, type=float)
+	parser.add_argument('--ppo_entropy_coef', default=0.0, type=float)
 	parser.add_argument('--ppo_lr', default=3e-4, type=float)
 	parser.add_argument('--ppo_eps', default=1e-5, type=float)
 	parser.add_argument('--ppo_grad_clip_norm', default=0.5, type=float)
 	parser.add_argument('--ppo_use_clipped_critic_loss', default=False, action='store_true')
 	parser.add_argument('--ppo_gae_lambda', default=0.95, type=float)
 	parser.add_argument('--ppo_use_proper_time_limits', default=False, action='store_true')
-	parser.add_argument('--ppo_num_batch', default=32, type=int)
+	parser.add_argument('--ppo_num_batch', default=64, type=int)
 
 	# ppo ewc
 	parser.add_argument('--ppo_ewc_lambda', default=5000, type=float)
