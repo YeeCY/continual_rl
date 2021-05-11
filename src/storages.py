@@ -1,5 +1,6 @@
 # Adapt from https://github.com/ikostrikov/pytorch-a2c-ppo-acktr-gail
 
+import numpy as np
 import torch
 from torch.utils.data.sampler import BatchSampler, SubsetRandomSampler
 
@@ -61,7 +62,9 @@ class RolloutStorage(object):
         self.actions[self.step].copy_(torch.Tensor(actions).to(self.device))
         self.log_pis[self.step].copy_(torch.Tensor(log_pis).to(self.device))
         self.value_preds[self.step].copy_(torch.Tensor(value_preds).to(self.device))
-        self.rewards[self.step].copy_(torch.Tensor(rewards).to(self.device))
+        self.rewards[self.step].copy_(torch.Tensor(
+            np.expand_dims(rewards, axis=-1)
+        ).to(self.device))
         self.masks[self.step + 1].copy_(torch.Tensor(masks).to(self.device))
         self.bad_masks[self.step + 1].copy_(torch.Tensor(bad_masks).to(self.device))
 
