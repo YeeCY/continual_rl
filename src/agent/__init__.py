@@ -1,9 +1,8 @@
 from agent.dqn_agent import DqnCnnSSEnsembleAgent
-# from agent.sac.sac_agent import SacMlpSSEnsembleAgent, SacCnnSSEnsembleAgent
 from agent.sac import EwcSacMlpAgent, SiSacMlpAgent, AgemSacMlpAgent, SacMlpAgent, \
     SacMlpSSEnsembleAgent, SacCnnSSEnsembleAgent
 from agent.ppo import PpoMlpAgent, EwcPpoMlpAgent, AgemPpoMlpAgent, \
-    MultiHeadPpoMlpAgent, EwcMultiHeadPpoMlpAgent
+    MultiHeadPpoMlpAgent, EwcMultiHeadPpoMlpAgent, AgemMultiHeadPpoMlpAgent
 
 ALGOS = [
     'dqn_cnn_ss_ensem',
@@ -18,6 +17,7 @@ ALGOS = [
     'agem_ppo_mlp',
     'mh_ppo_mlp',
     'ewc_mh_ppo_mlp',
+    'agem_mh_ppo_mlp'
 ]
 
 
@@ -142,6 +142,10 @@ def make_agent(obs_space, action_space, device, args):
             kwargs['online_ewc'] = args.ppo_online_ewc
             kwargs['online_ewc_gamma'] = args.ppo_online_ewc_gamma
             agent = EwcMultiHeadPpoMlpAgent(**kwargs)
+        elif args.algo == 'agem_mh_ppo_mlp':
+            kwargs['agem_memory_budget'] = args.ppo_agem_memory_budget
+            kwargs['agem_ref_grad_batch_size'] = args.ppo_agem_ref_grad_batch_size
+            agent = AgemMultiHeadPpoMlpAgent(**kwargs)
     else:
         raise ValueError(f"Unknown algorithm {args.algo}")
 

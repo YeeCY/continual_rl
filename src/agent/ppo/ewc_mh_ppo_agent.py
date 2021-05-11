@@ -31,12 +31,3 @@ class EwcMultiHeadPpoMlpAgent(MultiHeadPpoMlpAgent, EwcPpoMlpAgent):
                                 ppo_epoch, critic_loss_coef, entropy_coef, lr, eps, grad_clip_norm,
                                 use_clipped_critic_loss, num_batch, ewc_lambda, ewc_estimate_fisher_epochs,
                                 online_ewc, online_ewc_gamma)
-
-    def update(self, rollouts, logger, step, **kwargs):
-        EwcPpoMlpAgent.update(self, rollouts, logger, step, **kwargs)
-
-    # def save(self, model_dir, step):
-    #     EwcPpoMlpAgent.save(self, model_dir, step)
-    #
-    # def load(self, model_dir, step):
-    #     EwcPpoMlpAgent.load(self, model_dir, step)

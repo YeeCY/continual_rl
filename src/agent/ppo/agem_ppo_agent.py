@@ -38,17 +38,10 @@ class AgemPpoMlpAgent(PpoMlpAgent):
         self.agem_memories = {}
 
     def _adjust_memory_size(self, size):
-        # TODO (chongyi zheng): to be compatible with PPO
         for mem in self.agem_memories.values():
-            # mem['obses'] = mem['obses'][:size]
-            # mem['actions'] = mem['actions'][:size]
-            # mem['rewards'] = mem['rewards'][:size]
-            # mem['next_obses'] = mem['next_obses'][:size]
-            # mem['not_dones'] = mem['not_dones'][:size]
             mem.update_num_steps(size)
 
     def _compute_ref_grad(self):
-        # TODO (chongyi zheng): to be compatible with PPO
         if not self.agem_memories:
             return None
 
@@ -93,8 +86,7 @@ class AgemPpoMlpAgent(PpoMlpAgent):
             return
 
         grad = []
-        for param in chain(self.actor.parameters(),
-                           self.critic.parameters()):
+        for param in chain(self.actor.parameters(), self.critic.parameters()):
             if param.requires_grad:
                 grad.append(param.grad.flatten())
         grad = torch.cat(grad)
@@ -113,7 +105,6 @@ class AgemPpoMlpAgent(PpoMlpAgent):
                     idx += num_param
 
     def construct_memory(self, env, num_processes, compute_returns_kwargs, **kwargs):
-        # TODO (chongyi zheng): to be compatible with PPO
         memory_size_per_task = self.agem_memory_budget // (self.agem_task_count + 1)
         self._adjust_memory_size(memory_size_per_task)
 
@@ -147,7 +138,6 @@ class AgemPpoMlpAgent(PpoMlpAgent):
         self.agem_task_count += 1
 
     def update(self, rollouts, logger, step, **kwargs):
-        # TODO (chongyi zheng): to be compatible with PPO
         advantages = rollouts.returns[:-1] - rollouts.value_preds[:-1]
         advantages = (advantages - advantages.mean()) / (
                 advantages.std() + 1e-5)
