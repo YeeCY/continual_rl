@@ -1,7 +1,7 @@
 from agent.ppo import MultiHeadPpoMlpAgent, EwcPpoMlpAgent
 
 
-class EwcMultiHeadPpoMlpAgent(MultiHeadPpoMlpAgent, EwcPpoMlpAgent):
+class AgemMultiHeadPpoMlpAgent(MultiHeadPpoMlpAgent, EwcPpoMlpAgent):
     """Adapt https://github.com/GMvandeVen/continual-learning"""
     def __init__(self,
                  obs_shape,

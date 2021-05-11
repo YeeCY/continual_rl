@@ -34,7 +34,7 @@ def make_agent(obs_space, action_space, device, args):
         # 'use_inv': args.use_inv,
         # 'ss_lr': args.ss_lr,
         # 'ss_update_freq': args.ss_update_freq,
-        'batch_size': args.batch_size,
+        # 'batch_size': args.batch_size,
         'device': device,
     }
 
@@ -49,6 +49,7 @@ def make_agent(obs_space, action_space, device, args):
         kwargs['max_grad_norm'] = args.max_grad_norm
         kwargs['q_net_lr'] = args.q_net_lr
         kwargs['q_net_tau'] = args.q_net_tau
+        kwargs['batch_size'] = args.batch_size
 
         agent = DqnCnnSSEnsembleAgent(**kwargs)
     elif 'sac' in args.algo:
@@ -65,6 +66,7 @@ def make_agent(obs_space, action_space, device, args):
         kwargs['critic_tau'] = args.critic_tau
         kwargs['critic_target_update_freq'] = args.critic_target_update_freq
         kwargs['grad_clip_norm'] = args.grad_clip_norm
+        kwargs['batch_size'] = args.batch_size
 
         if args.algo == 'sac_cnn_ss_ensem':
             kwargs['use_fwd'] = args.use_fwd
@@ -116,6 +118,7 @@ def make_agent(obs_space, action_space, device, args):
         kwargs['eps'] = args.ppo_eps
         kwargs['grad_clip_norm'] = args.ppo_grad_clip_norm
         kwargs['use_clipped_critic_loss'] = args.ppo_use_clipped_critic_loss
+        kwargs['num_batch'] = args.ppo_num_batch
 
         if args.algo == 'ppo_mlp':
             agent = PpoMlpAgent(**kwargs)

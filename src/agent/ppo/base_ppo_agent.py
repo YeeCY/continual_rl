@@ -22,7 +22,7 @@ class PpoMlpAgent:
             eps=1e-5,
             grad_clip_norm=0.5,
             use_clipped_critic_loss=True,
-            batch_size=32,
+            num_batch=32,
     ):
         self.obs_shape = obs_shape
         self.action_shape = action_shape
@@ -37,7 +37,7 @@ class PpoMlpAgent:
         self.eps = eps
         self.grad_clip_norm = grad_clip_norm
         self.use_clipped_critic_loss = use_clipped_critic_loss
-        self.batch_size = batch_size
+        self.num_batch = num_batch
 
         self.training = False
 
@@ -169,36 +169,15 @@ class PpoMlpAgent:
             param_group['lr'] = lr
 
     def update(self, rollouts, logger, step, **kwargs):
-        # obs, action, reward, next_obs, not_done, ensem_kwargs = replay_buffer.sample_ensembles(
-        #     self.batch_size, num_ensembles=self.num_ensem_comps)
-        # obs, action, reward, next_obs, not_done = replay_buffer.sample(self.batch_size)
-        # obs, action, reward, next_obs, not_done, obs_aug, next_obs_aug = replay_buffer.sample(
-        #     self.batch_size)
-
         advantages = rollouts.returns[:-1] - rollouts.value_preds[:-1]
         advantages = (advantages - advantages.mean()) / (
                 advantages.std() + 1e-5)
 
         logger.log('train/batch_normalized_advantages', advantages.mean(), step)
 
-        # critic_loss = self.compute_critic_loss(obs, action, reward, next_obs, not_done)
-        # self.update_critic(critic_loss, logger, step)
-        #
-        # if step % self.actor_update_freq == 0:
-        #     log_pi, actor_loss, alpha_loss = self.compute_actor_and_alpha_loss(obs)
-        #     self.update_actor_and_alpha(log_pi, actor_loss, logger, step, alpha_loss=alpha_loss)
-        #
-        # if step % self.critic_target_update_freq == 0:
-        #     utils.soft_update_params(self.critic, self.critic_target,
-        #                              self.critic_tau)
-
-        # value_loss_epoch = 0
-        # action_loss_epoch = 0
-        # dist_entropy_epoch = 0
-
         for e in range(self.ppo_epoch):
             data_generator = rollouts.feed_forward_generator(
-                advantages, self.batch_size)
+                advantages, self.num_batch)
 
             for sample in data_generator:
                 obs_batch, actions_batch, value_preds_batch, \
@@ -225,18 +204,6 @@ class PpoMlpAgent:
                     chain(self.actor.parameters(), self.critic.parameters()),
                     self.grad_clip_norm)
                 self.optimizer.step()
-
-                # value_loss_epoch += value_loss.item()
-                # action_loss_epoch += action_loss.item()
-                # dist_entropy_epoch += dist_entropy.item()
-
-        # num_updates = self.ppo_epoch * self.batch_size
-
-        # value_loss_epoch /= num_updates
-        # action_loss_epoch /= num_updates
-        # dist_entropy_epoch /= num_updates
-        #
-        # return value_loss_epoch, action_loss_epoch, dist_entropy_epoch
 
     def save(self, model_dir, step):
         torch.save(
