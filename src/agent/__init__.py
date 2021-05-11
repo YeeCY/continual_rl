@@ -15,7 +15,7 @@ ALGOS = [
     'agem_sac_mlp',
     'ppo_mlp',
     'ewc_ppo_mlp',
-    'agem_ppo_mlp'
+    'agem_ppo_mlp',
     'mh_ppo_mlp',
     'ewc_mh_ppo_mlp',
 ]
