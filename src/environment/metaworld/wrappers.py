@@ -622,7 +622,7 @@ class MultiEnvWrapper(gym.Wrapper):
             info['task_id'] = self._active_task_index
             if self._env_names is not None:
                 info['task_name'] = self._env_names[self._active_task_index]
-        elif isinstance(info, list) and 'task_id' not in info[0]:
+        elif isinstance(info, tuple) and 'task_id' not in info[0]:
             for info_ in info:
                 info_['task_id'] = self._active_task_index
                 if self._env_names is not None:
