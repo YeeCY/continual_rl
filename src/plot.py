@@ -47,7 +47,11 @@ CURVE_FORMAT = {
         'style': '-',
         'label': 'EWC_lambda5000'
     },
-    'task-7': ([180, 180, 180], '-'),
+    'ewc_lambda10': {
+        'color': [180, 180, 180],
+        'style': '-',
+        'label': 'EWC_labmda10'
+    },
     'task-8': ([0, 0, 0], '-'),
     'task-9': ([254, 151, 0], '-'),
 }
