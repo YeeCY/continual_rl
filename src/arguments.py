@@ -115,7 +115,7 @@ def parse_args():
 	parser.add_argument('--ppo_use_clipped_critic_loss', default=False, action='store_true')
 	parser.add_argument('--ppo_gae_lambda', default=0.95, type=float)
 	parser.add_argument('--ppo_use_proper_time_limits', default=False, action='store_true')
-	parser.add_argument('--ppo_num_batch', default=64, type=int)
+	parser.add_argument('--ppo_num_batch', default=32, type=int)
 
 	# ppo ewc
 	parser.add_argument('--ppo_ewc_lambda', default=5000, type=float)

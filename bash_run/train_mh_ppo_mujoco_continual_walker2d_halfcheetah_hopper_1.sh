@@ -17,7 +17,6 @@ for seed in "${seeds[@]}"; do
     --save_freq 1 \
     --eval_freq 1 \
     --discount 0.99 \
-    --ppo_num_batch 64 \
     --ppo_num_rollout_steps_per_process 2048 \
     --ppo_num_processes 8 \
     --ppo_use_clipped_critic_loss \
