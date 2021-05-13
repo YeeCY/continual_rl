@@ -1,5 +1,6 @@
 import torch
 from itertools import chain
+from collections.abc import Iterable
 
 from agent.ppo import MultiHeadPpoMlpAgent, AgemPpoMlpAgent
 
@@ -60,7 +61,8 @@ class AgemMultiHeadPpoMlpAgent(MultiHeadPpoMlpAgent, AgemPpoMlpAgent):
 
             # compute reference gradient
             single_ref_grad = []
-            for param in chain(self.actor.parameters(), self.critic.parameters()):
+            for param in chain(self.actor.common_parameters(),
+                               self.critic.common_parameters()):
                 if param.requires_grad:
                     single_ref_grad.append(param.grad.detach().clone().flatten())
             single_ref_grad = torch.cat(single_ref_grad)
@@ -71,3 +73,28 @@ class AgemMultiHeadPpoMlpAgent(MultiHeadPpoMlpAgent, AgemPpoMlpAgent):
         ref_grad = torch.stack(ref_grad).mean(dim=0)
 
         return ref_grad
+
+    def _project_grad(self, ref_grad):
+        if ref_grad is None:
+            return
+
+        grad = []
+        for param in chain(self.actor.common_parameters(),
+                           self.critic.common_parameters()):
+            if param.requires_grad:
+                grad.append(param.grad.flatten())
+        grad = torch.cat(grad)
+
+        # inequality constrain
+        angle = (grad * ref_grad).sum()
+        if angle < 0:
+            # project the gradient of the current transitions onto the gradient of the memory transitions ...
+            proj_grad = grad - (angle / (ref_grad * ref_grad).sum()) * ref_grad
+            # replace all the gradients within the model with this projected gradient
+            idx = 0
+            for param in chain(self.actor.common_parameters(),
+                               self.critic.common_parameters()):
+                if param.requires_grad:
+                    num_param = param.numel()  # number of parameters in [p]
+                    param.grad.copy_(proj_grad[idx:idx + num_param].reshape(param.shape))
+                    idx += num_param

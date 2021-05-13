@@ -1,6 +1,7 @@
 import torch
 import numpy as np
 from itertools import chain
+from collections.abc import Iterable
 
 import utils
 import storages

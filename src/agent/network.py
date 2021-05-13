@@ -346,6 +346,14 @@ class MultiHeadPpoActorMlp(nn.Module):
 
         self.apply(weight_init)
 
+    def common_parameters(self, recurse=True):
+        for name, param in self.trunk.named_parameters(recurse=recurse):
+            yield param
+
+    def named_common_parameters(self, prefix='', recurse=True):
+        for elem in self.trunk.named_parameters(prefix=prefix, recurse=recurse):
+            yield elem
+
     def forward(self, obs, head_idx, compute_pi=True, compute_log_pi=True):
         hidden = self.trunk(obs)
         dist = self.dist_heads[head_idx](hidden)
@@ -409,6 +417,14 @@ class MultiHeadPpoCriticMlp(nn.Module):
             )
 
         self.apply(weight_init)
+
+    def common_parameters(self, recurse=True):
+        for name, param in self.trunk.named_parameters(recurse=recurse):
+            yield param
+
+    def named_common_parameters(self, prefix='', recurse=True):
+        for elem in self.trunk.named_parameters(prefix=prefix, recurse=recurse):
+            yield elem
 
     def forward(self, obs, head_idx):
         hidden = self.trunk(obs)
