@@ -24,7 +24,7 @@ for seed in "${seeds[@]}"; do
     --ppo_use_proper_time_limits \
     --ppo_ewc_lambda 10 \
     --ppo_ewc_estimate_fisher_epochs 100 \
-    --ppo_ewc_rollout_steps_per_process 20 \
+    --ppo_ewc_rollout_steps_per_process 1024 \
     --seed $seed \
     --work_dir $PROJECT_DIR/vec_logs/mh_walker2d_halfcheetah_hopper/ewc_lambda10/$seed \
     --save_model
