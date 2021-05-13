@@ -21,7 +21,7 @@ for seed in "${seeds[@]}"; do
     --ppo_num_processes 8 \
     --ppo_use_clipped_critic_loss \
     --ppo_use_proper_time_limits \
-    --ppo_si_c 10 \
+    --ppo_si_c 100 \
     --seed $seed \
     --work_dir $PROJECT_DIR/vec_logs/mh_walker2d_halfcheetah_hopper/si_c100/$seed \
     --save_model
