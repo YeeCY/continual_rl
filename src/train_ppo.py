@@ -17,6 +17,7 @@ import storages
 from logger import Logger
 from video import VideoRecorder
 
+
 def evaluate(train_env, eval_env, agent, video, num_episodes, logger, step):
     """Evaluate agent"""
     if isinstance(train_env, MultiEnvWrapper) and isinstance(eval_env, MultiEnvWrapper):
@@ -328,6 +329,8 @@ def main(args):
                     agent.estimate_fisher(env, est_fisher_rollouts, compute_returns_kwargs, head_idx=task_id)
                 else:
                     agent.estimate_fisher(env, est_fisher_rollouts, compute_returns_kwargs)
+            elif 'si' in args.algo:
+                agent.update_omegas()
             elif 'agem' in args.algo:
                 compute_returns_kwargs = {
                     'gamma': args.discount,
