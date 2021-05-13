@@ -350,8 +350,8 @@ class MultiHeadPpoActorMlp(nn.Module):
         for name, param in self.trunk.named_parameters(recurse=recurse):
             yield param
 
-    def named_common_parameters(self, prefix='', recurse=True):
-        for elem in self.trunk.named_parameters(prefix=prefix, recurse=recurse):
+    def named_common_parameters(self, recurse=True):
+        for elem in self.trunk.named_parameters(prefix='trunk', recurse=recurse):
             yield elem
 
     def forward(self, obs, head_idx, compute_pi=True, compute_log_pi=True):

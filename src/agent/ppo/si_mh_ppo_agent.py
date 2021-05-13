@@ -33,6 +33,13 @@ class SiMultiHeadPpoMlpAgent(MultiHeadPpoMlpAgent, SiPpoMlpAgent):
                                ppo_epoch, critic_loss_coef, entropy_coef, lr, eps, grad_clip_norm,
                                use_clipped_critic_loss, num_batch, si_c, si_epsilon)
 
+    def _save_init_params(self):
+        # set prev_task_params as weight initializations
+        for name, param in chain(self.actor.named_common_parameters(),
+                                 self.critic.named_common_parameters()):
+            if param.requires_grad:
+                self.prev_task_params[name] = param.detach().clone()
+
     def update_omegas(self):
         for name, param in chain(self.actor.named_common_parameters(),
                                  self.critic.named_common_parameters()):

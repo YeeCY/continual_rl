@@ -151,7 +151,7 @@ def make_agent(obs_space, action_space, device, args):
         elif args.algo == 'si_mh_ppo_mlp':
             kwargs['si_c'] = args.ppo_si_c
             kwargs['si_epsilon'] = args.ppo_si_epsilon
-            agent = SiPpoMlpAgent(**kwargs)
+            agent = SiMultiHeadPpoMlpAgent(**kwargs)
         elif args.algo == 'agem_mh_ppo_mlp':
             kwargs['agem_memory_budget'] = args.ppo_agem_memory_budget
             kwargs['agem_ref_grad_batch_size'] = args.ppo_agem_ref_grad_batch_size

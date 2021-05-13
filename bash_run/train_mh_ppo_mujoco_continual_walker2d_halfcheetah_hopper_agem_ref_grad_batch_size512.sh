@@ -12,7 +12,7 @@ for seed in "${seeds[@]}"; do
   xvfb-run -a -s "-screen 0 1400x900x24" python $PROJECT_DIR/src/train_ppo.py \
     --env_names Walker2d-v3 HalfCheetah-v3 Hopper-v3 \
     --env_type mujoco \
-    --algo ewc_mh_ppo_mlp \
+    --algo agem_mh_ppo_mlp \
     --train_steps_per_task 1000000 \
     --save_freq 1 \
     --eval_freq 1 \

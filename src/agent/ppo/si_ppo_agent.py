@@ -37,9 +37,12 @@ class SiPpoMlpAgent(PpoMlpAgent):
         self.prev_params = {}
         self.prev_task_params = {}
 
+        self._save_init_params()
+
+    def _save_init_params(self):
         # set prev_task_params as weight initializations
-        for name, param in chain(self.critic.named_parameters(),
-                                 self.actor.named_parameters()):
+        for name, param in chain(self.actor.named_parameters(),
+                                 self.critic.named_parameters()):
             if param.requires_grad:
                 self.prev_task_params[name] = param.detach().clone()
 
