@@ -52,8 +52,21 @@ CURVE_FORMAT = {
         'style': '-',
         'label': 'EWC_labmda10'
     },
-    'task-8': ([0, 0, 0], '-'),
-    'task-9': ([254, 151, 0], '-'),
+    'si_c1': {
+        'color': [204, 204, 0],
+        'style': '-',
+        'label': 'SI_c1'
+    },
+    'si_c10': {
+        'color': [254, 153, 204],
+        'style': '-',
+        'label': 'SI_c10'
+    },
+    'si_c100': {
+        'color': [255, 128, 0],
+        'style': '-',
+        'label': 'SI_c100'
+    }
 }
 
 
