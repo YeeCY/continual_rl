@@ -66,6 +66,21 @@ CURVE_FORMAT = {
         'color': [255, 128, 0],
         'style': '-',
         'label': 'SI_c100'
+    },
+    'agem_ref_grad_batch_size256': {
+        'color': [153, 76, 0],
+        'style': '-',
+        'label': 'AGEM_REF_GRAD_BATCH_SIZE256'
+    },
+    'agem_ref_grad_batch_size512': {
+        'color': [64, 64, 64],
+        'style': '-',
+        'label': 'AGEM_REF_GRAD_BATCH_SIZE512'
+    },
+    'agem_ref_grad_batch_size1024': {
+        'color': [0, 153, 153],
+        'style': '-',
+        'label': 'AGEM_REF_GRAD_BATCH_SIZE1024'
     }
 }
 
