@@ -24,6 +24,6 @@ for seed in "${seeds[@]}"; do
     --ppo_agem_memory_budget 9216 \
     --ppo_agem_ref_grad_batch_size 3072 \
     --seed $seed \
-    --work_dir $PROJECT_DIR/vec_logs/mh_walker2d_halfcheetah_hopper/agem_ref_grad_batch_size1024/$seed \
+    --work_dir $PROJECT_DIR/vec_logs/mh_walker2d_halfcheetah_hopper/agem_ref_grad_batch_size3072/$seed \
     --save_model
 done
