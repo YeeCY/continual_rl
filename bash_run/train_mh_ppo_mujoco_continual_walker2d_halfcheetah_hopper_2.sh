@@ -14,11 +14,11 @@ for seed in "${seeds[@]}"; do
     --env_type mujoco \
     --algo mh_ppo_mlp \
     --train_steps_per_task 1000000 \
-    --save_freq 1 \
-    --eval_freq 1 \
+    --save_freq 10 \
+    --eval_freq 10 \
     --discount 0.99 \
     --ppo_num_rollout_steps_per_process 2048 \
-    --ppo_num_processes 8 \
+    --ppo_num_processes 1 \
     --ppo_use_clipped_critic_loss \
     --ppo_use_proper_time_limits \
     --seed $seed \
