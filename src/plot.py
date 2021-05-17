@@ -81,7 +81,12 @@ CURVE_FORMAT = {
         'color': [0, 153, 153],
         'style': '-',
         'label': 'AGEM_REF_GRAD_BATCH_SIZE1024'
-    }
+    },
+    'agem_ref_grad_batch_size3072': {
+        'color': [64, 64, 64],
+        'style': '-',
+        'label': 'AGEM_REF_GRAD_BATCH_SIZE3072'
+    },
 }
 
 
@@ -226,7 +231,7 @@ if __name__ == '__main__':
     parser.add_argument('--task_names', type=str, nargs='+',
                         default=['reach-v2', 'window-close-v2', 'button-press-topdown-v2'])
     parser.add_argument('--algos', type=str, nargs='+',
-                        default=['sgd', 'ewc', 'si'])
+                        default=['sgd_backup', 'ewc', 'si'])
     parser.add_argument('--seeds', type=int, nargs='+', default=[0, 1, 2, 3, 4, 5, 6])
     parser.add_argument('--max_timesteps', type=int, default=np.iinfo(np.int).max)
     parser.add_argument('--statistics', type=str, nargs='+',
