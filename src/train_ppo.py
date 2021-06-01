@@ -259,9 +259,10 @@ def main(args):
             for task_epoch in range(total_epochs_per_task):
                 agent.update_learning_rate(task_epoch, total_epochs_per_task)
 
-                if task_epoch % args.save_freq == 0:
-                    if args.save_model:
-                        agent.save(model_dir, total_steps)
+                # TODO (chongyi zheng): We don't need to save model now
+                # if task_epoch % args.save_freq == 0:
+                #     if args.save_model:
+                #         agent.save(model_dir, total_steps)
 
                 if task_epoch % args.eval_freq == 0:
                     print('Evaluating:', args.work_dir)
