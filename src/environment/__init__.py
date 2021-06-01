@@ -134,7 +134,21 @@ def make_continual_metaworld_env(env_names, seed=None):
 
 def make_env(env_id, seed, rank, log_dir, allow_early_resets):
     def _thunk():
-        env = gym.make(env_id)
+        # if 'metaworld_' in env_id:
+        #     mt1 = metaworld.MT1(env_id.replace('metaworld_', ''))
+        #     train_task_sampler = MetaWorldTaskSampler(
+        #         mt1, 'train',
+        #         lambda env, _: NormalizedEnv(env))
+        #     env = train_task_sampler.sample(1)[0]()
+        # else:
+        try:
+            env = gym.make(env_id)
+        except gym.error.UnregisteredEnv:
+            mt1 = metaworld.MT1(env_id.replace('metaworld_', ''))
+            train_task_sampler = MetaWorldTaskSampler(
+                mt1, 'train',
+                lambda env, _: NormalizedEnv(env))
+            env = train_task_sampler.sample(1)[0]()
 
         is_atari = hasattr(gym.envs, 'atari') and isinstance(
             env.unwrapped, gym.envs.atari.atari_env.AtariEnv)

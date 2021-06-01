@@ -156,15 +156,29 @@ def main(args):
         #     env_name=args.env_name,
         #     seed=args.seed
         # )
-        env = make_continual_metaworld_env(
-            env_names=args.env_names,
-            seed=args.seed
-        )
-        eval_env = copy.deepcopy(env)
+        # env = make_continual_metaworld_env(
+        #     env_names=args.env_names,
+        #     seed=args.seed
+        # )
+        # eval_env = copy.deepcopy(env)
         # eval_env = make_continual_metaworld_env(
         #     env_names=args.env_names,
         #     seed=args.seed
         # )
+        train_env_log_dir = utils.make_dir(os.path.join(args.work_dir, 'train_env'))
+        eval_env_log_dir = utils.make_dir(os.path.join(args.work_dir, 'eval_env'))
+        env = make_continual_vec_envs(
+            args.env_names, args.seed, args.ppo_num_processes,
+            args.discount, train_env_log_dir,
+            allow_early_resets=True,
+            multi_head=True if 'mh' in args.algo else False,
+        )
+        eval_env = make_continual_vec_envs(
+            args.env_names, args.seed + args.ppo_num_processes,
+            args.ppo_num_processes, None, eval_env_log_dir,
+            allow_early_resets=True,
+            multi_head=True if 'mh' in args.algo else False,
+        )
 
     # if args.env_type == 'atari':
     #     # replay_buffer = buffers.FrameStackReplayBuffer(
@@ -259,10 +273,9 @@ def main(args):
             for task_epoch in range(total_epochs_per_task):
                 agent.update_learning_rate(task_epoch, total_epochs_per_task)
 
-                # TODO (chongyi zheng): We don't need to save model now
-                # if task_epoch % args.save_freq == 0:
-                #     if args.save_model:
-                #         agent.save(model_dir, total_steps)
+                if task_epoch % args.save_freq == 0:
+                    if args.save_model:
+                        agent.save(model_dir, total_steps)
 
                 if task_epoch % args.eval_freq == 0:
                     print('Evaluating:', args.work_dir)

@@ -23,6 +23,5 @@ for seed in "${seeds[@]}"; do
     --ppo_use_clipped_critic_loss \
     --ppo_use_proper_time_limits \
     --seed $seed \
-    --work_dir $PROJECT_DIR/vec_logs/mh_metaworld_5_tasks/sgd/$seed \
-    --save_model
+    --work_dir $PROJECT_DIR/vec_logs/mh_ppo_mlp_metaworld_5_tasks/sgd/$seed \
 done
