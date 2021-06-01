@@ -4,8 +4,8 @@ import abc
 import numpy as np
 from gym.wrappers import TimeLimit
 
-from environment.metaworld.wrappers import TaskNameWrapper, TaskOnehotWrapper
-from environment.metaworld.env_updates import SetTaskUpdate
+from src.environment.metaworld_utils.wrappers import TaskNameWrapper, TaskOnehotWrapper
+from src.environment.metaworld_utils.env_updates import SetTaskUpdate
 
 
 class TaskSampler(abc.ABC):
@@ -51,7 +51,7 @@ class MetaWorldTaskSampler(TaskSampler):
             used with multi-task benchmarks.
     Raises:
         ValueError: If kind is not 'train' or 'test'. Also raisd if
-            `add_env_onehot` is used on a metaworld meta learning (not
+            `add_env_onehot` is used on a metaworld_utils meta learning (not
             multi-task) benchmark.
     """
 
@@ -71,7 +71,7 @@ class MetaWorldTaskSampler(TaskSampler):
                              f'not {kind!r}')
         self._task_indices = {}
         if add_env_onehot:
-            if kind == 'test' or 'metaworld.ML' in repr(type(benchmark)):
+            if kind == 'test' or 'metaworld_utils.ML' in repr(type(benchmark)):
                 raise ValueError('add_env_onehot should only be used with '
                                  f'multi-task benchmarks, not {benchmark!r}')
             self._task_indices = {
@@ -135,10 +135,10 @@ class MetaWorldTaskSampler(TaskSampler):
         task_indices = self._task_indices
 
         def wrap(env, task):
-            """Wrap an environment in a metaworld benchmark.
+            """Wrap an environment in a metaworld_utils benchmark.
             Args:
-                env (gym.Env): A metaworld / gym environment.
-                task (metaworld.Task): A metaworld task.
+                env (gym.Env): A metaworld_utils / gym environment.
+                task (metaworld.Task): A metaworld_utils task.
             Returns:
                 garage.Env: The wrapped environment.
             """

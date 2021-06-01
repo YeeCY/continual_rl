@@ -3,7 +3,7 @@ import numpy as np
 import gym
 from gym.spaces import Box
 
-from environment.metaworld.utils import uniform_random_strategy
+from src.environment.metaworld_utils.sample_strategies import uniform_random_strategy
 # from garage import EnvSpec, EnvStep, Wrapper
 
 from metaworld.envs.mujoco.sawyer_xyz.sawyer_xyz_env import SawyerXYZEnv
@@ -383,13 +383,13 @@ class MultiEnvWrapper(gym.Wrapper):
         mode (str): A string from 'vanilla`, 'add-onehot' and 'del-onehot'.
             The type of observation to use.
             - 'vanilla' provides the observation as it is.
-              Use case: metaworld environments with MT* algorithms,
+              Use case: metaworld_utils environments with MT* algorithms,
                         gym environments with Task Embedding.
             - 'add-onehot' will append an one-hot task id to observation.
               Use case: gym environments with MT* algorithms.
             - 'del-onehot' assumes an one-hot task id is appended to
               observation, and it excludes that.
-              Use case: metaworld environments with Task Embedding.
+              Use case: metaworld_utils environments with Task Embedding.
         env_names (list(str)): The names of the environments corresponding to
             envs. The index of an env_name must correspond to the index of the
             corresponding environment in envs. An env_name in env_names must be unique.

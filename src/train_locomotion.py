@@ -7,7 +7,7 @@ import copy
 
 from arguments import parse_args
 from environment import make_atari_env, make_locomotion_env, make_single_metaworld_env, make_continual_metaworld_env
-from environment.metaworld import MultiEnvWrapper
+from environment.metaworld_utils import MultiEnvWrapper
 from agent import make_agent
 import utils
 import buffers
@@ -131,7 +131,7 @@ def main(args):
             camera_id=args.env_camera_id,
             mode=args.mode
         )
-    elif args.env_type == 'metaworld':
+    elif args.env_type == 'metaworld_utils':
         # environment = make_single_metaworld_env(
         #     env_name=args.env_name,
         #     seed=args.seed
@@ -185,7 +185,7 @@ def main(args):
             device=device,
             optimize_memory_usage=True,
         )
-    elif args.env_type == 'dmc_locomotion' or 'metaworld':
+    elif args.env_type == 'dmc_locomotion' or 'metaworld_utils':
         replay_buffer = buffers.ReplayBuffer(
             obs_space=env.observation_space,
             action_space=env.action_space,

@@ -9,7 +9,7 @@ import time
 from arguments import parse_args
 from environment import make_atari_env, make_locomotion_env, make_single_metaworld_env, make_continual_metaworld_env, \
     make_vec_envs, make_continual_vec_envs
-from environment.metaworld import MultiEnvWrapper
+from environment.metaworld_utils import MultiEnvWrapper
 from agent import make_agent
 import utils
 from environment.utils import get_vec_normalize
@@ -190,7 +190,7 @@ def main(args):
     #         device=device,
     #         optimize_memory_usage=True,
     #     )
-    # elif args.env_type == 'dmc_locomotion' or 'metaworld':
+    # elif args.env_type == 'dmc_locomotion' or 'metaworld_utils':
     #     replay_buffer = buffers.ReplayBuffer(
     #         obs_space=environment.observation_space,
     #         action_space=environment.action_space,

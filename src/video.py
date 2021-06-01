@@ -26,7 +26,7 @@ class VideoRecorder(object):
                 frame = env.render(mode='rgb_array')
                 frame = Image.fromarray(frame).resize([self.width, self.height])
                 frame = np.asarray(frame)
-            elif self.env_type == 'metaworld':
+            elif self.env_type == 'metaworld_utils':
                 frame = env.render(mode='rgb_array')
                 frame = Image.fromarray(frame[:, :, ::-1]).resize([self.width, self.height])
                 frame = np.asarray(frame)

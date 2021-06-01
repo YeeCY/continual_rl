@@ -13,11 +13,11 @@ from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import (DummyVecEnv, SubprocVecEnv)
 
 
-from environment import dmc_wrappers
-from environment import atari_wrappers
-from environment.gym_wrapper import TransposeImage, TimeLimitMask, VecNormalize
-from environment.metaworld import MetaWorldTaskSampler, SingleMT1Wrapper, MultiEnvWrapper, NormalizedEnv
-from environment.metaworld import uniform_random_strategy, round_robin_strategy
+from src.environment import dmc_wrappers
+from src.environment import atari_wrappers
+from src.environment.gym_wrapper import TransposeImage, TimeLimitMask, VecNormalize
+from src.environment.metaworld_utils import MetaWorldTaskSampler, SingleMT1Wrapper, MultiEnvWrapper, NormalizedEnv
+from src.environment.metaworld_utils import uniform_random_strategy, round_robin_strategy
 
 import utils
 
@@ -112,7 +112,7 @@ def make_single_metaworld_env(env_name, seed=None):
 
 
 def make_continual_metaworld_env(env_names, seed=None):
-    # envs = metaworld_wrappers.MT10Wrapper()
+    # envs = metaworld_utils.MT10Wrapper()
     # envs.seed(seed)
 
     envs = []
