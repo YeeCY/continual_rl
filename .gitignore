@@ -10,3 +10,4 @@ vec_logs
 figures
 datasets
 results
+terminal_logs/*.log

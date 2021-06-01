@@ -3,12 +3,14 @@
 SCRIPT_DIR=$(dirname "$BASH_SOURCE")
 PROJECT_DIR=$SCRIPT_DIR/..
 
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/.mujoco/mujoco200/bin:/usr/lib/nvidia-418
 export PYTHONPATH=$PROJECT_DIR
-export CUDA_VISIBLE_DEVICES=0
 
 declare -a seeds=(0 1 2 3)
 
 for seed in "${seeds[@]}"; do
+  export CUDA_VISIBLE_DEVICES=$seed
+  nohup \
   python $PROJECT_DIR/src/train_ppo.py \
     --env_names window-close-v2 button-press-topdown-v2 peg-insert-side-v2 door-open-v2 push-v2 \
     --env_type metaworld \
@@ -23,5 +25,6 @@ for seed in "${seeds[@]}"; do
     --ppo_use_proper_time_limits \
     --seed $seed \
     --work_dir $PROJECT_DIR/vec_logs/mh_metaworld_5_tasks/sgd/$seed \
-    --save_model
+    --save_model \
+    > $PROJECT_DIR/terminal_log/mh_metaworld_5_tasks-sgd-seed"$seed".log 2>&1 &
 done
