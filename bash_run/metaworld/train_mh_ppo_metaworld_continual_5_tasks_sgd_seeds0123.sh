@@ -1,7 +1,7 @@
 #!/bin/bash
 
 SCRIPT_DIR=$(dirname "$BASH_SOURCE")
-PROJECT_DIR=$SCRIPT_DIR/..
+PROJECT_DIR=$SCRIPT_DIR/../../
 
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/.mujoco/mujoco200/bin:/usr/lib/nvidia-418
 export PYTHONPATH=$PROJECT_DIR
@@ -26,5 +26,5 @@ for seed in "${seeds[@]}"; do
     --seed $seed \
     --work_dir $PROJECT_DIR/vec_logs/mh_metaworld_5_tasks/sgd/$seed \
     --save_model \
-    > $PROJECT_DIR/terminal_log/mh_metaworld_5_tasks-sgd-seed"$seed".log 2>&1 &
+    > $PROJECT_DIR/terminal_logs/mh_metaworld_5_tasks-sgd-seed"$seed".log 2>&1 &
 done
