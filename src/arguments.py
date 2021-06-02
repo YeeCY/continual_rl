@@ -1,4 +1,5 @@
 import argparse
+import os.path as osp
 import numpy as np
 
 from agent import ALGOS
@@ -167,6 +168,7 @@ def parse_args():
 		f'unrecognized mode "{args.mode}"'
 	assert args.seed is not None, 'must provide seed for experiment'
 	assert args.work_dir is not None, 'must provide a working directory for experiment'
+	args.work_dir = osp.abspath(args.work_dir)
 
 	assert np.sum([args.use_inv, args.use_rot, args.use_curl]) <= 1, \
 		'can use at most one self-supervised task'
