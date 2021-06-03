@@ -1,4 +1,4 @@
-from src.agent.ppo import MultiHeadPpoMlpAgent, EwcPpoMlpAgent
+from agent.ppo import MultiHeadPpoMlpAgent, EwcPpoMlpAgent
 
 
 class EwcMultiHeadPpoMlpAgent(MultiHeadPpoMlpAgent, EwcPpoMlpAgent):

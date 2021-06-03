@@ -1,8 +1,8 @@
 import torch
 from itertools import chain
-import src.utils as utils
+import utils
 
-from src.agent.network import PpoActorMlp, PpoCriticMlp
+from agent.network import PpoActorMlp, PpoCriticMlp
 
 
 class PpoMlpAgent:

@@ -2,8 +2,8 @@ import torch
 from itertools import chain
 from collections.abc import Iterable
 
-import src.utils as utils
-from src.agent.sac.base_sac_agent import SacMlpAgent
+import utils
+from agent.sac.base_sac_agent import SacMlpAgent
 
 
 class EwcSacMlpAgent(SacMlpAgent):

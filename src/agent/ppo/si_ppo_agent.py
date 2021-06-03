@@ -2,7 +2,7 @@ import torch
 from itertools import chain
 from collections.abc import Iterable
 
-from src.agent.ppo.base_ppo_agent import PpoMlpAgent
+from agent.ppo.base_ppo_agent import PpoMlpAgent
 
 
 class SiPpoMlpAgent(PpoMlpAgent):

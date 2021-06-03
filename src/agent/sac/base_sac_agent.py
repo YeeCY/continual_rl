@@ -3,7 +3,7 @@ import numpy as np
 import src.utils as utils
 import torch.nn.functional as F
 
-from src.agent.network import SacActorMlp, SacCriticMlp
+from agent.network import SacActorMlp, SacCriticMlp
 
 
 class SacMlpAgent:

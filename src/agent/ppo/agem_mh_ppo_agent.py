@@ -1,7 +1,8 @@
 import torch
 from itertools import chain
 
-from src.agent import MultiHeadPpoMlpAgent, AgemPpoMlpAgent
+from agent.ppo.mh_ppo_agent import MultiHeadPpoMlpAgent
+from agent.ppo.agem_ppo_agent import AgemPpoMlpAgent
 
 
 class AgemMultiHeadPpoMlpAgent(MultiHeadPpoMlpAgent, AgemPpoMlpAgent):

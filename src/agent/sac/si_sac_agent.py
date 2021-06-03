@@ -2,7 +2,7 @@ import torch
 from itertools import chain
 from collections.abc import Iterable
 
-from src.agent.sac.base_sac_agent import SacMlpAgent
+from agent.sac.base_sac_agent import SacMlpAgent
 
 
 class SiSacMlpAgent(SacMlpAgent):

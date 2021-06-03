@@ -1,8 +1,8 @@
 import numpy as np
 import torch
 
-from src.agent.sac.base_sac_agent import SacMlpAgent
-from src.agent.network import MultiHeadSacActorMlp, MultiHeadSacCriticMlp
+from agent.sac.base_sac_agent import SacMlpAgent
+from agent.network import MultiHeadSacActorMlp, MultiHeadSacCriticMlp
 
 
 class MultiHeadSacMlpAgent(SacMlpAgent):

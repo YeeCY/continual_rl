@@ -4,7 +4,7 @@ from src.agent.sac import EwcSacMlpAgent, SiSacMlpAgent, AgemSacMlpAgent, SacMlp
 from src.agent.ppo import PpoMlpAgent, EwcPpoMlpAgent, SiPpoMlpAgent, AgemPpoMlpAgent, \
     MultiHeadPpoMlpAgent, EwcMultiHeadPpoMlpAgent, SiMultiHeadPpoMlpAgent, AgemMultiHeadPpoMlpAgent
 
-from trash import SacMlpSSEnsembleAgent, SacCnnSSEnsembleAgent
+from agent.trash import SacMlpSSEnsembleAgent, SacCnnSSEnsembleAgent
 
 
 ALGOS = [

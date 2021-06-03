@@ -2,7 +2,7 @@ import torch
 import numpy as np
 from itertools import chain
 
-import src.utils as utils
+import utils
 from src.agent.ppo.base_ppo_agent import PpoMlpAgent
 
 

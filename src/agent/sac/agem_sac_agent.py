@@ -3,7 +3,7 @@ import numpy as np
 import src.utils as utils
 from collections.abc import Iterable
 
-from src.agent.sac.base_sac_agent import SacMlpAgent
+from agent.sac.base_sac_agent import SacMlpAgent
 
 
 class AgemSacMlpAgent(SacMlpAgent):

@@ -1,11 +1,10 @@
 import torch
 import numpy as np
 from itertools import chain
-from collections.abc import Iterable
 
-import src.utils as utils
-import src.storages as storages
-from src.agent.ppo.base_ppo_agent import PpoMlpAgent
+import utils
+import storages
+from agent.ppo.base_ppo_agent import PpoMlpAgent
 
 
 class AgemPpoMlpAgent(PpoMlpAgent):
