@@ -141,10 +141,11 @@ def make_env(env_id, seed, rank, log_dir, allow_early_resets):
         #         lambda env, _: NormalizedEnv(env))
         #     env = train_task_sampler.sample(1)[0]()
         # else:
+        # (chongyi zheng): make metaworld as well
         try:
             env = gym.make(env_id)
         except gym.error.UnregisteredEnv:
-            mt1 = metaworld.MT1(env_id.replace('metaworld_', ''))
+            mt1 = metaworld.MT1(env_id)
             train_task_sampler = MetaWorldTaskSampler(
                 mt1, 'train',
                 lambda env, _: NormalizedEnv(env))

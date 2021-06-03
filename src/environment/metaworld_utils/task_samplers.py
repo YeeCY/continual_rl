@@ -94,8 +94,10 @@ class MetaWorldTaskSampler(TaskSampler):
 
     def _shuffle_tasks(self):
         """Reshuffles the task orders."""
-        for tasks in self._task_orders.values():
-            np.random.shuffle(tasks)
+        # for tasks in self._task_orders.values():
+        #     np.random.shuffle(tasks)
+        # TODO (chongyi zheng): Do we need to shuffle tasks?
+        pass
 
     @property
     def n_tasks(self):

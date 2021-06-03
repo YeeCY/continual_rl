@@ -180,6 +180,32 @@ def main(args):
             multi_head=True if 'mh' in args.algo else False,
         )
 
+        # from PIL import Image
+        # for task_env, eval_task_env in zip(env._task_envs, eval_env._task_envs):
+        #     task_env.reset()
+        #     eval_task_env.reset()
+        #
+        #     img1 = Image.fromarray(
+        #         task_env.render("rgb_array")[:, :, ::-1]
+        #     ).resize([480, 480])
+        #     img2 = Image.fromarray(
+        #         eval_task_env.render("rgb_array")[:, :, ::-1]
+        #     ).resize([480, 480])
+        #     img1.show()
+        #     img2.show()
+        #
+        #     task_env.reset()
+        #     eval_task_env.reset()
+        #
+        #     img3 = Image.fromarray(
+        #         task_env.render("rgb_array")[:, :, ::-1]
+        #     ).resize([480, 480])
+        #     img4 = Image.fromarray(
+        #         eval_task_env.render("rgb_array")[:, :, ::-1]
+        #     ).resize([480, 480])
+        #     img3.show()
+        #     img4.show()
+
     # if args.env_type == 'atari':
     #     # replay_buffer = buffers.FrameStackReplayBuffer(
     #     #     obs_space=environment.observation_space,
