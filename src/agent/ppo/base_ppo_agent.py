@@ -86,18 +86,6 @@ class PpoMlpAgent:
         return utils.to_np(action), utils.to_np(log_pi)
 
     def compute_critic_loss(self, obs, value_pred, ret, **kwargs):
-        # with torch.no_grad():
-        #     _, policy_action, log_pi, _ = self.actor(next_obs)
-        #     target_Q1, target_Q2 = self.critic_target(next_obs, policy_action)
-        #     target_V = torch.min(target_Q1,
-        #                          target_Q2) - self.alpha.detach() * log_pi
-        #     target_Q = reward + (not_done * self.discount * target_V)
-        #
-        # # get current Q estimates
-        # current_Q1, current_Q2 = self.critic(obs, action)
-        # critic_loss = F.mse_loss(current_Q1, target_Q) + F.mse_loss(current_Q2, target_Q)
-        #
-        # return critic_loss
         value = self.critic(obs, **kwargs)
 
         if self.use_clipped_critic_loss:
@@ -121,34 +109,6 @@ class PpoMlpAgent:
 
         return actor_loss, entropy
 
-    # def update_actor_(self, critic_loss, logger, step):
-    #     # Optimize the critic
-    #     logger.log('train_critic/loss', critic_loss, step)
-    #     self.critic_optimizer.zero_grad()
-    #     critic_loss.backward()
-    #     torch.nn.utils.clip_grad_norm_(self.critic.parameters(), self.grad_clip_norm)
-    #     self.critic_optimizer.step()
-
-    # def update_actor_and_alpha(self, log_pi, actor_loss, logger, step, alpha_loss=None):
-    #     logger.log('train_actor/loss', actor_loss, step)
-    #     logger.log('train_actor/target_entropy', self.target_entropy, step)
-    #     logger.log('train_actor/entropy', -log_pi.mean(), step)
-    #
-    #     # optimize the actor
-    #     self.actor_optimizer.zero_grad()
-    #     actor_loss.backward()
-    #     torch.nn.utils.clip_grad_norm_(self.actor.parameters(), self.grad_clip_norm)
-    #     self.actor_optimizer.step()
-    #
-    #     if isinstance(alpha_loss, torch.Tensor):
-    #         logger.log('train_alpha/loss', alpha_loss, step)
-    #         logger.log('train_alpha/value', self.alpha, step)
-    #
-    #         self.log_alpha_optimizer.zero_grad()
-    #         alpha_loss.backward()
-    #         torch.nn.utils.clip_grad_norm_([self.log_alpha], self.grad_clip_norm)
-    #         self.log_alpha_optimizer.step()
-
     def update_learning_rate(self, epoch, total_epochs):
         lr = self.lr - (self.lr * (epoch / float(total_epochs)))
         for param_group in self.optimizer.param_groups:
@@ -169,10 +129,6 @@ class PpoMlpAgent:
                 obs_batch, actions_batch, value_preds_batch, \
                 return_batch, old_log_pis, adv_targets = sample
 
-                # Reshape to do in a single forward pass for all steps
-                # values, action_log_probs, dist_entropy, _ = self.actor_critic.evaluate_actions(
-                #     obs_batch, recurrent_hidden_states_batch, masks_batch,
-                #     actions_batch)
                 actor_loss, entropy = self.compute_actor_loss(
                     obs_batch, actions_batch, old_log_pis, adv_targets, **kwargs)
                 critic_loss = self.compute_critic_loss(

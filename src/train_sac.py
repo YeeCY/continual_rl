@@ -21,12 +21,12 @@ def evaluate(env, agent, video, num_episodes, logger, step):
     if isinstance(env, MultiEnvWrapper):
         assert env.env_names is not None, "Environment name must exist!"
 
-        for task_name in env.env_names:
+        for task_id, task_name in enumerate(env.env_names):
             episode_rewards = []
             episode_successes = []
             episode_fwd_pred_vars = []
             episode_inv_pred_vars = []
-            for episode in range(num_episodes):
+            for episode in enumerate(num_episodes):
                 obs = env.reset(sample_task=(episode == 0))
                 video.init(enabled=(episode == 0))
                 done = False
@@ -37,7 +37,10 @@ def evaluate(env, agent, video, num_episodes, logger, step):
                 is_successes = []
                 while not done:
                     with utils.eval_mode(agent):
-                        action = agent.act(obs, False)
+                        if 'mh' in args.algo:
+                            action, _ = agent.act(obs, sample=False, head_idx=task_id)
+                        else:
+                            action, _ = agent.act(obs, sample=False)
                     next_obs, reward, done, info = env.step(action)
 
                     obs_buf.append(obs)
@@ -185,7 +188,7 @@ def main(args):
             device=device,
             optimize_memory_usage=True,
         )
-    elif args.env_type == 'dmc_locomotion' or 'metaworld_utils':
+    elif args.env_type == 'dmc_locomotion' or 'metaworld':
         replay_buffer = buffers.ReplayBuffer(
             obs_space=env.observation_space,
             action_space=env.action_space,
@@ -193,9 +196,10 @@ def main(args):
             device=device,
             optimize_memory_usage=True,
         )
+
     agent = make_agent(
         obs_space=env.observation_space,
-        action_space=env.action_space,
+        action_space=env.all_action_spaces if 'mh' in args.algo else env.action_space,
         device=device,
         args=args
     )
@@ -210,7 +214,7 @@ def main(args):
     logger.log_and_dump_arguments(args_dict)
 
     episode, episode_reward, episode_step, episode_successes, done, info = 0, 0, 0, [], True, {}
-    task_step = 0
+    total_steps = 0
     recent_success = deque(maxlen=100)
     recent_episode_reward = deque(maxlen=100)
     start_time = time.time()
@@ -289,101 +293,106 @@ def main(args):
     #             if args.save_model:
     #                 train_steps_per_task = args.train_steps_per_task
     if isinstance(env, MultiEnvWrapper):
-        for total_step in range(train_steps_per_task * env.num_tasks):
-            # (chongyi zheng): we can also evaluate and save model when current episode is not finished
-            # Evaluate agent periodically
-            if total_step % args.eval_freq == 0:
-                print('Evaluating:', args.work_dir)
-                logger.log('eval/episode', episode, total_step)
-                evaluate(eval_env, agent, video, args.num_eval_episodes, logger, total_step)
+        for task_id in range(env.num_tasks):
+            obs = env.reset(sample_task=True)
 
-            # Save agent periodically
-            if total_step % args.save_freq == 0 and total_step > 0:
-                if args.save_model:
-                    agent.save(model_dir, total_step)
+            for task_step in range(train_steps_per_task):
+                # Evaluate agent periodically
+                if total_steps % args.eval_freq == 0:
+                    print('Evaluating:', args.work_dir)
+                    logger.log('eval/episode', episode, total_steps)
+                    evaluate(eval_env, agent, video, args.num_eval_episodes, logger, total_steps)
 
-            # (chongyi zheng): force reset outside done = True when step reach train_steps_per_task
-            if task_step >= train_steps_per_task:
-                obs = env.reset(sample_task=True)
+                # Save agent periodically
+                if total_steps % args.save_freq == 0 and total_steps > 0:
+                    if args.save_model:
+                        agent.save(model_dir, total_steps)
 
-                if 'ewc' in args.algo:
-                    agent.estimate_fisher(replay_buffer)
-                elif 'si' in args.algo:
-                    agent.update_omegas()
-                elif 'agem' in args.algo:
-                    agent.construct_memory(replay_buffer)
+                # # (chongyi zheng): force reset outside done = True when step reach train_steps_per_task
+                # if task_step >= train_steps_per_task:
+                #     obs = env.reset(sample_task=True)
+                #
+                #     if 'ewc' in args.algo:
+                #         agent.estimate_fisher(replay_buffer)
+                #     elif 'si' in args.algo:
+                #         agent.update_omegas()
+                #     elif 'agem' in args.algo:
+                #         agent.construct_memory(replay_buffer)
+                #
+                #     agent.reset_target_critic()
+                #     replay_buffer.reset()
 
-                agent.reset_target_critic()
-                replay_buffer.reset()
-                task_step = 0
+                if done:
+                    success = np.any(episode_successes).astype(np.float)
+                    recent_success.append(success)
+                    recent_episode_reward.append(episode_reward)
 
-            # if done[0]:
-            if done:
-                # if step > 0:
-                #     recent_episode_reward.append(episode_reward)
-                #     logger.log('train/recent_episode_reward', np.mean(recent_episode_reward), step)
-                #     logger.log('train/episode_reward', episode_reward, step)
-                #     logger.dump(step, ty='train', save=(step > args.init_steps))
-                success = np.any(episode_successes).astype(np.float)
-                recent_success.append(success)
-                recent_episode_reward.append(episode_reward)
+                    logger.log(f'train/episode_success', success, total_steps)
+                    logger.log(f'train/recent_success_rate', np.mean(recent_success), total_steps)
+                    logger.log('train/episode_reward', episode_reward, total_steps)
+                    logger.log('train/recent_episode_reward', np.mean(recent_episode_reward), total_steps)
+                    logger.log('train/episode', episode, total_steps)
 
-                logger.log(f'train/episode_success', success, total_step)
-                logger.log(f'train/recent_success_rate', np.mean(recent_success), total_step)
-                logger.log('train/episode_reward', episode_reward, total_step)
-                logger.log('train/recent_episode_reward', np.mean(recent_episode_reward), total_step)
-                logger.log('train/episode', episode, total_step)
+                    if total_steps > 0:
+                        # save non-scalar info
+                        log_info = {
+                            'train/task_name': info['task_name']
+                        }
+                        logger.log('train/duration', time.time() - start_time, total_steps)
+                        start_time = time.time()
+                        # logger.dump(step, ty='train', save=(step > args.init_steps), info=log_info)
+                        logger.dump(total_steps, ty='train', save=(task_step > args.init_steps), info=log_info)
 
-                if total_step > 0:
-                    # save non-scalar info
-                    log_info = {
-                        'train/task_name': info['task_name']
-                    }
-                    logger.log('train/duration', time.time() - start_time, total_step)
-                    start_time = time.time()
-                    # logger.dump(step, ty='train', save=(step > args.init_steps), info=log_info)
-                    logger.dump(total_step, ty='train', save=(task_step > args.init_steps), info=log_info)
+                    obs = env.reset()
+                    episode_reward = 0
+                    episode_step = 0
+                    episode_successes.clear()
+                    episode += 1
 
-                obs = env.reset()
-                episode_reward = 0
-                episode_step = 0
-                episode_successes.clear()
-                episode += 1
+                # Sample action for data collection
+                if task_step < args.init_steps:
+                    action = np.array(env.action_space.sample())
+                else:
+                    with utils.eval_mode(agent):
+                        if 'mh' in args.algo:
+                            action = agent.act(obs, sample=True, head_idx=task_id)
+                        else:
+                            action = agent.act(obs, sample=True)
 
-            # Sample action for data collection
-            if task_step < args.init_steps:
-                action = np.array(env.action_space.sample())
-            else:
-                with utils.eval_mode(agent):
-                    action = agent.act(obs, True)
+                if 'dqn' in args.algo:
+                    agent.on_step(task_step, train_steps_per_task, logger)
 
-            if 'dqn' in args.algo:
-                agent.on_step(task_step, train_steps_per_task, logger)
+                # Run training update
+                if task_step >= args.init_steps:
+                    # TODO (chongyi zheng): Do we need multiple updates after initial data collection?
+                    # num_updates = args.init_steps if step == args.init_steps else 1
+                    for _ in range(args.num_train_iters):
+                        if 'mh' in args.algo:
+                            agent.update(replay_buffer, logger, total_steps, head_idx=task_id)
+                        else:
+                            agent.update(replay_buffer, logger, total_steps)
 
-            # Run training update
-            if task_step >= args.init_steps and total_step % args.train_freq == 0:
-                # TODO (chongyi zheng): Do we need multiple updates after initial data collection?
-                # num_updates = args.init_steps if step == args.init_steps else 1
-                for _ in range(args.num_train_iters):
-                    agent.update(replay_buffer, logger, total_step)
+                # Take step
+                next_obs, reward, done, info = env.step(action)
 
-            # Take step
-            next_obs, reward, done, info = env.step(action)
+                if info.get('success') is not None:
+                    episode_successes.append(info.get('success'))
 
-            if info.get('success') is not None:
-                episode_successes.append(info.get('success'))
+                replay_buffer.add(obs, action, reward, next_obs, done)
+                episode_reward += reward
+                obs = next_obs
+                episode_step += 1
+                total_steps += 1
 
-            replay_buffer.add(obs, action, reward, next_obs, done)
-            # replay_buffer.add(obs, next_obs, action, reward, done)
-            # self.replay_buffer.add(np.expand_dims(obs, axis=0),
-            #                        np.expand_dims(next_obs, axis=0),
-            #                        np.expand_dims(action, axis=0),
-            #                        np.expand_dims(reward, axis=0),
-            #                        np.expand_dims(done, axis=0))
-            episode_reward += reward
-            obs = next_obs
-            episode_step += 1
-            task_step += 1
+            if 'ewc' in args.algo:
+                agent.estimate_fisher(replay_buffer)
+            elif 'si' in args.algo:
+                agent.update_omegas()
+            elif 'agem' in args.algo:
+                agent.construct_memory(replay_buffer)
+
+            agent.reset_target_critic()
+            replay_buffer.reset()
 
     print('Final evaluating:', args.work_dir)
     evaluate(eval_env, agent, video, args.num_eval_episodes, logger,

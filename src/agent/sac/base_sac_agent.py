@@ -65,7 +65,6 @@ class SacMlpAgent:
             self.obs_shape, self.action_shape, self.hidden_dim
         ).to(self.device)
 
-        # self.critic_target.load_state_dict(self.critic.state_dict())
         self.reset_target_critic()
 
         self.log_alpha = torch.tensor(np.log(self.init_temperature)).to(self.device)
@@ -92,27 +91,27 @@ class SacMlpAgent:
     def alpha(self):
         return self.log_alpha.exp()
 
-    def act(self, obs, sample=False):
+    def act(self, obs, sample=False, **kwargs):
         with torch.no_grad():
             obs = torch.FloatTensor(obs).to(self.device)
             obs = obs.unsqueeze(0)
-            mu, pi, _, _ = self.actor(obs, compute_log_pi=False)
+            mu, pi, _, _ = self.actor(obs, compute_log_pi=False, **kwargs)
             action = pi if sample else mu
             action = action.clamp(*self.action_range)
             assert action.ndim == 2 and action.shape[0] == 1
 
         return utils.to_np(action[0])
 
-    def compute_critic_loss(self, obs, action, reward, next_obs, not_done):
+    def compute_critic_loss(self, obs, action, reward, next_obs, not_done, **kwargs):
         with torch.no_grad():
-            _, policy_action, log_pi, _ = self.actor(next_obs)
-            target_Q1, target_Q2 = self.critic_target(next_obs, policy_action)
+            _, policy_action, log_pi, _ = self.actor(next_obs, **kwargs)
+            target_Q1, target_Q2 = self.critic_target(next_obs, policy_action, **kwargs)
             target_V = torch.min(target_Q1,
                                  target_Q2) - self.alpha.detach() * log_pi
             target_Q = reward + (not_done * self.discount * target_V)
 
         # get current Q estimates
-        current_Q1, current_Q2 = self.critic(obs, action)
+        current_Q1, current_Q2 = self.critic(obs, action, **kwargs)
         critic_loss = F.mse_loss(current_Q1, target_Q) + F.mse_loss(current_Q2, target_Q)
 
         return critic_loss
@@ -125,9 +124,9 @@ class SacMlpAgent:
         torch.nn.utils.clip_grad_norm_(self.critic.parameters(), self.grad_clip_norm)
         self.critic_optimizer.step()
 
-    def compute_actor_and_alpha_loss(self, obs, compute_alpha_loss=True):
-        _, pi, log_pi, log_std = self.actor(obs)
-        actor_Q1, actor_Q2 = self.critic(obs, pi)
+    def compute_actor_and_alpha_loss(self, obs, compute_alpha_loss=True, **kwargs):
+        _, pi, log_pi, log_std = self.actor(obs, **kwargs)
+        actor_Q1, actor_Q2 = self.critic(obs, pi, **kwargs)
 
         actor_Q = torch.min(actor_Q1, actor_Q2)
         actor_loss = (self.alpha.detach() * log_pi - actor_Q).mean()
@@ -159,7 +158,7 @@ class SacMlpAgent:
             torch.nn.utils.clip_grad_norm_([self.log_alpha], self.grad_clip_norm)
             self.log_alpha_optimizer.step()
 
-    def update(self, replay_buffer, logger, step):
+    def update(self, replay_buffer, logger, step, **kwargs):
         # obs, action, reward, next_obs, not_done, ensem_kwargs = replay_buffer.sample_ensembles(
         #     self.batch_size, num_ensembles=self.num_ensem_comps)
         obs, action, reward, next_obs, not_done = replay_buffer.sample(self.batch_size)
@@ -168,11 +167,11 @@ class SacMlpAgent:
 
         logger.log('train/batch_reward', reward.mean(), step)
 
-        critic_loss = self.compute_critic_loss(obs, action, reward, next_obs, not_done)
+        critic_loss = self.compute_critic_loss(obs, action, reward, next_obs, not_done, **kwargs)
         self.update_critic(critic_loss, logger, step)
 
         if step % self.actor_update_freq == 0:
-            log_pi, actor_loss, alpha_loss = self.compute_actor_and_alpha_loss(obs)
+            log_pi, actor_loss, alpha_loss = self.compute_actor_and_alpha_loss(obs, **kwargs)
             self.update_actor_and_alpha(log_pi, actor_loss, logger, step, alpha_loss=alpha_loss)
 
         if step % self.critic_target_update_freq == 0:
