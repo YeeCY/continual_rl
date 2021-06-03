@@ -15,7 +15,7 @@ for seed in "${seeds[@]}"; do
     --env_names window-close-v2 button-press-topdown-v2 peg-insert-side-v2 door-open-v2 push-v2 \
     --env_type metaworld \
     --algo mh_ppo_mlp \
-    --train_steps_per_task 1000000 \
+    --train_steps_per_task 500000 \
     --eval_freq 10 \
     --discount 0.99 \
     --ppo_num_batch 256 \
