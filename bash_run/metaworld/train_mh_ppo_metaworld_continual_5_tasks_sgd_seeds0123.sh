@@ -25,5 +25,5 @@ for seed in "${seeds[@]}"; do
     --ppo_use_proper_time_limits \
     --seed $seed \
     --work_dir $PROJECT_DIR/vec_logs/mh_ppo_mlp_metaworld_5_tasks/sgd/$seed \
-    > $PROJECT_DIR/terminal_logs/mh_ppo_mlp_metaworld_5_tasks-sgd-seed"$seed".log 2>&1 &
+    > $PROJECT_DIR/terminal_logs/mh_ppo_mlp_metaworld_5_tasks-sgd-seed"$seed".out 2>&1 &
 done
