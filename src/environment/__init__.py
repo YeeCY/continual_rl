@@ -112,9 +112,6 @@ def make_single_metaworld_env(env_name, seed=None):
 
 
 def make_continual_metaworld_env(env_names, seed=None):
-    # envs = metaworld_utils.MT10Wrapper()
-    # envs.seed(seed)
-
     envs = []
     for env_name in env_names:
         mt1 = metaworld.MT1(env_name)

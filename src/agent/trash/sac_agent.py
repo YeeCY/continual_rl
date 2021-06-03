@@ -2,9 +2,9 @@ import itertools
 import numpy as np
 import torch
 import torch.nn.functional as F
-import utils
+import src.utils as utils
 
-from agent.network import ActorCnn, SacActorMlp, CriticCnn, SacCriticMlp, CURL, \
+from src.agent.network import ActorCnn, SacActorMlp, CriticCnn, SacCriticMlp, CURL, \
     SelfSupervisedCnnInvPredictorEnsem, SelfSupervisedMlpInvPredictorEnsem, \
     SelfSupervisedCnnFwdPredictorEnsem, SelfSupervisedMlpFwdPredictorEnsem
 

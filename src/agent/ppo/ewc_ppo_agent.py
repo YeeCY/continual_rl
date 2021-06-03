@@ -2,8 +2,8 @@ import torch
 import numpy as np
 from itertools import chain
 
-import utils
-from agent.ppo.base_ppo_agent import PpoMlpAgent
+import src.utils as utils
+from src.agent.ppo.base_ppo_agent import PpoMlpAgent
 
 
 class EwcPpoMlpAgent(PpoMlpAgent):

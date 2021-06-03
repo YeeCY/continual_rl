@@ -1,9 +1,9 @@
 import torch
 import numpy as np
-import utils
+import src.utils as utils
 from collections.abc import Iterable
 
-from agent.sac.base_sac_agent import SacMlpAgent
+from src.agent.sac.base_sac_agent import SacMlpAgent
 
 
 class AgemSacMlpAgent(SacMlpAgent):

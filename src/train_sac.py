@@ -131,7 +131,7 @@ def main(args):
             camera_id=args.env_camera_id,
             mode=args.mode
         )
-    elif args.env_type == 'metaworld_utils':
+    elif args.env_type == 'metaworld':
         # environment = make_single_metaworld_env(
         #     env_name=args.env_name,
         #     seed=args.seed
@@ -144,11 +144,11 @@ def main(args):
             env_names=args.env_names,
             seed=args.seed
         )
-        eval_env = copy.deepcopy(env)
-        # eval_env = make_continual_metaworld_env(
-        #     env_names=args.env_names,
-        #     seed=args.seed
-        # )
+        # eval_env = copy.deepcopy(env)
+        eval_env = make_continual_metaworld_env(
+            env_names=args.env_names,
+            seed=args.seed
+        )
 
     utils.set_seed_everywhere(args.seed)
     utils.make_dir(args.work_dir)

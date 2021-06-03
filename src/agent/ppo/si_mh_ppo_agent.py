@@ -2,7 +2,7 @@ import torch
 from itertools import chain
 from collections.abc import Iterable
 
-from agent.ppo import MultiHeadPpoMlpAgent, SiPpoMlpAgent
+from src.agent.ppo import MultiHeadPpoMlpAgent, SiPpoMlpAgent
 
 
 class SiMultiHeadPpoMlpAgent(MultiHeadPpoMlpAgent, SiPpoMlpAgent):

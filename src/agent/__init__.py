@@ -1,14 +1,18 @@
-from agent.dqn_agent import DqnCnnSSEnsembleAgent
-from agent.sac import EwcSacMlpAgent, SiSacMlpAgent, AgemSacMlpAgent, SacMlpAgent, \
-    SacMlpSSEnsembleAgent, SacCnnSSEnsembleAgent
-from agent.ppo import PpoMlpAgent, EwcPpoMlpAgent, SiPpoMlpAgent, AgemPpoMlpAgent, \
+from src.agent.dqn_agent import DqnCnnSSEnsembleAgent
+from src.agent.sac import EwcSacMlpAgent, SiSacMlpAgent, AgemSacMlpAgent, SacMlpAgent, \
+    MultiHeadSacMlpAgent
+from src.agent.ppo import PpoMlpAgent, EwcPpoMlpAgent, SiPpoMlpAgent, AgemPpoMlpAgent, \
     MultiHeadPpoMlpAgent, EwcMultiHeadPpoMlpAgent, SiMultiHeadPpoMlpAgent, AgemMultiHeadPpoMlpAgent
+
+from trash import SacMlpSSEnsembleAgent, SacCnnSSEnsembleAgent
+
 
 ALGOS = [
     'dqn_cnn_ss_ensem',
     'sac_cnn_ss_ensem',
     'sac_mlp_ss_ensem',
     'sac_mlp',
+    'mh_sac_mlp',
     'ewc_sac_mlp',
     'si_sac_mlp',
     'agem_sac_mlp',
@@ -112,6 +116,8 @@ def make_agent(obs_space, action_space, device, args):
             kwargs['agem_memory_budget'] = args.agem_memory_budget
             kwargs['agem_ref_grad_batch_size'] = args.agem_ref_grad_batch_size
             agent = AgemSacMlpAgent(**kwargs)
+        elif args.algo == 'mh_sac_mlp':
+            agent = MultiHeadSacMlpAgent(**kwargs)
     elif 'ppo' in args.algo:
         kwargs['hidden_dim'] = args.ppo_hidden_dim
         kwargs['clip_param'] = args.ppo_clip_param

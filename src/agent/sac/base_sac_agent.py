@@ -1,9 +1,9 @@
 import torch
 import numpy as np
-import utils
+import src.utils as utils
 import torch.nn.functional as F
 
-from agent.network import SacActorMlp, SacCriticMlp
+from src.agent.network import SacActorMlp, SacCriticMlp
 
 
 class SacMlpAgent:
@@ -67,10 +67,6 @@ class SacMlpAgent:
 
         # self.critic_target.load_state_dict(self.critic.state_dict())
         self.reset_target_critic()
-
-        # TODO (chongyi zheng): delete this line
-        # tie encoders between actor and criticp
-        # self.actor.encoder.copy_conv_weights_from(self.critic.encoder)
 
         self.log_alpha = torch.tensor(np.log(self.init_temperature)).to(self.device)
         self.log_alpha.requires_grad = True

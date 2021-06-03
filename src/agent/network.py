@@ -2,7 +2,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from agent.encoder import PixelEncoder, DqnEncoder
+from src.agent.encoder import PixelEncoder, DqnEncoder
 from src.utils import weight_init, SquashedNormal, gaussian_logprob, squash, DiagGaussian
 
 
@@ -35,6 +35,35 @@ class QFunction(nn.Module):
 
         obs_action = torch.cat([obs, action], dim=1)
         return self.trunk(obs_action)
+
+
+class MultiHeadQFunction(nn.Module):
+    """MLP for q-function."""
+    def __init__(self, obs_dim, action_dims, hidden_dim):
+        super().__init__()
+        assert isinstance(action_dims, list)
+
+        self.trunk = nn.Sequential(
+            nn.Linear(obs_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ReLU(),
+        )
+
+        self.heads = torch.nn.ModuleList()
+        for action_dim in action_dims:
+            self.heads.append(
+                nn.Linear(hidden_dim + action_dim, 1)
+            )
+
+    def forward(self, obs, action, head_idx):
+        assert obs.size(0) == action.size(0)
+
+        hidden = self.trunk(obs)
+        hidden_action = torch.cat([hidden, action], dim=1)
+        return self.heads[head_idx](hidden_action)
 
 
 class RotFunction(nn.Module):
@@ -266,6 +295,59 @@ class SacActorMlp(nn.Module):
         return mu, pi, log_pi, log_std
 
 
+class MultiHeadSacActorMlp(nn.Module):
+    """torch.distributions implementation of an diagonal Gaussian policy with MLP"""
+    def __init__(self, obs_shape, action_shapes, hidden_dim, log_std_min, log_std_max):
+        super().__init__()
+        assert isinstance(action_shapes, list)
+
+        self.log_std_min = log_std_min
+        self.log_std_max = log_std_max
+
+        self.trunk = nn.Sequential(
+            nn.Linear(obs_shape[0], hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ReLU(),
+        )
+
+        self.dist_heads = torch.nn.ModuleList()
+        for action_shape in action_shapes:
+            self.dist_heads.append(
+                nn.Linear(hidden_dim, 2 * action_shape[0])
+            )
+
+        self.apply(weight_init)
+
+    def forward(self, obs, head_idx, compute_pi=True, compute_log_pi=True):
+        hidden = self.trunk(obs)
+        mu, log_std, = self.dist_heads[head_idx](hidden).chunk(2, dim=-1)
+
+        # constrain log_std inside [log_std_min, log_std_max]
+        log_std = torch.tanh(log_std)
+        log_std = self.log_std_min + 0.5 * (
+                self.log_std_max - self.log_std_min
+        ) * (log_std + 1)
+
+        if compute_pi:
+            std = log_std.exp()
+            noise = torch.randn_like(mu)
+            pi = mu + noise * std
+        else:
+            pi = None
+
+        if compute_log_pi:
+            log_pi = gaussian_logprob(noise, log_std)
+        else:
+            log_pi = None
+
+        mu, pi, log_pi = squash(mu, pi, log_pi)
+
+        return mu, pi, log_pi, log_std
+
+
 class SacCriticMlp(nn.Module):
     """Critic network with MLP, employes two q-functions."""
     def __init__(self, obs_shape, action_shape, hidden_dim):
@@ -278,6 +360,33 @@ class SacCriticMlp(nn.Module):
     def forward(self, obs, action):
         q1 = self.Q1(obs, action)
         q2 = self.Q2(obs, action)
+
+        return q1, q2
+
+
+class MultiHeadSacCriticMlp(nn.Module):
+    """Critic network with MLP, employes two q-functions."""
+    def __init__(self, obs_shape, action_shapes, hidden_dim):
+        super().__init__()
+        assert isinstance(action_shapes, list)
+
+        action_dims = [action_shape[0] for action_shape in action_shapes]
+        self.Q1 = MultiHeadQFunction(obs_shape[0], action_dims, hidden_dim)
+        self.Q2 = MultiHeadQFunction(obs_shape[0], action_dims, hidden_dim)
+
+        self.apply(weight_init)
+
+    def common_parameters(self, recurse=True):
+        for name, param in self.trunk.named_parameters(recurse=recurse):
+            yield param
+
+    def named_common_parameters(self, prefix='', recurse=True):
+        for elem in self.trunk.named_parameters(prefix=prefix, recurse=recurse):
+            yield elem
+
+    def forward(self, obs, action, head_idx):
+        q1 = self.Q1(obs, action, head_idx)
+        q2 = self.Q2(obs, action, head_idx)
 
         return q1, q2
 

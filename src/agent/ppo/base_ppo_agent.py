@@ -1,8 +1,8 @@
 import torch
 from itertools import chain
-import utils
+import src.utils as utils
 
-from agent.network import PpoActorMlp, PpoCriticMlp
+from src.agent.network import PpoActorMlp, PpoCriticMlp
 
 
 class PpoMlpAgent:
@@ -58,20 +58,6 @@ class PpoMlpAgent:
             self.obs_shape, self.hidden_dim
         ).to(self.device)
 
-        # TODO (chongyi zheng): delete this line
-        # tie encoders between actor and criticp
-        # self.actor.encoder.copy_conv_weights_from(self.critic.encoder)
-
-        # self.log_alpha = torch.tensor(np.log(self.init_temperature)).to(self.device)
-        # self.log_alpha.requires_grad = True
-        # # set target entropy to -|A|
-        # self.target_entropy = -np.prod(self.action_shape)
-        #
-        # # sac optimizers
-        # self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), lr=self.actor_lr)
-        # self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), lr=self.critic_lr)
-        #
-        # self.log_alpha_optimizer = torch.optim.Adam([self.log_alpha], lr=self.alpha_lr)
         self.optimizer = torch.optim.Adam(chain(self.actor.parameters(), self.critic.parameters()),
                                           lr=self.lr, eps=self.eps)
 
