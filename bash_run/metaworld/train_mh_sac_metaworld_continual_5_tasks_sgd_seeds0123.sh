@@ -18,7 +18,10 @@ for seed in "${seeds[@]}"; do
     --train_steps_per_task 500000 \
     --eval_freq 5 \
     --discount 0.99 \
-    --sac_init_steps 5000 \
+    --sac_init_steps 1000 \
+    --sac_num_expl_steps_per_process 1000 \
+    --sac_num_processes 1 \
+    --sac_num_train_iters 1000 \
     --seed $seed \
     --work_dir $PROJECT_DIR/vec_logs/mh_sac_mlp_metaworld_5_tasks/sgd/$seed \
     > $PROJECT_DIR/terminal_logs/mh_sac_mlp_metaworld_5_tasks-sgd-seed"$seed".log 2>&1 &

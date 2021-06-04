@@ -43,8 +43,10 @@ class MultiHeadQFunction(nn.Module):
         super().__init__()
         assert isinstance(action_dims, list)
 
+        self.max_action_dim = max(action_dims)
+
         self.trunk = nn.Sequential(
-            nn.Linear(obs_dim, hidden_dim),
+            nn.Linear(obs_dim + self.max_action_dim, hidden_dim),
             nn.ReLU(),
             nn.Linear(hidden_dim, hidden_dim),
             nn.ReLU(),
@@ -53,17 +55,25 @@ class MultiHeadQFunction(nn.Module):
         )
 
         self.heads = torch.nn.ModuleList()
-        for action_dim in action_dims:
-            self.heads.append(
-                nn.Linear(hidden_dim + action_dim, 1)
-            )
+        for _ in action_dims:
+            self.heads.append(nn.Linear(hidden_dim, 1))
 
     def forward(self, obs, action, head_idx):
         assert obs.size(0) == action.size(0)
 
-        hidden = self.trunk(obs)
-        hidden_action = torch.cat([hidden, action], dim=-1)
-        return self.heads[head_idx](hidden_action)
+        # pad action with zero if needed
+        if action.shape[-1] < self.max_action_dim:
+            action = torch.cat([
+                action,
+                torch.zeros(
+                    list(action.size()[:-1]) + [self.max_action_dim - action.size[-1]],
+                    device=action.device
+                )
+            ], dim=-1)
+
+        obs_action = torch.cat([obs, action], dim=-1)
+        hidden = self.trunk(obs_action)
+        return self.heads[head_idx](hidden)
 
 
 class RotFunction(nn.Module):

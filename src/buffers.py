@@ -52,9 +52,9 @@ class ReplayBuffer:
             self.actions = np.empty((capacity, n_envs, *action_shape), dtype=action_type)
         else:
             raise TypeError(f"Unknown action space type: {type(action_space)}")
-        self.rewards = np.empty((capacity, n_envs), dtype=np.float32)
-        self.not_dones = np.empty((capacity, n_envs), dtype=np.float32)
-        self.timeouts = np.zeros((capacity, n_envs), dtype=np.float32)
+        self.rewards = np.empty((capacity, n_envs, 1), dtype=np.float32)
+        self.not_dones = np.empty((capacity, n_envs, 1), dtype=np.float32)
+        self.timeouts = np.zeros((capacity, n_envs, 1), dtype=np.float32)
 
         if psutil is not None:
             total_memory_usage = self.obses.nbytes + self.actions.nbytes + self.rewards.nbytes + self.not_dones.nbytes
@@ -111,16 +111,19 @@ class ReplayBuffer:
 
             next_obses = torch.as_tensor(self.obses[(idxs + 1) % self.capacity], device=self.device).float()
 
-        obses = torch.as_tensor(self.obses[idxs], device=self.device).float()
-        actions = torch.as_tensor(self.actions[idxs], device=self.device).float()
+        obses = torch.as_tensor(self.obses[idxs], device=self.device)
+        actions = torch.as_tensor(self.actions[idxs], device=self.device)
         rewards = torch.as_tensor(self.rewards[idxs], device=self.device)
-        # Only use dones that are not due to timeouts
-        # deactivated by default (timeouts is initialized as an array of False)
-        not_dones = torch.as_tensor(
-            np.logical_or(self.not_dones[idxs], self.timeouts[idxs]).astype(
-                self.not_dones.dtype),
-            device=self.device
-        )
+        if self.handle_timeout_termination:
+            # Only use dones that are not due to timeouts
+            # deactivated by default (timeouts is initialized as an array of False)
+            not_dones = torch.as_tensor(
+                np.logical_or(self.not_dones[idxs], self.timeouts[idxs]).astype(
+                    self.not_dones.dtype),
+                device=self.device
+            )
+        else:
+            not_dones = torch.as_tensor(self.not_dones[idxs], device=self.device)
 
         return obses, actions, rewards, next_obses, not_dones
 
