@@ -13,19 +13,22 @@ FORMAT_CONFIG = {
     'rl': {
         'train': [
             ('task_name', 'task_name', 'str'),
-            ('episode', 'episode', 'int'), ('step', 'step', 'int'),
-            ('duration', 'duration', 'time'), ('episode_reward', 'return', 'float'),
-            ('batch_reward', 'batch_reward', 'float'), ('actor_loss', 'actor_loss', 'float'),
+            ('episode', 'episode', 'int'),
+            ('step', 'step', 'int'),
+            ('duration', 'duration', 'time'),
+            # ('episode_reward', 'return', 'float'),
+            ('batch_reward', 'batch_reward', 'float'),
+            ('actor_loss', 'actor_loss', 'float'),
             ('critic_loss', 'critic_loss', 'float'),
-            ('ss_inv_loss', 'ss_inv_loss', 'float'),
-            ('episode_success', 'success', 'float'),
+            # ('ss_inv_loss', 'ss_inv_loss', 'float'),
+            # ('episode_success', 'success', 'float'),
             ('recent_episode_reward', 'recent_return', 'float'),
             ('recent_success_rate', 'recent_success_rate', 'float')
         ],
         'eval': [
             ('task_name', 'task_name', 'str'),
             ('step', 'step', 'int'), ('episode_reward', 'return', 'float'),
-            ('episode_ss_pred_var', 'ss_pred_var', 'float'),
+            # ('episode_ss_pred_var', 'ss_pred_var', 'float'),
             ('success_rate', 'success_rate', 'float'),
         ]
     }

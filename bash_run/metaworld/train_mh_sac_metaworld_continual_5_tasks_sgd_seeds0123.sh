@@ -16,7 +16,7 @@ for seed in "${seeds[@]}"; do
     --env_type metaworld \
     --algo mh_sac_mlp \
     --train_steps_per_task 500000 \
-    --eval_freq 5 \
+    --eval_freq 10 \
     --discount 0.99 \
     --sac_init_steps 1000 \
     --sac_num_expl_steps_per_process 1000 \
