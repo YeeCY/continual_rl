@@ -50,7 +50,7 @@ def evaluate(train_env, eval_env, agent, video, num_episodes, logger, step):
 
                 for done_ in done:
                     if done_ and len(episode_rewards) == 0:
-                        video.save('%s_%d.mp4' % (args.env_name, step))
+                        video.save('%s_%d.mp4' % (task_name, step))
                         video.init(enabled=False)
 
                 for info in infos:
@@ -351,10 +351,13 @@ def main(args):
                     agent.update(rollouts, logger, total_steps)
                 rollouts.after_update()
 
+                # log statistics
                 end_time = time.time()
                 print("FPS: ", int(task_steps / (end_time - start_time)))
 
+                logger.log('train/recent_success', np.mean(recent_success), total_steps)
                 logger.log('train/recent_episode_reward', np.mean(recent_episode_reward), total_steps)
+                logger.log('train/episode', episode, total_steps)
                 log_info = {'train/task_name': infos[0]['task_name']}
                 logger.dump(total_steps, ty='train', save=True, info=log_info)
 

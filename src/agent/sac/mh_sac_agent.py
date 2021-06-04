@@ -1,6 +1,8 @@
 import numpy as np
 import torch
 
+import utils
+
 from agent.sac.base_sac_agent import SacMlpAgent
 from agent.network import MultiHeadSacActorMlp, MultiHeadSacCriticMlp
 
@@ -27,6 +29,7 @@ class MultiHeadSacMlpAgent(SacMlpAgent):
             batch_size=128,
     ):
         assert isinstance(action_shape, list)
+        assert isinstance(action_range, list)
         super().__init__(
             obs_shape, action_shape, action_range, device, hidden_dim, discount, init_temperature, alpha_lr, actor_lr,
             actor_log_std_min, actor_log_std_max, actor_update_freq, critic_lr, critic_tau, critic_target_update_freq,
@@ -62,3 +65,16 @@ class MultiHeadSacMlpAgent(SacMlpAgent):
         self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), lr=self.critic_lr)
 
         self.log_alpha_optimizer = torch.optim.Adam([self.log_alpha], lr=self.alpha_lr)
+
+    def act(self, obs, sample=False, **kwargs):
+        if not isinstance(obs, torch.Tensor):
+            obs = torch.Tensor(obs).to(self.device)
+
+        with torch.no_grad():
+            mu, pi, _, _ = self.actor(obs, compute_log_pi=False, **kwargs)
+            action = pi if sample else mu
+            assert 'head_idx' in kwargs
+            action = action.clamp(*self.action_range[kwargs['head_idx']])
+            assert action.ndim == 2 and action.shape[0] == 1
+
+        return utils.to_np(action)

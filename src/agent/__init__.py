@@ -61,8 +61,15 @@ def make_agent(obs_space, action_space, device, args):
 
         agent = DqnCnnSSEnsembleAgent(**kwargs)
     elif 'sac' in args.algo:
-        kwargs['action_range'] = [float(action_space.low.min()),
-                                  float(action_space.high.max())]
+        if isinstance(action_space, list):
+            action_range = [[float(ac.low.min()),
+                             float(ac.high.max())]
+                            for ac in action_space]
+        else:
+            action_range = [float(action_space.low.min()),
+                            float(action_space.high.max())]
+
+        kwargs['action_range'] = action_range
         kwargs['hidden_dim'] = args.hidden_dim
         kwargs['init_temperature'] = args.init_temperature
         kwargs['alpha_lr'] = args.alpha_lr

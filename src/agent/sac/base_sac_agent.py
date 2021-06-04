@@ -92,15 +92,16 @@ class SacMlpAgent:
         return self.log_alpha.exp()
 
     def act(self, obs, sample=False, **kwargs):
+        if not isinstance(obs, torch.Tensor):
+            obs = torch.Tensor(obs).to(self.device)
+
         with torch.no_grad():
-            obs = torch.FloatTensor(obs).to(self.device)
-            obs = obs.unsqueeze(0)
             mu, pi, _, _ = self.actor(obs, compute_log_pi=False, **kwargs)
             action = pi if sample else mu
             action = action.clamp(*self.action_range)
             assert action.ndim == 2 and action.shape[0] == 1
 
-        return utils.to_np(action[0])
+        return utils.to_np(action)
 
     def compute_critic_loss(self, obs, action, reward, next_obs, not_done, **kwargs):
         with torch.no_grad():

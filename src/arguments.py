@@ -18,7 +18,7 @@ def parse_args():
 	# environment
 	# parser.add_argument('--domain_name', default='walker')
 	# parser.add_argument('--task_name', default='walk')
-	parser.add_argument('--env_name', default='walker_run')  # (chongyi zheng)
+	# parser.add_argument('--env_name', default='walker_run')  # (chongyi zheng)
 	parser.add_argument('--env_names', nargs='+', type=str,
 						default=['reach-v2', 'window-close-v2', 'button-press-topdown-v2'])
 	parser.add_argument('--env_type', default='dmc_locomotion', type=str, choices=ENV_TYPES)
@@ -37,8 +37,8 @@ def parse_args():
 	parser.add_argument('--episode_length', default=1000, type=int)
 
 	# agent
-	parser.add_argument('--init_steps', default=1000, type=int)
-	parser.add_argument('--num_train_iters', default=1, type=int)
+	# parser.add_argument('--init_steps', default=1000, type=int)
+	# parser.add_argument('--num_train_iters', default=1, type=int)
 	parser.add_argument('--train_steps', default=1000000, type=int)
 	parser.add_argument('--train_steps_per_task', default=1000000, type=int)
 	parser.add_argument('--batch_size', default=128, type=int)  # 32 for dqn?
@@ -74,18 +74,18 @@ def parse_args():
 	parser.add_argument('--num_ensem_comps', default=4, type=int)  # number of components in ensemble
 	
 	# sac
+	parser.add_argument('--sac_init_steps', default=1000, type=int)
+	parser.add_argument('--sac_num_expl_steps_per_process', default=1000, type=int)
+	parser.add_argument('--sac_num_processes', default=1, type=int)
+	parser.add_argument('--sac_num_train_iters', default=1000, type=int)
 	parser.add_argument('--hidden_dim', default=400, type=int)  # 1024
 	parser.add_argument('--init_temperature', default=1.0, type=float)  # 0.1
 	parser.add_argument('--alpha_lr', default=3e-4, type=float)  # (chongyi zheng): 1e-4, try 3e-4?
 	parser.add_argument('--grad_clip_norm', default=10.0, type=float)  # tuning this
-
-	# sac actor
 	parser.add_argument('--actor_lr', default=3e-4, type=float)  # 1e-3
 	parser.add_argument('--actor_log_std_min', default=-20, type=float)  # -10
 	parser.add_argument('--actor_log_std_max', default=2, type=float)
 	parser.add_argument('--actor_update_freq', default=1, type=int)  # (chongyi zheng): default = 2
-
-	# sac critic
 	parser.add_argument('--critic_lr', default=3e-4, type=float)  # 1e-3
 	parser.add_argument('--critic_tau', default=0.005, type=float)  # 0.01
 	parser.add_argument('--critic_target_update_freq', default=1, type=int)  # 1
