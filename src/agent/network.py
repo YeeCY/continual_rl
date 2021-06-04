@@ -62,7 +62,7 @@ class MultiHeadQFunction(nn.Module):
         assert obs.size(0) == action.size(0)
 
         hidden = self.trunk(obs)
-        hidden_action = torch.cat([hidden, action], dim=1)
+        hidden_action = torch.cat([hidden, action], dim=-1)
         return self.heads[head_idx](hidden_action)
 
 
@@ -581,7 +581,7 @@ class FwdFunction(nn.Module):
         )
 
     def forward(self, h, action):
-        h_act = torch.cat([h, action], dim=1)
+        h_act = torch.cat([h, action], dim=-1)
         return self.trunk(h_act)
 
 
@@ -597,7 +597,7 @@ class InvFunction(nn.Module):
         )
 
     def forward(self, h, h_next):
-        joint_h = torch.cat([h, h_next], dim=1)
+        joint_h = torch.cat([h, h_next], dim=-1)
         return self.trunk(joint_h)
 
 

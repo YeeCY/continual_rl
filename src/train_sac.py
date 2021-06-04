@@ -311,7 +311,8 @@ def main(args):
 
                 for step in range(args.sac_num_expl_steps_per_process):
                     if task_steps < args.sac_init_steps:
-                        action = np.array(env.action_space.sample())
+                        action = np.array([env.action_space.sample()
+                                           for _ in range(env.unwrapped.num_envs)])
                     else:
                         with utils.eval_mode(agent):
                             if 'mh' in args.algo:

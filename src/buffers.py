@@ -117,7 +117,8 @@ class ReplayBuffer:
         # Only use dones that are not due to timeouts
         # deactivated by default (timeouts is initialized as an array of False)
         not_dones = torch.as_tensor(
-            np.logical_or(self.not_dones[idxs], self.timeouts[idxs]),
+            np.logical_or(self.not_dones[idxs], self.timeouts[idxs]).astype(
+                self.not_dones.dtype),
             device=self.device
         )
 
