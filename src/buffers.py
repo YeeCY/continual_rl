@@ -9,7 +9,7 @@ import psutil
 from utils import random_crop
 
 
-class ReplayBuffer(object):
+class ReplayBuffer:
     """Buffer to store environment transitions
 
     (Chongyi Zheng): update replay buffer to stable_baselines style to save memory
@@ -18,12 +18,17 @@ class ReplayBuffer(object):
     - https://github.com/hill-a/stable-baselines/blob/master/stable_baselines/common/buffers.py
 
     """
-    def __init__(self, obs_space, action_space, capacity, device, optimize_memory_usage=False):
+    def __init__(self, obs_space, action_space, capacity, device, n_envs=1,
+                 optimize_memory_usage=False, handle_timeout_termination=True):
+
+        assert n_envs == 1, "Replay buffer only support single environment for now"
+
         self.obs_space = obs_space
         self.action_space = action_space
         self.capacity = capacity
         self.device = device
         self.optimize_memory_usage = optimize_memory_usage
+        self.handle_timeout_termination = handle_timeout_termination
 
         # Check that the replay buffer can fit into the memory
         if psutil is not None:
@@ -35,20 +40,21 @@ class ReplayBuffer(object):
         obs_type = obs_space.dtype
         action_type = action_space.dtype
 
-        self.obses = np.empty((capacity, *obs_shape), dtype=obs_type)
+        self.obses = np.empty((capacity, n_envs, *obs_shape), dtype=obs_type)
         if self.optimize_memory_usage:
             # `observations` contains also the next observation
             self.next_obses = None
         else:
-            self.next_obses = np.empty((capacity, *obs_shape), dtype=obs_type)
+            self.next_obses = np.empty((capacity, n_envs, *obs_shape), dtype=obs_type)
         if isinstance(action_space, gym.spaces.Discrete):
-            self.actions = np.empty((capacity, 1), dtype=np.int32)
+            self.actions = np.empty((capacity, n_envs, 1), dtype=action_type)
         elif isinstance(action_space, gym.spaces.Box):
-            self.actions = np.empty((capacity, *action_shape), dtype=np.float32)
+            self.actions = np.empty((capacity, n_envs, *action_shape), dtype=action_type)
         else:
             raise TypeError(f"Unknown action space type: {type(action_space)}")
-        self.rewards = np.empty((capacity, 1), dtype=np.float32)
-        self.not_dones = np.empty((capacity, 1), dtype=np.float32)
+        self.rewards = np.empty((capacity, n_envs), dtype=np.float32)
+        self.not_dones = np.empty((capacity, n_envs), dtype=np.float32)
+        self.timeouts = np.zeros((capacity, n_envs), dtype=np.float32)
 
         if psutil is not None:
             total_memory_usage = self.obses.nbytes + self.actions.nbytes + self.rewards.nbytes + self.not_dones.nbytes
@@ -74,27 +80,7 @@ class ReplayBuffer(object):
         self.idx = 0
         self.full = False
 
-    # TODO (chongyi zheng): delete this block
-    # def _sample(self, idxs):
-    #     obses, actions, rewards, next_obses, not_dones = [], [], [], [], []
-    #     for idx in idxs:
-    #         data = self._storage[idx]
-    #         obs, action, reward, next_obs, not_done = data
-    #         obses.append(np.array(obs, copy=False))
-    #         actions.append(np.array(action, copy=False))
-    #         rewards.append(reward)
-    #         next_obses.append(np.array(next_obs, copy=False))
-    #         not_dones.append(not_done)
-    #
-    #     obses = torch.as_tensor(obses).float().cuda()
-    #     actions = torch.as_tensor(actions).float().cuda()
-    #     rewards = torch.as_tensor(np.expand_dims(rewards, axis=1)).float().cuda()
-    #     next_obses = torch.as_tensor(next_obses).float().cuda()
-    #     not_dones = torch.as_tensor(np.expand_dims(not_dones, axis=1)).float().cuda()
-    #
-    #     return obses, actions, rewards, next_obses, not_dones
-
-    def add(self, obs, action, reward, next_obs, done):
+    def add(self, obs, action, reward, next_obs, done, infos):
         np.copyto(self.obses[self.idx], obs)
         np.copyto(self.actions[self.idx], action)
         np.copyto(self.rewards[self.idx], reward)
@@ -103,6 +89,9 @@ class ReplayBuffer(object):
         else:
             np.copyto(self.next_obses[self.idx], next_obs)
         np.copyto(self.not_dones[self.idx], not done)
+
+        if self.handle_timeout_termination:
+            self.timeouts[self.idx] = np.array([info.get("TimeLimit.truncated", False) for info in infos])
 
         self.idx = (self.idx + 1) % self.capacity
         self.full = self.full or self.idx == 0
@@ -125,100 +114,101 @@ class ReplayBuffer(object):
         obses = torch.as_tensor(self.obses[idxs], device=self.device).float()
         actions = torch.as_tensor(self.actions[idxs], device=self.device).float()
         rewards = torch.as_tensor(self.rewards[idxs], device=self.device)
-        not_dones = torch.as_tensor(self.not_dones[idxs], device=self.device)
-
-        # TODO (chongyi zheng): We don't need to crop image as PAD
-        # obses = random_crop(obses)
-        # next_obses = random_crop(next_obses)
+        # Only use dones that are not due to timeouts
+        # deactivated by default (timeouts is initialized as an array of False)
+        not_dones = torch.as_tensor(
+            np.logical_or(self.not_dones[idxs], self.timeouts[idxs]),
+            device=self.device
+        )
 
         return obses, actions, rewards, next_obses, not_dones
 
-    def sample_curl(self, batch_size):
-        # TODO (chongyi zheng): update this function to drq style
-        # idxs = np.random.randint(
-        #     0, self.capacity if self.full else self.idx, size=batch_size
-        # )
-        #
-        # obses = torch.as_tensor(self.obses[idxs], device=self.device).float()
-        # actions = torch.as_tensor(self.actions[idxs], device=self.device)
-        # rewards = torch.as_tensor(self.rewards[idxs], device=self.device)
-        # next_obses = torch.as_tensor(self.next_obses[idxs], device=self.device).float()
-        # not_dones = torch.as_tensor(self.not_dones[idxs], device=self.device)
-        # (chongyi zheng): internal sample function
-        obses, actions, rewards, next_obses, not_dones = self.sample(batch_size)
+    # def sample_curl(self, batch_size):
+    #     # TODO (chongyi zheng): update this function to drq style
+    #     # idxs = np.random.randint(
+    #     #     0, self.capacity if self.full else self.idx, size=batch_size
+    #     # )
+    #     #
+    #     # obses = torch.as_tensor(self.obses[idxs], device=self.device).float()
+    #     # actions = torch.as_tensor(self.actions[idxs], device=self.device)
+    #     # rewards = torch.as_tensor(self.rewards[idxs], device=self.device)
+    #     # next_obses = torch.as_tensor(self.next_obses[idxs], device=self.device).float()
+    #     # not_dones = torch.as_tensor(self.not_dones[idxs], device=self.device)
+    #     # (chongyi zheng): internal sample function
+    #     obses, actions, rewards, next_obses, not_dones = self.sample(batch_size)
+    #
+    #     pos = obses.clone()
+    #
+    #     # TODO (chongyi zheng): We don't need to crop image as PAD
+    #     # obses = random_crop(obses)
+    #     # next_obses = random_crop(next_obses)
+    #     # pos = random_crop(pos)
+    #
+    #     curl_kwargs = dict(obs_anchor=obses, obs_pos=pos,
+    #                        time_anchor=None, time_pos=None)
+    #
+    #     return obses, actions, rewards, next_obses, not_dones, curl_kwargs
+    #
+    # def sample_ensembles(self, batch_size, num_ensembles=1):
+    #     ensem_obses, ensem_actions, ensem_rewards, ensem_next_obses, ensem_not_dones = \
+    #         self.sample(batch_size * num_ensembles)
+    #
+    #     # TODO (chongyi zheng): do we need to clone here?
+    #     obses = ensem_obses[:batch_size].detach().clone()
+    #     actions = ensem_actions[:batch_size].detach().clone()
+    #     rewards = ensem_rewards[:batch_size].detach().clone()
+    #     next_obses = ensem_next_obses[:batch_size].detach().clone()
+    #     not_dones = ensem_not_dones[:batch_size].detach().clone()
+    #
+    #     ensem_kwargs = dict(obses=ensem_obses, next_obses=ensem_next_obses, actions=ensem_actions)
+    #
+    #     return obses, actions, rewards, next_obses, not_dones, ensem_kwargs
 
-        pos = obses.clone()
 
-        # TODO (chongyi zheng): We don't need to crop image as PAD
-        # obses = random_crop(obses)
-        # next_obses = random_crop(next_obses)
-        # pos = random_crop(pos)
-
-        curl_kwargs = dict(obs_anchor=obses, obs_pos=pos,
-                           time_anchor=None, time_pos=None)
-
-        return obses, actions, rewards, next_obses, not_dones, curl_kwargs
-
-    def sample_ensembles(self, batch_size, num_ensembles=1):
-        ensem_obses, ensem_actions, ensem_rewards, ensem_next_obses, ensem_not_dones = \
-            self.sample(batch_size * num_ensembles)
-
-        # TODO (chongyi zheng): do we need to clone here?
-        obses = ensem_obses[:batch_size].detach().clone()
-        actions = ensem_actions[:batch_size].detach().clone()
-        rewards = ensem_rewards[:batch_size].detach().clone()
-        next_obses = ensem_next_obses[:batch_size].detach().clone()
-        not_dones = ensem_not_dones[:batch_size].detach().clone()
-
-        ensem_kwargs = dict(obses=ensem_obses, next_obses=ensem_next_obses, actions=ensem_actions)
-
-        return obses, actions, rewards, next_obses, not_dones, ensem_kwargs
-
-
-class AugmentReplayBuffer(ReplayBuffer):
-    def __init__(self, obs_shape, action_shape, capacity, image_pad, device):
-        super().__init__(obs_shape, action_shape, capacity, device)
-        self.image_pad = image_pad
-
-        self.aug_trans = nn.Sequential(
-            nn.ReplicationPad2d(self.image_pad),
-            kornia.augmentation.RandomCrop((obs_shape[-1], obs_shape[-1])))
-
-    def sample(self, batch_size):
-        obses, actions, rewards, next_obses, not_dones = super().sample(batch_size)
-        obses_aug = obses.detach().clone()
-        next_obses_aug = obses.detach().clone()
-
-        obses = self.aug_trans(obses)
-        next_obses = self.aug_trans(next_obses)
-
-        obses_aug = self.aug_trans(obses_aug)
-        next_obses_aug = self.aug_trans(next_obses_aug)
-
-        return obses, actions, rewards, next_obses, not_dones, obses_aug, next_obses_aug
-
-    def sample_curl(self, batch_size):
-        # TODO (chongyi zheng)
-        pass
-
-    def sample_ensembles(self, batch_size, num_ensembles=1):
-        ensem_obses, ensem_actions, ensem_rewards, ensem_next_obses, ensem_not_dones, \
-        ensem_obses_aug, ensem_next_obses_aug = self.sample(batch_size * num_ensembles)
-
-        # TODO (chongyi zheng): do we need to clone here?
-        obses = ensem_obses[:batch_size].detach().clone()
-        next_obses = ensem_next_obses[:batch_size].detach().clone()
-        obses_aug = ensem_obses[:batch_size].detach.clone()
-        next_obses_aug = ensem_next_obses[:batch_size].detach().clone()
-        actions = ensem_actions[:batch_size].detach().clone()
-        rewards = ensem_rewards[:batch_size].detach().clone()
-        not_dones = ensem_not_dones[:batch_size].detach().clone()
-
-        ensem_kwargs = dict(obses=ensem_obses, next_obses=ensem_next_obses,
-                            obses_aug=ensem_obses_aug, next_obses_aug=ensem_next_obses_aug,
-                            actions=ensem_actions)
-
-        return obses, actions, rewards, next_obses, not_dones, obses_aug, next_obses_aug, ensem_kwargs
+# class AugmentReplayBuffer(ReplayBuffer):
+#     def __init__(self, obs_shape, action_shape, capacity, image_pad, device):
+#         super().__init__(obs_shape, action_shape, capacity, device)
+#         self.image_pad = image_pad
+#
+#         self.aug_trans = nn.Sequential(
+#             nn.ReplicationPad2d(self.image_pad),
+#             kornia.augmentation.RandomCrop((obs_shape[-1], obs_shape[-1])))
+#
+#     def sample(self, batch_size):
+#         obses, actions, rewards, next_obses, not_dones = super().sample(batch_size)
+#         obses_aug = obses.detach().clone()
+#         next_obses_aug = obses.detach().clone()
+#
+#         obses = self.aug_trans(obses)
+#         next_obses = self.aug_trans(next_obses)
+#
+#         obses_aug = self.aug_trans(obses_aug)
+#         next_obses_aug = self.aug_trans(next_obses_aug)
+#
+#         return obses, actions, rewards, next_obses, not_dones, obses_aug, next_obses_aug
+#
+#     def sample_curl(self, batch_size):
+#         # TODO (chongyi zheng)
+#         pass
+#
+#     def sample_ensembles(self, batch_size, num_ensembles=1):
+#         ensem_obses, ensem_actions, ensem_rewards, ensem_next_obses, ensem_not_dones, \
+#         ensem_obses_aug, ensem_next_obses_aug = self.sample(batch_size * num_ensembles)
+#
+#         # TODO (chongyi zheng): do we need to clone here?
+#         obses = ensem_obses[:batch_size].detach().clone()
+#         next_obses = ensem_next_obses[:batch_size].detach().clone()
+#         obses_aug = ensem_obses[:batch_size].detach.clone()
+#         next_obses_aug = ensem_next_obses[:batch_size].detach().clone()
+#         actions = ensem_actions[:batch_size].detach().clone()
+#         rewards = ensem_rewards[:batch_size].detach().clone()
+#         not_dones = ensem_not_dones[:batch_size].detach().clone()
+#
+#         ensem_kwargs = dict(obses=ensem_obses, next_obses=ensem_next_obses,
+#                             obses_aug=ensem_obses_aug, next_obses_aug=ensem_next_obses_aug,
+#                             actions=ensem_actions)
+#
+#         return obses, actions, rewards, next_obses, not_dones, obses_aug, next_obses_aug, ensem_kwargs
 
 
 class FrameStackReplayBuffer(ReplayBuffer):
@@ -312,32 +302,32 @@ class FrameStackReplayBuffer(ReplayBuffer):
         return obses, actions, rewards, next_obses, not_dones
 
 
-class AugmentFrameStackReplayBuffer(FrameStackReplayBuffer):
-    def __init__(self, obs_shape, action_shape, capacity, frame_stack, image_pad, device, optimize_memory_usage=False):
-        super().__init__(obs_shape, action_shape, capacity, frame_stack, device, optimize_memory_usage)
-        self.image_pad = image_pad
-
-        self.aug_trans = nn.Sequential(
-            nn.ReplicationPad2d(self.image_pad),
-            kornia.augmentation.RandomCrop((obs_shape[-1], obs_shape[-1])))
-
-    def sample(self, batch_size):
-        obses, actions, rewards, next_obses, not_dones = super().sample(batch_size)
-        obses_aug = obses.detach().clone()
-        next_obses_aug = next_obses.detach().clone()
-
-        # TODO (chongyi zheng): We don't need to crop image as PAD
-        # obses = random_crop(obses)
-        # next_obses = random_crop(next_obses)
-
-        obses = self.aug_trans(obses)
-        next_obses = self.aug_trans(next_obses)
-
-        obses_aug = self.aug_trans(obses_aug)
-        next_obses_aug = self.aug_trans(next_obses_aug)
-
-        return obses, actions, rewards, next_obses, not_dones, obses_aug, next_obses_aug
-
-    def sample_ensembles(self, batch_size, num_ensembles=1):
-        # TODO (chongyi zheng)
-        pass
+# class AugmentFrameStackReplayBuffer(FrameStackReplayBuffer):
+#     def __init__(self, obs_shape, action_shape, capacity, frame_stack, image_pad, device, optimize_memory_usage=False):
+#         super().__init__(obs_shape, action_shape, capacity, frame_stack, device, optimize_memory_usage)
+#         self.image_pad = image_pad
+#
+#         self.aug_trans = nn.Sequential(
+#             nn.ReplicationPad2d(self.image_pad),
+#             kornia.augmentation.RandomCrop((obs_shape[-1], obs_shape[-1])))
+#
+#     def sample(self, batch_size):
+#         obses, actions, rewards, next_obses, not_dones = super().sample(batch_size)
+#         obses_aug = obses.detach().clone()
+#         next_obses_aug = next_obses.detach().clone()
+#
+#         # TODO (chongyi zheng): We don't need to crop image as PAD
+#         # obses = random_crop(obses)
+#         # next_obses = random_crop(next_obses)
+#
+#         obses = self.aug_trans(obses)
+#         next_obses = self.aug_trans(next_obses)
+#
+#         obses_aug = self.aug_trans(obses_aug)
+#         next_obses_aug = self.aug_trans(next_obses_aug)
+#
+#         return obses, actions, rewards, next_obses, not_dones, obses_aug, next_obses_aug
+#
+#     def sample_ensembles(self, batch_size, num_ensembles=1):
+#         # TODO (chongyi zheng)
+#         pass

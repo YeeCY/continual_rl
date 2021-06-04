@@ -310,7 +310,7 @@ def main(args):
                 #     replay_buffer.reset()
 
                 for step in range(args.sac_num_expl_steps_per_process):
-                    if task_steps < args.init_steps:
+                    if task_steps < args.sac_init_steps:
                         action = np.array(env.action_space.sample())
                     else:
                         with utils.eval_mode(agent):
@@ -319,7 +319,7 @@ def main(args):
                             else:
                                 action = agent.act(obs, sample=True)
 
-                    obs, reward, done, infos = env.step(action)
+                    next_obs, reward, done, infos = env.step(action)
 
                     for done_ in done:
                         if done_:
@@ -330,10 +330,14 @@ def main(args):
                             recent_success.append(info.get('success', False))
                             recent_episode_reward.append(info['episode']['r'])
 
-                task_steps += args.sac_num_rollout_steps_per_process * args.sac_num_processes
-                total_steps += args.sac_num_rollout_steps_per_process * args.sac_num_processes
+                    replay_buffer.add(obs, action, reward, next_obs, done, infos)
 
-                if task_steps >= args.init_steps:
+                    obs = next_obs
+
+                task_steps += args.sac_num_expl_steps_per_process * args.sac_num_processes
+                total_steps += args.sac_num_expl_steps_per_process * args.sac_num_processes
+
+                if task_steps >= args.sac_init_steps:
                     for _ in range(args.sac_num_train_iters):
                         if 'mh' in args.algo:
                             agent.update(replay_buffer, logger, total_steps, head_idx=task_id)
@@ -347,7 +351,7 @@ def main(args):
                 logger.log('train/recent_episode_reward', np.mean(recent_episode_reward), total_steps)
                 logger.log('train/episode', episode, total_steps)
                 log_info = {'train/task_name': infos[0]['task_name']}
-                logger.dump(total_steps, ty='train', save=(task_steps > args.init_steps), info=log_info)
+                logger.dump(total_steps, ty='train', save=(task_steps > args.sac_init_steps), info=log_info)
 
                 # if done:
                 #     success = np.any(episode_successes).astype(np.float)

@@ -102,7 +102,8 @@ class MetersGroup(object):
         self._csv_file.flush()
 
     def _dump_to_console(self, data, prefix):
-        prefix = colored(prefix, 'yellow' if prefix == 'train' else 'green')
+        # TODO (chongyi zheng): remove color
+        # prefix = colored(prefix, 'yellow' if prefix == 'train' else 'green')
         pieces = ['{:5}'.format(prefix)]
         for key, disp_key, ty in self._formating:
             value = data.get(key, 0)
