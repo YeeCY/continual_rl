@@ -19,7 +19,7 @@ class ReplayBuffer:
 
     """
     def __init__(self, obs_space, action_space, capacity, device, n_envs=1,
-                 optimize_memory_usage=False, handle_timeout_termination=True):
+                 optimize_memory_usage=False, handle_timeout_termination=False):
 
         assert n_envs == 1, "Replay buffer only support single environment for now"
 
