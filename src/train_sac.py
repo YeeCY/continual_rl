@@ -9,6 +9,7 @@ from arguments import parse_args
 from environment import make_atari_env, make_locomotion_env, make_single_metaworld_env, \
     make_continual_metaworld_env, make_continual_vec_envs
 from environment.metaworld_utils import MultiEnvWrapper
+from environment.utils import get_vec_normalize
 from agent import make_agent
 import utils
 import buffers
@@ -17,17 +18,25 @@ from logger import Logger
 from video import VideoRecorder
 
 
-def evaluate(env, agent, video, num_episodes, logger, step):
+def evaluate(train_env, eval_env, agent, video, num_episodes, logger, step):
     """Evaluate agent"""
-    if isinstance(env, MultiEnvWrapper):
-        assert env.env_names is not None, "Environment name must exist!"
+    if isinstance(train_env, MultiEnvWrapper) and isinstance(eval_env, MultiEnvWrapper):
+        assert (train_env.env_names is not None) and (eval_env.env_names is not None), \
+            "Environment name must exist!"
 
-        for task_id, task_name in enumerate(env.env_names):
+        train_vec_norms = get_vec_normalize(train_env)
+        eval_vec_norms = get_vec_normalize(eval_env)
+        for train_vec_norm, eval_vec_norm in zip(train_vec_norms, eval_vec_norms):
+            if eval_vec_norm is not None:
+                eval_vec_norm.eval()
+                eval_vec_norm.obs_rms = train_vec_norm.obs_rms
+
+        for task_id, task_name in enumerate(eval_env.env_names):
             episode_rewards = []
             episode_successes = []
             video.init(enabled=True)
-            obs = env.reset(sample_task=True)
-            video.record(env.env)  # use actually vector env
+            obs = eval_env.reset(sample_task=True)
+            video.record(eval_env.env)  # use actually vector env
 
             while len(episode_rewards) < num_episodes:
                 with utils.eval_mode(agent):
@@ -37,8 +46,8 @@ def evaluate(env, agent, video, num_episodes, logger, step):
                         else:
                             action = agent.act(obs, sample=False)
 
-                    obs, _, done, infos = env.step(action)
-                    video.record(env.env)  # use actually vector env
+                    obs, _, done, infos = eval_env.step(action)
+                    video.record(eval_env.env)  # use actually vector env
 
                     for done_ in done:
                         if done_ and len(episode_rewards) == 0:
@@ -293,7 +302,7 @@ def main(args):
                 if task_epoch % args.eval_freq == 0:
                     print('Evaluating:', args.work_dir)
                     logger.log('eval/episode', episode, total_steps)
-                    evaluate(eval_env, agent, video, args.num_eval_episodes, logger, total_steps)
+                    evaluate(env, eval_env, agent, video, args.num_eval_episodes, logger, total_steps)
 
                 # # (chongyi zheng): force reset outside done = True when step reach train_steps_per_task
                 # if task_step >= train_steps_per_task:
