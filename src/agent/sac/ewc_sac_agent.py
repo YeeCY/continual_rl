@@ -24,7 +24,6 @@ class EwcSacMlpAgent(SacMlpAgent):
                  critic_lr=1e-3,
                  critic_tau=0.005,
                  critic_target_update_freq=2,
-                 grad_clip_norm=10.0,
                  batch_size=128,
                  ewc_lambda=5000,
                  ewc_fisher_sample_size=100,
@@ -33,7 +32,7 @@ class EwcSacMlpAgent(SacMlpAgent):
                  ):
         super().__init__(obs_shape, action_shape, action_range, device, hidden_dim, discount, init_temperature,
                          alpha_lr, actor_lr, actor_log_std_min, actor_log_std_max, actor_update_freq, critic_lr,
-                         critic_tau, critic_target_update_freq, grad_clip_norm, batch_size)
+                         critic_tau, critic_target_update_freq, batch_size)
 
         self.ewc_lambda = ewc_lambda
         self.ewc_fisher_sample_size = ewc_fisher_sample_size

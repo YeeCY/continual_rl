@@ -23,14 +23,13 @@ class SiSacMlpAgent(SacMlpAgent):
                  critic_lr=1e-3,
                  critic_tau=0.005,
                  critic_target_update_freq=2,
-                 grad_clip_norm=10.0,
                  batch_size=128,
                  si_c=1.0,
                  si_epsilon=0.1,
                  ):
         super().__init__(obs_shape, action_shape, action_range, device, hidden_dim, discount, init_temperature,
                          alpha_lr, actor_lr, actor_log_std_min, actor_log_std_max, actor_update_freq, critic_lr,
-                         critic_tau, critic_target_update_freq, grad_clip_norm, batch_size)
+                         critic_tau, critic_target_update_freq, batch_size)
 
         self.si_c = si_c
         self.si_epsilon = si_epsilon

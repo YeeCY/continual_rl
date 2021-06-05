@@ -24,7 +24,6 @@ class SacMlpAgent:
             critic_lr=1e-3,
             critic_tau=0.005,
             critic_target_update_freq=2,
-            grad_clip_norm=10.0,
             batch_size=128,
     ):
         self.obs_shape = obs_shape
@@ -42,7 +41,6 @@ class SacMlpAgent:
         self.critic_lr = critic_lr
         self.critic_tau = critic_tau
         self.critic_target_update_freq = critic_target_update_freq
-        self.grad_clip_norm = grad_clip_norm
         self.batch_size = batch_size
 
         self.training = False
@@ -122,7 +120,6 @@ class SacMlpAgent:
         logger.log('train_critic/loss', critic_loss, step)
         self.critic_optimizer.zero_grad()
         critic_loss.backward()
-        torch.nn.utils.clip_grad_norm_(self.critic.parameters(), self.grad_clip_norm)
         self.critic_optimizer.step()
 
     def compute_actor_and_alpha_loss(self, obs, compute_alpha_loss=True, **kwargs):
@@ -147,7 +144,6 @@ class SacMlpAgent:
         # optimize the actor
         self.actor_optimizer.zero_grad()
         actor_loss.backward()
-        torch.nn.utils.clip_grad_norm_(self.actor.parameters(), self.grad_clip_norm)
         self.actor_optimizer.step()
 
         if isinstance(alpha_loss, torch.Tensor):
@@ -156,7 +152,6 @@ class SacMlpAgent:
 
             self.log_alpha_optimizer.zero_grad()
             alpha_loss.backward()
-            torch.nn.utils.clip_grad_norm_([self.log_alpha], self.grad_clip_norm)
             self.log_alpha_optimizer.step()
 
     def update(self, replay_buffer, logger, step, **kwargs):
