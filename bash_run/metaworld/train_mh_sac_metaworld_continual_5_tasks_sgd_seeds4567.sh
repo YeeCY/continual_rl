@@ -12,7 +12,7 @@ for seed in "${seeds[@]}"; do
   export CUDA_VISIBLE_DEVICES="$seed"
   nohup \
   python $PROJECT_DIR/src/train_sac.py \
-    --env_names window-close-v2 button-press-topdown-v2 peg-insert-side-v2 door-open-v2 push-v2 \
+    --env_names window-close-v2 button-press-topdown-v2 door-open-v2 peg-insert-side-v2 door-lock-v2 \
     --env_type metaworld \
     --algo mh_sac_mlp \
     --train_steps_per_task 500000 \
