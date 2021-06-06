@@ -3,6 +3,7 @@ import metaworld
 import gym
 import os
 
+from gym.wrappers import TimeLimit
 
 from stable_baselines3.common.atari_wrappers import (ClipRewardEnv,
                                                      EpisodicLifeEnv,
@@ -18,6 +19,7 @@ from src.environment import atari_wrappers
 from src.environment.gym_wrapper import TransposeImage, TimeLimitMask, VecNormalize
 from src.environment.metaworld_utils import MetaWorldTaskSampler, SingleMT1Wrapper, MultiEnvWrapper, NormalizedEnv
 from src.environment.metaworld_utils import uniform_random_strategy, round_robin_strategy
+from src.environment.metaworld_utils.wrappers import TaskNameWrapper
 
 import utils
 
@@ -131,22 +133,21 @@ def make_continual_metaworld_env(env_names, seed=None):
 
 def make_env(env_id, seed, rank, log_dir, allow_early_resets):
     def _thunk():
-        # if 'metaworld_' in env_id:
-        #     mt1 = metaworld.MT1(env_id.replace('metaworld_', ''))
-        #     train_task_sampler = MetaWorldTaskSampler(
-        #         mt1, 'train',
-        #         lambda env, _: NormalizedEnv(env))
-        #     env = train_task_sampler.sample(1)[0]()
-        # else:
-        # (chongyi zheng): make metaworld as well
         try:
             env = gym.make(env_id)
         except gym.error.UnregisteredEnv:
-            mt1 = metaworld.MT1(env_id)
-            train_task_sampler = MetaWorldTaskSampler(
-                mt1, 'train',
-                lambda env, _: NormalizedEnv(env))
-            env = train_task_sampler.sample(1)[0]()
+            mt1 = metaworld.MT1(env_id, seed=seed + rank)
+            # train_task_sampler = MetaWorldTaskSampler(
+            #     mt1, 'train',
+            #     lambda env, _: NormalizedEnv(env))
+            # env = train_task_sampler.sample(1)[0]()
+            env = mt1.train_classes[env_id]()
+            env.set_task(mt1.train_tasks[0])
+
+            env = TaskNameWrapper(env, task_name=env_id)
+            # normalize action
+            env = NormalizedEnv(env)
+            env = TimeLimit(env, max_episode_steps=env.max_path_length)
 
         is_atari = hasattr(gym.envs, 'atari') and isinstance(
             env.unwrapped, gym.envs.atari.atari_env.AtariEnv)
@@ -230,7 +231,8 @@ def make_continual_vec_envs(env_names,
     # TODO (chongyi zheng): We fork many processes here, optimize it
     envs = []
     for env_name in env_names:
-        env_log_dir = utils.make_dir(os.path.join(log_dir, env_name))
+        env_log_dir = utils.make_dir(os.path.join(log_dir, env_name)) \
+            if log_dir is not None else None
         env = make_vec_envs(env_name, seed, num_processes, discount,
                             env_log_dir, allow_early_resets=allow_early_resets)
         env.reward_range = env.get_attr('reward_range')  # prevent wrapper error

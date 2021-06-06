@@ -170,23 +170,23 @@ def main(args):
         #     env_names=args.env_names,
         #     seed=args.seed
         # )
-        train_env_log_dir = utils.make_dir(os.path.join(args.work_dir, 'train_env'))
-        eval_env_log_dir = utils.make_dir(os.path.join(args.work_dir, 'eval_env'))
+        # train_env_log_dir = utils.make_dir(os.path.join(args.work_dir, 'train_env'))
+        # eval_env_log_dir = utils.make_dir(os.path.join(args.work_dir, 'eval_env'))
 
-        np_rnd_state = np.random.get_state()
+        # np_rnd_state = np.random.get_state()
         env = make_continual_vec_envs(
             args.env_names, args.seed, args.sac_num_processes,
-            args.discount, train_env_log_dir,
+            args.discount, None,
             allow_early_resets=True,
             multi_head=True if 'mh' in args.algo else False,
         )
 
         # (chongyi zheng): reset numpy random state to make evaluation task to be close to training task,
         # otherwise there will be a large difference between the performance
-        np.random.set_state(np_rnd_state)
+        # np.random.set_state(np_rnd_state)
         eval_env = make_continual_vec_envs(
-            args.env_names, args.seed,
-            args.sac_num_processes, None, eval_env_log_dir,
+            args.env_names, args.seed, args.sac_num_processes,
+            None, None,
             allow_early_resets=True,
             multi_head=True if 'mh' in args.algo else False,
         )

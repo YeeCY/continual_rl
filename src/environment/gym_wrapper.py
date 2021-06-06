@@ -1,4 +1,5 @@
 import gym
+import numpy as np
 
 from stable_baselines3.common.vec_env.vec_normalize import \
     VecNormalize as VecNormalize_
