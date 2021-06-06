@@ -194,7 +194,8 @@ def make_vec_envs(env_name,
                   num_processes,
                   discount,
                   log_dir,
-                  allow_early_resets=False):
+                  allow_early_resets=False,
+                  normalize=True):
     envs = [
         make_env(env_name, seed, i, log_dir, allow_early_resets)
         for i in range(num_processes)
@@ -205,11 +206,12 @@ def make_vec_envs(env_name,
     else:
         envs = DummyVecEnv(envs)
 
-    if len(envs.observation_space.shape) == 1:
-        if discount is None:
-            envs = VecNormalize(envs, norm_reward=False)
-        else:
-            envs = VecNormalize(envs, gamma=discount)
+    if normalize:
+        if len(envs.observation_space.shape) == 1:
+            if discount is None:
+                envs = VecNormalize(envs, norm_reward=False)
+            else:
+                envs = VecNormalize(envs, gamma=discount)
 
     # envs = VecPyTorch(envs, device)
     #
@@ -227,6 +229,7 @@ def make_continual_vec_envs(env_names,
                             discount,
                             log_dir,
                             allow_early_resets=False,
+                            normalize=True,
                             multi_head=False):
     # TODO (chongyi zheng): We fork many processes here, optimize it
     envs = []
@@ -234,7 +237,8 @@ def make_continual_vec_envs(env_names,
         env_log_dir = utils.make_dir(os.path.join(log_dir, env_name)) \
             if log_dir is not None else None
         env = make_vec_envs(env_name, seed, num_processes, discount,
-                            env_log_dir, allow_early_resets=allow_early_resets)
+                            env_log_dir, allow_early_resets=allow_early_resets,
+                            normalize=normalize)
         env.reward_range = env.get_attr('reward_range')  # prevent wrapper error
         envs.append(env)
     continual_env = MultiEnvWrapper(envs,
