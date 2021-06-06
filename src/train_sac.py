@@ -440,7 +440,7 @@ def main(args):
             replay_buffer.reset()
 
     print('Final evaluating:', args.work_dir)
-    evaluate(eval_env, agent, video, args.num_eval_episodes, logger, total_steps)
+    evaluate(env, eval_env, agent, video, args.num_eval_episodes, logger, total_steps)
 
 
 if __name__ == '__main__':
