@@ -23,7 +23,6 @@ for seed in "${seeds[@]}"; do
     --sac_num_processes 1 \
     --sac_num_train_iters 1000 \
     --seed $seed \
-    --save_video \
     --work_dir $PROJECT_DIR/vec_logs/mh_sac_mlp_metaworld_5_tasks/sgd/$seed \
     > $PROJECT_DIR/terminal_logs/mh_sac_mlp_metaworld_5_tasks-sgd-seed"$seed".log 2>&1 &
 done
