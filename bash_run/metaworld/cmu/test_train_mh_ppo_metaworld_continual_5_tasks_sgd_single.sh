@@ -3,7 +3,7 @@
 source $HOME/.bashrc
 source $HOME/cyzheng/env_vars
 
-conda activate continual_rl
+conda activate pad
 
 SCRIPT_DIR=$(dirname "$BASH_SOURCE")
 PROJECT_DIR=$(realpath "$SCRIPT_DIR/../../..")
