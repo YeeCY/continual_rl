@@ -1,12 +1,12 @@
 #!/bin/bash
 
 SCRIPT_DIR=$(dirname "$BASH_SOURCE")
-PROJECT_DIR=$SCRIPT_DIR/../..
+PROJECT_DIR=$(realpath "$SCRIPT_DIR/../../..")
 
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/.mujoco/mujoco200/bin:/usr/lib/nvidia-418
 export PYTHONPATH=$PROJECT_DIR
 
-declare -a seeds=(4 5 6 7)
+declare -a seeds=(0 1 2 3)
 
 for seed in "${seeds[@]}"; do
   export CUDA_VISIBLE_DEVICES="$seed"
