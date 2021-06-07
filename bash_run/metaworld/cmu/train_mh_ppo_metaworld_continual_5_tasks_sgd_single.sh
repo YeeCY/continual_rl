@@ -32,6 +32,6 @@ for env_names in "${all_env_names[@]}"; do
       --ppo_use_proper_time_limits \
       --seed $seed \
       --work_dir $PROJECT_DIR/vec_logs/mh_ppo_mlp_metaworld_5_tasks_single/sgd/$env_names/$seed \
-        > $PROJECT_DIR/terminal_logs/mh_ppo_mlp_metaworld_5_tasks_single-sgd-"$env_names"-seed"$seed".log 2>&1 &
+      > $PROJECT_DIR/terminal_logs/mh_ppo_mlp_metaworld_5_tasks_single-sgd-"$env_names"-seed"$seed".log 2>&1 &
   done
 done
