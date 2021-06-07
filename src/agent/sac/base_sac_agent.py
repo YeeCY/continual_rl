@@ -85,6 +85,9 @@ class SacMlpAgent:
     def reset_target_critic(self):
         self.critic_target.load_state_dict(self.critic.state_dict())
 
+    def reset_log_alpha(self):
+        self.log_alpha.data = torch.tensor(np.log(self.init_temperature)).to(self.device).data
+
     @property
     def alpha(self):
         return self.log_alpha.exp()

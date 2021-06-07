@@ -433,6 +433,7 @@ def main(args):
                 agent.construct_memory(replay_buffer)
 
             agent.reset_target_critic()
+            agent.reset_log_alpha()
             replay_buffer.reset()
 
     print('Final evaluating:', args.work_dir)
