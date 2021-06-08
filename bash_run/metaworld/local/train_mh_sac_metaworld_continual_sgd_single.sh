@@ -3,10 +3,21 @@
 SCRIPT_DIR=$(dirname "$BASH_SOURCE")
 PROJECT_DIR=$(realpath "$SCRIPT_DIR/../../..")
 
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/.mujoco/mujoco200/bin:/usr/lib/nvidia-418
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/.mujoco/mujoco200/bin
 export PYTHONPATH=$PROJECT_DIR
 
-declare -a all_env_names=(window-close-v2 button-press-topdown-v2 peg-insert-side-v2 door-open-v2 push-v2)
+declare -a all_env_names=(
+  peg-insert-side-v2
+  lever-pull-v2
+  push-v2
+  assembly-v2
+  basketball-v2
+  bin-picking-v2
+  button-press-topdown-wall-v2
+  coffee-button-v2
+  coffee-pull-v2
+  coffee-push-v2
+)
 declare -a seeds=(0)
 
 for env_names in "${all_env_names[@]}"; do
