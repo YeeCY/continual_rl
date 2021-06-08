@@ -225,17 +225,17 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--exp_name', type=str, default='reach_window-close_button-press-topdown')
-    parser.add_argument('--data_dir', type=str, default='data')
+    parser.add_argument('--data_dir', type=str, default='vec_logs')
     parser.add_argument('--save_dir', type=str, default='figures')
     # parser.add_argument('--setting', type=int, default=1)
     parser.add_argument('--task_names', type=str, nargs='+',
                         default=['reach-v2', 'window-close-v2', 'button-press-topdown-v2'])
     parser.add_argument('--algos', type=str, nargs='+',
-                        default=['sgd_backup', 'ewc', 'si'])
+                        default=['sgd', 'ewc', 'si'])
     parser.add_argument('--seeds', type=int, nargs='+', default=[0, 1, 2, 3, 4, 5, 6])
     parser.add_argument('--max_timesteps', type=int, default=np.iinfo(np.int).max)
     parser.add_argument('--statistics', type=str, nargs='+',
-                        default=['success_rate'])
+                        default=['episode_reward'])
     args = parser.parse_args()
 
     main(args)
