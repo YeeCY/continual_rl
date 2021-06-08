@@ -37,7 +37,6 @@ for env_names in "${all_env_names[@]}"; do
       --sac_num_processes 1 \
       --sac_num_train_iters 1000 \
       --seed $seed \
-      --save_video \
       --work_dir $PROJECT_DIR/vec_logs/mh_sac_mlp_metaworld_single/sgd/$env_names/$seed \
       > $PROJECT_DIR/terminal_logs/mh_sac_mlp_metaworld_single-sgd-"$env_names"-seed"$seed".log 2>&1 &
   done
