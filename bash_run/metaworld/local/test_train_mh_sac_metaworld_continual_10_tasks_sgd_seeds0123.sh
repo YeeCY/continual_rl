@@ -32,5 +32,6 @@ for seed in "${seeds[@]}"; do
     --sac_num_processes 1 \
     --sac_num_train_iters 1000 \
     --seed $seed \
+    --save_video \
     --work_dir $PROJECT_DIR/debug_logs/mh_sac_mlp_metaworld_10_tasks/sgd/$seed
 done
