@@ -3,7 +3,7 @@
 SCRIPT_DIR=$(dirname "$BASH_SOURCE")
 PROJECT_DIR=$(realpath "$SCRIPT_DIR/../../..")
 
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/.mujoco/mujoco200/bin:/usr/lib/nvidia-418
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/.mujoco/mujoco200/bin
 export PYTHONPATH=$PROJECT_DIR
 
 declare -a seeds=(0 1 2 3)
@@ -18,7 +18,6 @@ for seed in "${seeds[@]}"; do
     --train_steps_per_task 500000 \
     --eval_freq 10 \
     --discount 0.99 \
-    --ppo_num_batch 256 \
     --ppo_num_rollout_steps_per_process 1000 \
     --ppo_num_processes 1 \
     --ppo_use_clipped_critic_loss \
