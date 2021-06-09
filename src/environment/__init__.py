@@ -1,4 +1,3 @@
-import dmc2gym
 import metaworld
 import gym
 import os
@@ -13,84 +12,11 @@ from stable_baselines3.common.atari_wrappers import (ClipRewardEnv,
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import (DummyVecEnv, SubprocVecEnv)
 
-
-from src.environment import dmc_wrappers
 from src.environment import atari_wrappers
 from src.environment.gym_wrapper import TransposeImage, TimeLimitMask, VecNormalize
 from src.environment.metaworld_utils import MetaWorldTaskSampler, SingleMT1Wrapper, MultiEnvWrapper, NormalizedEnv
 from src.environment.metaworld_utils import uniform_random_strategy, round_robin_strategy
 from src.environment.metaworld_utils.wrappers import TaskNameWrapper
-
-import utils
-
-
-def make_pad_env(
-        domain_name,
-        task_name,
-        seed=0,
-        episode_length=1000,
-        frame_stack=3,
-        action_repeat=4,
-        mode='train'
-):
-    """Make environment for PAD experiments"""
-    env = dmc2gym.make(
-        domain_name=domain_name,
-        task_name=task_name,
-        seed=seed,
-        visualize_reward=False,
-        from_pixels=True,
-        height=100,
-        width=100,
-        episode_length=episode_length,
-        frame_skip=action_repeat
-    )
-    env.seed(seed)
-    env = dmc_wrappers.GreenScreen(env, mode)
-    env = dmc_wrappers.FrameStack(env, frame_stack)
-    env = dmc_wrappers.ColorWrapper(env, mode)
-
-    assert env.action_space.low.min() >= -1
-    assert env.action_space.high.max() <= 1
-
-    return env
-
-
-def make_locomotion_env(
-        env_name,
-        seed=0,
-        episode_length=1000,
-        from_pixels=True,
-        frame_stack=3,
-        action_repeat=4,
-        obs_height=100,
-        obs_width=100,
-        camera_id=0,
-        mode='train'):
-    """(chongyi zheng) Make dm_control locomotion environments for experiments"""
-    env = dmc2gym.make_locomotion(
-        env_name=env_name,
-        seed=seed,
-        from_pixels=from_pixels,
-        height=obs_height,
-        width=obs_width,
-        camera_id=camera_id,
-        episode_length=episode_length,
-        frame_skip=action_repeat
-    )
-    env.seed(seed)
-
-    if from_pixels:
-        env = dmc_wrappers.VideoBackground(env, mode)
-        env = dmc_wrappers.FrameStack(env, frame_stack)
-        env = dmc_wrappers.ColorWrapper(env, mode)
-    else:
-        env = dmc_wrappers.AugmentObs(env, mode)
-
-    assert env.action_space.low.min() >= -1
-    assert env.action_space.high.max() <= 1
-
-    return env
 
 
 def make_atari_env(env_name, seed=None, action_repeat=4, frame_stack=4):
@@ -234,7 +160,7 @@ def make_continual_vec_envs(env_names,
     # TODO (chongyi zheng): We fork many processes here, optimize it
     envs = []
     for env_name in env_names:
-        env_log_dir = utils.make_dir(os.path.join(log_dir, env_name)) \
+        env_log_dir = os.makedirs(os.path.join(log_dir, env_name), exist_ok=True) \
             if log_dir is not None else None
         env = make_vec_envs(env_name, seed, num_processes, discount,
                             env_log_dir, allow_early_resets=allow_early_resets,

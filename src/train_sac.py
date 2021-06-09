@@ -6,7 +6,7 @@ import copy
 
 
 from arguments import parse_args
-from environment import make_atari_env, make_locomotion_env, make_single_metaworld_env, \
+from environment import make_atari_env, make_single_metaworld_env, \
     make_continual_metaworld_env, make_continual_vec_envs
 from environment.metaworld_utils import MultiEnvWrapper
 from environment.utils import get_vec_normalize
@@ -129,29 +129,6 @@ def main(args):
         #     frame_stack=args.frame_stack
         # )
         pass
-    elif args.env_type == 'dmc_locomotion':
-        env = make_locomotion_env(
-            env_name=args.env_name,
-            seed=args.seed,
-            episode_length=args.episode_length,
-            from_pixels=args.pixel_obs,
-            action_repeat=args.action_repeat,
-            obs_height=args.obs_height,
-            obs_width=args.obs_width,
-            camera_id=args.env_camera_id,
-            mode=args.mode
-        )
-        eval_env = make_locomotion_env(
-            env_name=args.env_name,
-            seed=args.seed,
-            episode_length=args.episode_length,
-            from_pixels=args.pixel_obs,
-            action_repeat=args.action_repeat,
-            obs_height=args.obs_height,
-            obs_width=args.obs_width,
-            camera_id=args.env_camera_id,
-            mode=args.mode
-        )
     elif args.env_type == 'metaworld':
         # environment = make_single_metaworld_env(
         #     env_name=args.env_name,
