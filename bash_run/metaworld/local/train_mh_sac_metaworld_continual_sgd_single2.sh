@@ -12,17 +12,13 @@ declare -a all_env_names=(
   hammer-v2
   handle-press-side-v2
   handle-press-v2
-  handle-pull-side-v2
-  handle-pull-v2
-  lever-pull-v2
-  pick-out-of-hole-v2
-  push-back-v2
 )
-declare -a seeds=(0)
+
+declare -a seeds=(1 2 3 4)
 
 for env_names in "${all_env_names[@]}"; do
   for seed in "${seeds[@]}"; do
-    export CUDA_VISIBLE_DEVICES="$(("$seed" + 1))"
+    export CUDA_VISIBLE_DEVICES="$(("$seed" - 1))"
     nohup \
     python $PROJECT_DIR/src/train_sac.py \
       --env_names $env_names \
@@ -37,6 +33,7 @@ for env_names in "${all_env_names[@]}"; do
       --sac_num_processes 1 \
       --sac_num_train_iters 1000 \
       --seed $seed \
+      --save_video \
       --work_dir $PROJECT_DIR/vec_logs/mh_sac_mlp_metaworld_single/sgd/$env_names/$seed \
       > $PROJECT_DIR/terminal_logs/mh_sac_mlp_metaworld_single-sgd-"$env_names"-seed"$seed".log 2>&1 &
   done
