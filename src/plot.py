@@ -6,7 +6,7 @@ import os
 import os.path as osp
 
 
-WINDOW_LENGTH = 2
+WINDOW_LENGTH = 10
 SMOOTH_COEF = 0.25
 CM = 1 / 2.54  # centimeters in inches
 
@@ -140,6 +140,7 @@ def plot(ax, data, algos, curve_format=CURVE_FORMAT):
         y_std = np.std(np.array(algo_data['y']), axis=0)
 
         y_mean = window_smooth(y_mean)
+        y_std = window_smooth(y_std)
 
         # x = np.array(x)
 
@@ -167,7 +168,7 @@ def main(args):
     os.makedirs(save_dir, exist_ok=True)
 
     fig, _ = plt.subplots(len(task_names), len(stats))
-    fig.set_size_inches(15 * len(stats), 10 * len(task_names))
+    fig.set_size_inches(20 * len(stats), 10 * len(task_names))
     for task_idx, task_name in enumerate(task_names):
         for stat_idx, stat in enumerate(stats):
             ax = plt.subplot(len(task_names), len(stats), task_idx * len(stats) + stat_idx + 1)
