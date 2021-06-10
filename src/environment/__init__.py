@@ -18,6 +18,8 @@ from src.environment.metaworld_utils import MetaWorldTaskSampler, SingleMT1Wrapp
 from src.environment.metaworld_utils import uniform_random_strategy, round_robin_strategy
 from src.environment.metaworld_utils.wrappers import TaskNameWrapper
 
+import src.utils as utils
+
 
 def make_atari_env(env_name, seed=None, action_repeat=4, frame_stack=4):
     return atari_wrappers.wrap_deepmind(
@@ -160,7 +162,7 @@ def make_continual_vec_envs(env_names,
     # TODO (chongyi zheng): We fork many processes here, optimize it
     envs = []
     for env_name in env_names:
-        env_log_dir = os.makedirs(os.path.join(log_dir, env_name), exist_ok=True) \
+        env_log_dir = utils.make_dir(os.path.join(log_dir, env_name)) \
             if log_dir is not None else None
         env = make_vec_envs(env_name, seed, num_processes, discount,
                             env_log_dir, allow_early_resets=allow_early_resets,

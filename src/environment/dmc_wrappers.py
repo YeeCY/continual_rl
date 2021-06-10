@@ -9,7 +9,7 @@ from dm_control.suite import common
 import cv2
 from collections import deque
 
-from environment.utils import do_green_screen, interpolate_bg, replace_bg
+from environment.env_utils import do_green_screen, interpolate_bg, replace_bg
 
 
 

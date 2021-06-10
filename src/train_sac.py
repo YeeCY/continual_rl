@@ -9,7 +9,7 @@ from arguments import parse_args
 from environment import make_atari_env, make_single_metaworld_env, \
     make_continual_metaworld_env, make_continual_vec_envs
 from environment.metaworld_utils import MultiEnvWrapper
-from environment.utils import get_vec_normalize
+from environment.env_utils import get_vec_normalize
 from agent import make_agent
 import utils
 import buffers

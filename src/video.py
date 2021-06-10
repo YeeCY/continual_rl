@@ -30,16 +30,6 @@ class VideoRecorder(object):
                 frame = env.render(mode='rgb_array')
                 frame = Image.fromarray(frame[:, :, ::-1]).resize([self.width, self.height])
                 frame = np.asarray(frame)
-            elif self.env_type == 'dmc_locomotion':
-                frame = env.render(
-                    mode='rgb_array',
-                    height=self.height,
-                    width=self.width,
-                    camera_id=self.camera_id
-                )
-                if 'video' in env._mode:
-                    video_background = env.env.env
-                    frame = video_background.apply_to(frame, camera_id=self.camera_id)
             elif self.env_type == 'mujoco':
                 assert isinstance(env, VecNormalize)
                 frame = env.render(mode='rgb_array')
