@@ -167,7 +167,7 @@ def main(args):
     os.makedirs(save_dir, exist_ok=True)
 
     fig, _ = plt.subplots(len(task_names), len(stats))
-    fig.set_size_inches(15, 15)
+    fig.set_size_inches(15 * len(stats), 10 * len(task_names))
     for task_idx, task_name in enumerate(task_names):
         for stat_idx, stat in enumerate(stats):
             ax = plt.subplot(len(task_names), len(stats), task_idx * len(stats) + stat_idx + 1)
