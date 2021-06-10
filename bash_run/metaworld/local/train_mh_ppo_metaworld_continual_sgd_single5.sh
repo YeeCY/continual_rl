@@ -1,10 +1,5 @@
 #!/bin/bash
 
-source $HOME/.bashrc
-source $HOME/cyzheng/env_vars
-
-conda activate pad
-
 SCRIPT_DIR=$(dirname "$BASH_SOURCE")
 PROJECT_DIR=$(realpath "$SCRIPT_DIR/../../..")
 
@@ -12,11 +7,11 @@ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/.mujoco/mujoco200/bin
 export PYTHONPATH=$PROJECT_DIR
 
 declare -a all_env_names=(
-  bin-picking-v2
-  button-press-topdown-wall-v2
-  coffee-button-v2
-  coffee-pull-v2
-  coffee-push-v2
+  peg-unplug-side-v2
+  soccer-v2
+  stick-push-v2
+  stick-pull-v2
+  push-wall-v2
 )
 
 declare -a seeds=(0 1 2 3)

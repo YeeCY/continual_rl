@@ -6,23 +6,24 @@ source $HOME/cyzheng/env_vars
 conda activate pad
 
 SCRIPT_DIR=$(dirname "$BASH_SOURCE")
-PROJECT_DIR=$(realpath "$SCRIPT_DIR/../../..")
+PROJECT_DIR=$(realpath "$SCRIPT_DIR/../../..")push-back-v2
 
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/.mujoco/mujoco200/bin
 export PYTHONPATH=$PROJECT_DIR
 
 declare -a all_env_names=(
-  handle-pull-side-v2
-  handle-pull-v2
-  pick-out-of-hole-v2
-  push-back-v2
+  reach-wall-v2
+  shelf-place-v2
+  sweep-into-v2
+  sweep-v2
+  window-open-v2
 )
 
-declare -a seeds=(1 2 3 4)
+declare -a seeds=(0 1 2 3)
 
 for env_names in "${all_env_names[@]}"; do
   for seed in "${seeds[@]}"; do
-    export CUDA_VISIBLE_DEVICES="$(($seed - 1))"
+    export CUDA_VISIBLE_DEVICES="$seed"
     nohup \
     python $PROJECT_DIR/src/train_sac.py \
       --env_names $env_names \

@@ -12,11 +12,11 @@ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/.mujoco/mujoco200/bin
 export PYTHONPATH=$PROJECT_DIR
 
 declare -a all_env_names=(
-  peg-insert-side-v2
-  lever-pull-v2
-  push-v2
-  assembly-v2
-  basketball-v2
+  disassemble-v2
+  hand-insert-v2
+  hammer-v2
+  handle-press-side-v2
+  handle-press-v2
 )
 
 declare -a seeds=(0 1 2 3)

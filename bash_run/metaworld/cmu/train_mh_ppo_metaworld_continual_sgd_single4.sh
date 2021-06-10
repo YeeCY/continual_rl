@@ -12,11 +12,11 @@ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/.mujoco/mujoco200/bin
 export PYTHONPATH=$PROJECT_DIR
 
 declare -a all_env_names=(
-  bin-picking-v2
-  button-press-topdown-wall-v2
-  coffee-button-v2
-  coffee-pull-v2
-  coffee-push-v2
+  pick-place-v2
+  plate-slide-v2
+  plate-slide-side-v2
+  plate-slide-back-v2
+  plate-slide-back-side-v2
 )
 
 declare -a seeds=(0 1 2 3)
