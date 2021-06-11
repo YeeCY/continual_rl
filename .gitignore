@@ -7,3 +7,4 @@ vec_logs
 datasets
 results
 terminal_logs/*.log
+terminal_logs/trash
