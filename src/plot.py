@@ -77,6 +77,11 @@ CURVE_FORMAT = {
         'style': '-',
         'label': 'AGEM_REF_GRAD_BATCH_SIZE512'
     },
+    'agem_ref_grad_batch_size1000': {
+        'color': [0, 153, 153],
+        'style': '-',
+        'label': 'AGEM_REF_GRAD_BATCH_SIZE1000'
+    },
     'agem_ref_grad_batch_size1024': {
         'color': [0, 153, 153],
         'style': '-',
@@ -127,14 +132,14 @@ def plot(ax, data, algos, curve_format=CURVE_FORMAT):
                 algo_data['y'][idx] = y[:min_len]
 
         x = np.array(algo_data['x'])
-        # y_len = 1E10
-        #
-        # for y in algo_data:
-        #     y_len = min(len(y), y_len)
-        #
-        # for y in range(len(data)):
-        #     data[y] = data[y][:y_len]
-        # x = x[:y_len]
+        y_len = 1E10
+
+        for y in algo_data['y']:
+            y_len = min(len(y), y_len)
+
+        for y in range(len(algo_data['y'])):
+            algo_data['y'][y] = algo_data['y'][y][:y_len]
+        x = x[:y_len]
 
         y_mean = np.mean(np.array(algo_data['y']), axis=0)
         y_std = np.std(np.array(algo_data['y']), axis=0)
