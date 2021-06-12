@@ -23,7 +23,7 @@ declare -a seeds=(4 5 6 7)
 
 for env_names in "${all_env_names[@]}"; do
   for seed in "${seeds[@]}"; do
-    export CUDA_VISIBLE_DEVICES="$(("$seed" - 4))"
+    export CUDA_VISIBLE_DEVICES="$(($seed - 4))"
     nohup \
     python $PROJECT_DIR/src/train_sac.py \
       --env_names $env_names \
