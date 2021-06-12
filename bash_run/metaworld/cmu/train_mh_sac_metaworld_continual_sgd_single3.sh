@@ -18,7 +18,7 @@ declare -a all_env_names=(
   reach-wall-v2
 )
 
-declare -a seeds=(1 2 3 4)
+declare -a seeds=(4 5 6 7)
 
 for env_names in "${all_env_names[@]}"; do
   for seed in "${seeds[@]}"; do
