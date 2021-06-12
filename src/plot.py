@@ -7,7 +7,7 @@ import os.path as osp
 
 
 WINDOW_LENGTH = 10
-SMOOTH_COEF = 0.25
+SMOOTH_COEF = 0.20
 CM = 1 / 2.54  # centimeters in inches
 
 

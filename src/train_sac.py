@@ -227,7 +227,7 @@ def main(args):
             device=device,
             optimize_memory_usage=True,
         )
-    elif args.env_type == 'dmc_locomotion' or 'metaworld':
+    elif args.env_type == 'metaworld':
         replay_buffer = buffers.ReplayBuffer(
             obs_space=env.observation_space,
             action_space=env.action_space,
