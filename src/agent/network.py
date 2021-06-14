@@ -1,6 +1,8 @@
 import numpy as np
 import torch
 import torch.nn as nn
+from itertools import chain
+
 
 from src.agent.encoder import PixelEncoder, DqnEncoder
 from src.utils import weight_init, SquashedNormal, gaussian_logprob, squash, DiagGaussian
@@ -331,6 +333,14 @@ class MultiHeadSacActorMlp(nn.Module):
 
         self.apply(weight_init)
 
+    def common_parameters(self, recurse=True):
+        for name, param in self.trunk.named_parameters(recurse=recurse):
+            yield param
+
+    def named_common_parameters(self, recurse=True):
+        for elem in self.trunk.named_parameters(prefix='trunk', recurse=recurse):
+            yield elem
+
     def forward(self, obs, head_idx, compute_pi=True, compute_log_pi=True):
         hidden = self.trunk(obs)
         mu, log_std, = self.dist_heads[head_idx](hidden).chunk(2, dim=-1)
@@ -387,11 +397,13 @@ class MultiHeadSacCriticMlp(nn.Module):
         self.apply(weight_init)
 
     def common_parameters(self, recurse=True):
-        for name, param in self.trunk.named_parameters(recurse=recurse):
+        for name, param in chain(self.Q1.trunk.named_parameters(recurse=recurse),
+                                 self.Q2.trunk.named_parameters(recurse=recurse)):
             yield param
 
     def named_common_parameters(self, prefix='', recurse=True):
-        for elem in self.trunk.named_parameters(prefix=prefix, recurse=recurse):
+        for elem in chain(self.Q1.trunk.named_parameters(prefix=prefix, recurse=recurse),
+                          self.Q2.trunk.named_parameters(prefix=prefix, recurse=recurse)):
             yield elem
 
     def forward(self, obs, action, head_idx):
