@@ -27,13 +27,14 @@ class SiMultiHeadSacMlpAgent(MultiHeadSacMlpAgent, SiSacMlpAgent):
                  si_c=1.0,
                  si_epsilon=0.1,
                  ):
-        MultiHeadSacMlpAgent.__init__(obs_shape, action_shape, action_range, device, hidden_dim, discount,
+        MultiHeadSacMlpAgent.__init__(self, obs_shape, action_shape, action_range, device, hidden_dim, discount,
                                       init_temperature, alpha_lr, actor_lr, actor_log_std_min, actor_log_std_max,
                                       actor_update_freq, critic_lr, critic_tau, critic_target_update_freq, batch_size)
 
-        SiSacMlpAgent.__init__(obs_shape, action_shape, action_range, device, hidden_dim, discount, init_temperature,
-                               alpha_lr, actor_lr, actor_log_std_min, actor_log_std_max, actor_update_freq, critic_lr,
-                               critic_tau, critic_target_update_freq, batch_size, si_c, si_epsilon)
+        SiSacMlpAgent.__init__(self, obs_shape, action_shape, action_range, device, hidden_dim, discount,
+                               init_temperature, alpha_lr, actor_lr, actor_log_std_min, actor_log_std_max,
+                               actor_update_freq, critic_lr, critic_tau, critic_target_update_freq, batch_size,
+                               si_c, si_epsilon)
 
     def _save_init_params(self):
         # set prev_task_params as weight initializations

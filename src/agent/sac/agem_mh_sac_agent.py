@@ -25,11 +25,11 @@ class AgemMultiHeadSacMlpAgent(MultiHeadSacMlpAgent, AgemSacMlpAgent):
                  agem_memory_budget=5000,
                  agem_ref_grad_batch_size=500,
                  ):
-        MultiHeadSacMlpAgent.__init__(obs_shape, action_shape, action_range, device, hidden_dim, discount,
+        MultiHeadSacMlpAgent.__init__(self, obs_shape, action_shape, action_range, device, hidden_dim, discount,
                                       init_temperature, alpha_lr, actor_lr, actor_log_std_min, actor_log_std_max,
                                       actor_update_freq, critic_lr, critic_tau, critic_target_update_freq, batch_size)
 
-        AgemSacMlpAgent.__init__(obs_shape, action_shape, action_range, device, hidden_dim, discount,
+        AgemSacMlpAgent.__init__(self, obs_shape, action_shape, action_range, device, hidden_dim, discount,
                                  init_temperature, alpha_lr, actor_lr, actor_log_std_min, actor_log_std_max,
                                  actor_update_freq, critic_lr, critic_tau, critic_target_update_freq, batch_size,
                                  agem_memory_budget, agem_ref_grad_batch_size)

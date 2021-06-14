@@ -31,11 +31,11 @@ class EwcMultiHeadSacMlpAgent(MultiHeadSacMlpAgent, EwcSacMlpAgent):
                  online_ewc=False,
                  online_ewc_gamma=1.0,
                  ):
-        MultiHeadSacMlpAgent.__init__(obs_shape, action_shape, action_range, device, hidden_dim, discount,
+        MultiHeadSacMlpAgent.__init__(self, obs_shape, action_shape, action_range, device, hidden_dim, discount,
                                       init_temperature, alpha_lr, actor_lr, actor_log_std_min, actor_log_std_max,
                                       actor_update_freq, critic_lr, critic_tau, critic_target_update_freq, batch_size)
 
-        EwcSacMlpAgent.__init__(obs_shape, action_shape, action_range, device, hidden_dim, discount,
+        EwcSacMlpAgent.__init__(self, obs_shape, action_shape, action_range, device, hidden_dim, discount,
                                 init_temperature, alpha_lr, actor_lr, actor_log_std_min, actor_log_std_max,
                                 actor_update_freq, critic_lr, critic_tau, critic_target_update_freq, batch_size,
                                 ewc_lambda, ewc_estimate_fisher_iters, ewc_estimate_fisher_batch_size, online_ewc,
