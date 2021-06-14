@@ -64,15 +64,6 @@ class EwcPpoMlpAgent(PpoMlpAgent):
             next_value = self.predict_value(rollouts.obs[-1], **kwargs)
             rollouts.compute_returns(next_value, **compute_returns_kwargs)
 
-            # critic_loss = self.compute_critic_loss(obs, action, reward, next_obs, not_done)
-            # self.critic_optimizer.zero_grad()
-            # critic_loss.backward()
-            #
-            # _, actor_loss, alpha_loss = self.compute_actor_and_alpha_loss(obs)
-            # self.actor_optimizer.zero_grad()
-            # actor_loss.backward()
-            # self.log_alpha_optimizer.zero_grad()
-            # alpha_loss.backward()
             advantages = rollouts.returns[:-1] - rollouts.value_preds[:-1]
             advantages = (advantages - advantages.mean()) / (
                     advantages.std() + 1e-5)
@@ -100,7 +91,7 @@ class EwcPpoMlpAgent(PpoMlpAgent):
                 for name, param in chain(self.actor.named_parameters(),
                                          self.critic.named_parameters()):
                     if param.requires_grad:
-                        # TODO (chongyi zheng): Average this accumulated fishers over num_steps?
+                        # TODO (chongyi zheng): Average this accumulated fishers over num_batch?
                         if param.grad is not None:
                             fishers[name] = param.grad.detach().clone() ** 2 + \
                                             fishers.get(name, torch.zeros_like(param.grad))
@@ -158,23 +149,6 @@ class EwcPpoMlpAgent(PpoMlpAgent):
             return torch.sum(torch.stack(ewc_losses)) / 2.0
         else:
             return torch.tensor(0.0, device=self.device)
-
-    # def compute_critic_loss(self, obs, value_pred, ret):
-    #     critic_loss = super().compute_critic_loss(obs, action, reward, next_obs, not_done)
-    #
-    #     # critic ewc loss
-    #     critic_ewc_loss = self._compute_ewc_loss(self.critic.named_parameters())
-    #
-    #     return critic_loss + self.ewc_lambda * critic_ewc_loss
-    #
-    # def compute_actor_and_alpha_loss(self, obs, compute_alpha_loss=True):
-    #     log_pi, actor_loss, alpha_loss = super().compute_actor_and_alpha_loss(obs, compute_alpha_loss)
-    #
-    #     # actor and alpha ewc loss
-    #     actor_ewc_loss = self._compute_ewc_loss(self.actor.named_parameters())
-    #     alpha_ewc_loss = self._compute_ewc_loss(iter([('log_alpha', self.log_alpha)]))
-    #
-    #     return log_pi, actor_loss + self.ewc_lambda * actor_ewc_loss, alpha_loss + self.ewc_lambda * alpha_ewc_loss
 
     def update(self, rollouts, logger, step, **kwargs):
         advantages = rollouts.returns[:-1] - rollouts.value_preds[:-1]

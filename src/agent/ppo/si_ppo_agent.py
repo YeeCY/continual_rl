@@ -45,6 +45,7 @@ class SiPpoMlpAgent(PpoMlpAgent):
                                  self.critic.named_parameters()):
             if param.requires_grad:
                 self.prev_task_params[name] = param.detach().clone()
+                self.prev_params[name] = param.detach().clone()
 
     def update_omegas(self):
         for name, param in chain(self.actor.named_parameters(),
@@ -67,7 +68,7 @@ class SiPpoMlpAgent(PpoMlpAgent):
         for name, param in named_parameters:
             if param.requires_grad:
                 self.params_w[name] = \
-                    -param.grad * (param.detach() - self.prev_params.get(name, param.detach().clone())) + \
+                    -param.grad.detach() * (param.detach() - self.prev_params[name]) + \
                     self.params_w.get(name, torch.zeros_like(param))
                 self.prev_params[name] = param.detach().clone()
 
