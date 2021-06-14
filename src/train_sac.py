@@ -410,10 +410,7 @@ def main(args):
                 agent.update_omegas()
             elif 'agem' in args.algo:
                 print(f"Constructing AGEM fisher: {infos[0]['task_name']}")
-                if 'mh' in args.algo:
-                    agent.construct_memory(replay_buffer, head_idx=task_id)
-                else:
-                    agent.construct_memory(replay_buffer)
+                agent.construct_memory(replay_buffer)
 
             agent.reset_target_critic()
             agent.reset_log_alpha()
