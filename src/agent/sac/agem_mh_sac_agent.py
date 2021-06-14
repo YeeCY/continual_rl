@@ -1,11 +1,9 @@
 import torch
-from collections.abc import Iterable
 
-import utils
 from agent.sac import MultiHeadSacMlpAgent, AgemSacMlpAgent
 
 
-class MultiHeadAgemSacMlpAgent(MultiHeadSacMlpAgent, AgemSacMlpAgent):
+class AgemMultiHeadSacMlpAgent(MultiHeadSacMlpAgent, AgemSacMlpAgent):
     """Adapt from https://github.com/GMvandeVen/continual-learning"""
     def __init__(self,
                  obs_shape,

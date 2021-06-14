@@ -6,7 +6,7 @@ import utils
 from agent.sac import MultiHeadSacMlpAgent, EwcSacMlpAgent
 
 
-class MultiHeadEwcSacMlpAgent(MultiHeadSacMlpAgent, EwcSacMlpAgent):
+class EwcMultiHeadSacMlpAgent(MultiHeadSacMlpAgent, EwcSacMlpAgent):
     """Adapt https://github.com/GMvandeVen/continual-learning"""
     def __init__(self,
                  obs_shape,
