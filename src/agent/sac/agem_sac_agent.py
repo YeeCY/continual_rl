@@ -1,8 +1,8 @@
 import torch
-import numpy as np
-import src.utils as utils
+from itertools import chain
 from collections.abc import Iterable
 
+import utils
 from agent.sac.base_sac_agent import SacMlpAgent
 
 
@@ -25,8 +25,8 @@ class AgemSacMlpAgent(SacMlpAgent):
                  critic_tau=0.005,
                  critic_target_update_freq=2,
                  batch_size=128,
-                 agem_memory_budget=3000,
-                 agem_ref_grad_batch_size=128,
+                 agem_memory_budget=5000,
+                 agem_ref_grad_batch_size=500,
                  ):
         super().__init__(obs_shape, action_shape, action_range, device, hidden_dim, discount, init_temperature,
                          alpha_lr, actor_lr, actor_log_std_min, actor_log_std_max, actor_update_freq, critic_lr,
@@ -48,92 +48,130 @@ class AgemSacMlpAgent(SacMlpAgent):
 
     def _compute_ref_grad(self, compute_alpha_ref_grad=True):
         # (chongyi zheng): We compute reference gradients for actor and critic separately
-        # assert isinstance(named_parameters, Iterable), "'named_parameters' must be a iterator"
-        #
-        # si_losses = []
-        # for name, param in named_parameters:
-        #     if param.requires_grad:
-        #         prev_param = self.prev_task_params[name]
-        #         omega = self.omegas.get(name, torch.zeros_like(param))
-        #         si_loss = torch.sum(omega * (param - prev_param) ** 2)
-        #         si_losses.append(si_loss)
-        #
-        # return torch.sum(torch.stack(si_losses))
-
         if not self.agem_memories:
             return None, None, None
 
-        # sample memory transitions
-        concat_obses = []
-        concat_actions = []
-        concat_rewards = []
-        concat_next_obses = []
-        concat_not_dones = []
-        for mem in self.agem_memories.values():
-            concat_obses.append(mem['obses'])
-            concat_actions.append(mem['actions'])
-            concat_rewards.append(mem['rewards'])
-            concat_next_obses.append(mem['next_obses'])
-            concat_not_dones.append(mem['not_dones'])
+        ref_critic_grad = []
+        ref_actor_grad = []
+        ref_alpha_grad = []
+        for memory in self.agem_memories.values():
+            obs, action, reward, next_obs, not_done = memory['obses'], memory['actions'], memory['rewards'], \
+                                                      memory['next_obses'], memory['not_dones']
 
-        concat_obses = torch.cat(concat_obses)
-        concat_actions = torch.cat(concat_actions)
-        concat_rewards = torch.cat(concat_rewards)
-        concat_next_obses = torch.cat(concat_next_obses)
-        concat_not_dones = torch.cat(concat_not_dones)
+            critic_loss = self.compute_critic_loss(obs, action, reward, next_obs, not_done)
+            self.critic_optimizer.zero_grad()  # clear current gradient
+            critic_loss.backward()
 
-        perm_idxs = np.random.permutation(concat_obses.shape[0])
-        sample_idxs = np.random.randint(0, len(concat_obses), size=self.agem_ref_grad_batch_size)
-        obs = concat_obses[perm_idxs][sample_idxs]
-        action = concat_actions[perm_idxs][sample_idxs]
-        reward = concat_rewards[perm_idxs][sample_idxs]
-        next_obs = concat_next_obses[perm_idxs][sample_idxs]
-        not_done = concat_not_dones[perm_idxs][sample_idxs]
+            single_ref_critic_grad = []
+            for param in self.critic.parameters():
+                if param.requires_grad:
+                    single_ref_critic_grad.append(param.grad.detach().clone().flatten())
+            single_ref_critic_grad = torch.cat(single_ref_critic_grad)
+            self.critic_optimizer.zero_grad()
+
+            _, actor_loss, alpha_loss = self.compute_actor_and_alpha_loss(
+                obs, compute_alpha_loss=compute_alpha_ref_grad)
+            self.actor_optimizer.zero_grad()  # clear current gradient
+            actor_loss.backward()
+
+            single_ref_actor_grad = []
+            for param in self.actor.parameters():
+                if param.requires_grad:
+                    single_ref_actor_grad.append(param.grad.detach().clone().flatten())
+            single_ref_actor_grad = torch.cat(single_ref_actor_grad)
+            self.actor_optimizer.zero_grad()
+
+            if compute_alpha_ref_grad:
+                self.log_alpha_optimizer.zero_grad()  # clear current gradient
+                alpha_loss.backward()
+                single_ref_alpha_grad = self.log_alpha.grad.detach().clone()
+                self.log_alpha_optimizer.zero_grad()
+            else:
+                single_ref_alpha_grad = None
+
+            ref_critic_grad.append(single_ref_critic_grad)
+            ref_actor_grad.append(single_ref_actor_grad)
+            if single_ref_alpha_grad is not None:
+                ref_alpha_grad.append(single_ref_alpha_grad)
+            else:
+                ref_alpha_grad = None
+
+        ref_critic_grad = torch.stack(ref_critic_grad).mean(dim=0)
+        ref_actor_grad = torch.stack(ref_actor_grad).mean(dim=0)
+        if ref_alpha_grad is not None:
+            ref_alpha_grad = torch.stack(ref_alpha_grad).mean(dim=0)
+
+        # # sample memory transitions
+        # concat_obses = []
+        # concat_actions = []
+        # concat_rewards = []
+        # concat_next_obses = []
+        # concat_not_dones = []
+        # for mem in self.agem_memories.values():
+        #     concat_obses.append(mem['obses'])
+        #     concat_actions.append(mem['actions'])
+        #     concat_rewards.append(mem['rewards'])
+        #     concat_next_obses.append(mem['next_obses'])
+        #     concat_not_dones.append(mem['not_dones'])
+        #
+        # concat_obses = torch.cat(concat_obses)
+        # concat_actions = torch.cat(concat_actions)
+        # concat_rewards = torch.cat(concat_rewards)
+        # concat_next_obses = torch.cat(concat_next_obses)
+        # concat_not_dones = torch.cat(concat_not_dones)
+        #
+        # perm_idxs = np.random.permutation(concat_obses.shape[0])
+        # sample_idxs = np.random.randint(0, len(concat_obses), size=self.agem_ref_grad_batch_size)
+        # obs = concat_obses[perm_idxs][sample_idxs]
+        # action = concat_actions[perm_idxs][sample_idxs]
+        # reward = concat_rewards[perm_idxs][sample_idxs]
+        # next_obs = concat_next_obses[perm_idxs][sample_idxs]
+        # not_done = concat_not_dones[perm_idxs][sample_idxs]
 
         # reference critic gradients
-        ref_critic_loss = self.compute_critic_loss(obs, action, reward, next_obs, not_done)
-        self.critic_optimizer.zero_grad()  # clear current gradient
-        ref_critic_loss.backward()
+        # ref_critic_loss = self.compute_critic_loss(obs, action, reward, next_obs, not_done)
+        # self.critic_optimizer.zero_grad()  # clear current gradient
+        # ref_critic_loss.backward()
 
-        # reorganize the gradient of the memory transitions as a single vector
-        ref_critic_grad = []
-        for param in self.critic.parameters():
-            if param.requires_grad:
-                ref_critic_grad.append(param.grad.detach().clone().flatten())
-        ref_critic_grad = torch.cat(ref_critic_grad)
-        # reset gradients (with A-GEM, gradients of memory transitions should only be used as inequality constraint)
-        self.critic_optimizer.zero_grad()
-
-        # reference actor and alpha gradients
-        _, ref_actor_loss, ref_alpha_loss = self.compute_actor_and_alpha_loss(
-            obs, compute_alpha_loss=compute_alpha_ref_grad)
-        self.actor_optimizer.zero_grad()  # clear current gradient
-        ref_actor_loss.backward()
-
-        ref_actor_grad = []
-        for param in self.actor.parameters():
-            if param.requires_grad:
-                ref_actor_grad.append(param.grad.detach().clone().flatten())
-        ref_actor_grad = torch.cat(ref_actor_grad)
-        self.actor_optimizer.zero_grad()
-
-        ref_alpha_grad = None
-        if compute_alpha_ref_grad:
-            self.log_alpha_optimizer.zero_grad()  # clear current gradient
-            ref_alpha_loss.backward()
-            ref_alpha_grad = self.log_alpha.grad.detach().clone()
-            self.log_alpha_optimizer.zero_grad()
+        # # reorganize the gradient of the memory transitions as a single vector
+        # ref_critic_grad = []
+        # for param in self.critic.parameters():
+        #     if param.requires_grad:
+        #         ref_critic_grad.append(param.grad.detach().clone().flatten())
+        # ref_critic_grad = torch.cat(ref_critic_grad)
+        # # reset gradients (with A-GEM, gradients of memory transitions should only be used as inequality constraint)
+        # self.critic_optimizer.zero_grad()
+        #
+        # # reference actor and alpha gradients
+        # _, ref_actor_loss, ref_alpha_loss = self.compute_actor_and_alpha_loss(
+        #     obs, compute_alpha_loss=compute_alpha_ref_grad)
+        # self.actor_optimizer.zero_grad()  # clear current gradient
+        # ref_actor_loss.backward()
+        #
+        # ref_actor_grad = []
+        # for param in self.actor.parameters():
+        #     if param.requires_grad:
+        #         ref_actor_grad.append(param.grad.detach().clone().flatten())
+        # ref_actor_grad = torch.cat(ref_actor_grad)
+        # self.actor_optimizer.zero_grad()
+        #
+        # ref_alpha_grad = None
+        # if compute_alpha_ref_grad:
+        #     self.log_alpha_optimizer.zero_grad()  # clear current gradient
+        #     ref_alpha_loss.backward()
+        #     ref_alpha_grad = self.log_alpha.grad.detach().clone()
+        #     self.log_alpha_optimizer.zero_grad()
 
         return ref_critic_grad, ref_actor_grad, ref_alpha_grad
 
-    def _project_grad(self, named_parameters, ref_grad):
-        assert isinstance(named_parameters, Iterable), "'named_parameters' must be a iterator"
+    def _project_grad(self, parameters, ref_grad):
+        assert isinstance(parameters, Iterable), "'parameters' must be a iterator"
 
         if ref_grad is None:
             return
 
         grad = []
-        for name, param in named_parameters:
+        for param in parameters:
             if param.requires_grad:
                 grad.append(param.grad.flatten())
         grad = torch.cat(grad)
@@ -145,7 +183,7 @@ class AgemSacMlpAgent(SacMlpAgent):
             proj_grad = grad - (angle / (ref_grad * ref_grad).sum()) * ref_grad
             # replace all the gradients within the model with this projected gradient
             idx = 0
-            for _, param in named_parameters:
+            for param in parameters:
                 if param.requires_grad:
                     num_param = param.numel()  # number of parameters in [p]
                     param.grad.copy_(proj_grad[idx:idx + num_param].reshape(param.shape))
@@ -174,9 +212,8 @@ class AgemSacMlpAgent(SacMlpAgent):
         self.critic_optimizer.zero_grad()
         critic_loss.backward()
 
-        self._project_grad(self.critic.named_parameters(), ref_critic_grad)
+        self._project_grad(self.critic.parameters(), ref_critic_grad)
 
-        torch.nn.utils.clip_grad_norm_(self.critic.parameters(), self.grad_clip_norm)
         self.critic_optimizer.step()
 
     def update_actor_and_alpha(self, log_pi, actor_loss, logger, step, alpha_loss=None, ref_actor_grad=None,
@@ -189,9 +226,8 @@ class AgemSacMlpAgent(SacMlpAgent):
         self.actor_optimizer.zero_grad()
         actor_loss.backward()
 
-        self._project_grad(self.actor.named_parameters(), ref_actor_grad)
+        self._project_grad(self.actor.parameters(), ref_actor_grad)
 
-        torch.nn.utils.clip_grad_norm_(self.actor.parameters(), self.grad_clip_norm)
         self.actor_optimizer.step()
 
         if isinstance(alpha_loss, torch.Tensor):
@@ -201,12 +237,11 @@ class AgemSacMlpAgent(SacMlpAgent):
             self.log_alpha_optimizer.zero_grad()
             alpha_loss.backward()
 
-            self._project_grad(iter([('log_alpha', self.log_alpha)]), ref_alpha_grad)
+            self._project_grad(iter(self.log_alpha), ref_alpha_grad)
 
-            torch.nn.utils.clip_grad_norm_([self.log_alpha], self.grad_clip_norm)
             self.log_alpha_optimizer.step()
 
-    def update(self, replay_buffer, logger, step):
+    def update(self, replay_buffer, logger, step, **kwargs):
         obs, action, reward, next_obs, not_done = replay_buffer.sample(self.batch_size)
 
         logger.log('train/batch_reward', reward.mean(), step)

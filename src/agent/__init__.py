@@ -114,15 +114,14 @@ def make_agent(obs_space, action_space, device, args):
             kwargs['ewc_estimate_fisher_batch_size'] = args.sac_ewc_estimate_fisher_batch_size
             kwargs['online_ewc'] = args.sac_online_ewc
             kwargs['online_ewc_gamma'] = args.sac_online_ewc_gamma
-
             agent = EwcSacMlpAgent(**kwargs)
         elif args.algo == 'si_sac_mlp':
-            kwargs['si_c'] = args.si_c
-            kwargs['si_epsilon'] = args.si_epsilon
+            kwargs['si_c'] = args.sac_si_c
+            kwargs['si_epsilon'] = args.sac_si_epsilon
             agent = SiSacMlpAgent(**kwargs)
         elif args.algo == 'agem_sac_mlp':
-            kwargs['agem_memory_budget'] = args.agem_memory_budget
-            kwargs['agem_ref_grad_batch_size'] = args.agem_ref_grad_batch_size
+            kwargs['agem_memory_budget'] = args.sac_agem_memory_budget
+            kwargs['agem_ref_grad_batch_size'] = args.sac_agem_ref_grad_batch_size
             agent = AgemSacMlpAgent(**kwargs)
         elif args.algo == 'mh_sac_mlp':
             agent = MultiHeadSacMlpAgent(**kwargs)

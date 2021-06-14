@@ -118,7 +118,7 @@ class SacMlpAgent:
 
         return critic_loss
 
-    def update_critic(self, critic_loss, logger, step):
+    def update_critic(self, critic_loss, logger, step, **kwargs):
         # Optimize the critic
         logger.log('train_critic/loss', critic_loss, step)
         self.critic_optimizer.zero_grad()
@@ -158,11 +158,7 @@ class SacMlpAgent:
             self.log_alpha_optimizer.step()
 
     def update(self, replay_buffer, logger, step, **kwargs):
-        # obs, action, reward, next_obs, not_done, ensem_kwargs = replay_buffer.sample_ensembles(
-        #     self.batch_size, num_ensembles=self.num_ensem_comps)
         obs, action, reward, next_obs, not_done = replay_buffer.sample(self.batch_size)
-        # obs, action, reward, next_obs, not_done, obs_aug, next_obs_aug = replay_buffer.sample(
-        #     self.batch_size)
 
         logger.log('train/batch_reward', reward.mean(), step)
 

@@ -24,7 +24,7 @@ class AgemPpoMlpAgent(PpoMlpAgent):
                  grad_clip_norm=0.5,
                  use_clipped_critic_loss=True,
                  num_batch=32,
-                 agem_memory_budget=3072,
+                 agem_memory_budget=10240,
                  agem_ref_grad_batch_size=1024,
                  ):
         super().__init__(obs_shape, action_shape, device, hidden_dim, discount, clip_param, ppo_epoch,

@@ -97,6 +97,14 @@ def parse_args():
 	parser.add_argument('--sac_online_ewc', default=False, action='store_true')
 	parser.add_argument('--sac_online_ewc_gamma', default=1.0, type=float)
 
+	# ppo agem
+	parser.add_argument('--sac_agem_memory_budget', default=5000, type=int)
+	parser.add_argument('--sac_agem_ref_grad_batch_size', default=500, type=int)
+
+	# sac si
+	parser.add_argument('--sac_si_c', default=1.0, type=float)
+	parser.add_argument('--sac_si_epsilon', default=0.1, type=float)
+
 	# dqn
 	parser.add_argument('--double_q', default=False, action='store_true')
 	parser.add_argument('--dueling', default=False, action='store_true')
