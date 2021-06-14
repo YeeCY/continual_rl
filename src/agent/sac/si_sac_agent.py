@@ -2,6 +2,7 @@ import torch
 from itertools import chain
 from collections.abc import Iterable
 
+import utils
 from agent.sac.base_sac_agent import SacMlpAgent
 
 
@@ -36,17 +37,19 @@ class SiSacMlpAgent(SacMlpAgent):
 
         self.params_w = {}
         self.omegas = {}
-        self.prev_task_params = {}
-
-        # set prev_params and prev_task_params as weight initializations
         self.prev_params = {}
         self.prev_task_params = {}
-        for name, param in chain(self.critic.named_parameters(),
-                                 self.actor.named_parameters(),
+
+        self._save_init_params()
+
+    def _save_init_params(self):
+        # set prev_task_params as weight initializations
+        for name, param in chain(self.actor.named_parameters(),
+                                 self.critic.named_parameters(),
                                  iter([('log_alpha', self.log_alpha)])):
             if param.requires_grad:
-                self.prev_params[name] = param.detach().clone()
                 self.prev_task_params[name] = param.detach().clone()
+                self.prev_params[name] = param.detach().clone()
 
     def update_omegas(self):
         for name, param in chain(self.critic.named_parameters(),
@@ -69,8 +72,9 @@ class SiSacMlpAgent(SacMlpAgent):
                                  self.actor.named_parameters(),
                                  iter([('log_alpha', self.log_alpha)])):
             if param.requires_grad:
-                self.params_w[name] = -param.grad * (param.detach() - self.prev_params[name]) + \
-                                      self.params_w.get(name, torch.zeros_like(param))
+                self.params_w[name] = \
+                    -param.grad.detach() * (param.detach() - self.prev_params[name]) + \
+                    self.params_w.get(name, torch.zeros_like(param))
                 self.prev_params[name] = param.detach().clone()
 
     def _compute_surrogate_loss(self, named_parameters):
@@ -86,25 +90,28 @@ class SiSacMlpAgent(SacMlpAgent):
 
         return torch.sum(torch.stack(si_losses))
 
-    def compute_critic_loss(self, obs, action, reward, next_obs, not_done):
-        critic_loss = super().compute_critic_loss(obs, action, reward, next_obs, not_done)
+    def update(self, replay_buffer, logger, step, **kwargs):
+        obs, action, reward, next_obs, not_done = replay_buffer.sample(self.batch_size)
 
-        # critic si surrogate loss
-        critic_surrogate_loss = self._compute_surrogate_loss(self.critic.named_parameters())
+        logger.log('train/batch_reward', reward.mean(), step)
 
-        return critic_loss + self.si_c * critic_surrogate_loss
+        critic_loss = self.compute_critic_loss(obs, action, reward, next_obs, not_done, **kwargs)
+        critic_si_surrogate_loss = self._compute_surrogate_loss(self.critic.named_parameters())
+        critic_loss = critic_loss + self.si_c * critic_si_surrogate_loss
+        self.update_critic(critic_loss, logger, step)
 
-    def compute_actor_and_alpha_loss(self, obs, compute_alpha_loss=True):
-        log_pi, actor_loss, alpha_loss = super().compute_actor_and_alpha_loss(obs, compute_alpha_loss)
+        if step % self.actor_update_freq == 0:
+            log_pi, actor_loss, alpha_loss = self.compute_actor_and_alpha_loss(obs, **kwargs)
+            actor_si_surrogate_loss = self._compute_surrogate_loss(self.actor.named_parameters())
+            alpha_si_surrogate_loss = self._compute_surrogate_loss(iter([('log_alpha', self.log_alpha)]))
+            actor_loss = actor_loss + self.si_c * actor_si_surrogate_loss
+            alpha_loss = alpha_loss + self.si_c * alpha_si_surrogate_loss
 
-        # actor and alpha si surrogate losses
-        actor_surrogate_loss = self._compute_surrogate_loss(self.actor.named_parameters())
-        alpha_surrogate_loss = self._compute_surrogate_loss(iter([('log_alpha', self.log_alpha)]))
+            self.update_actor_and_alpha(log_pi, actor_loss, logger, step, alpha_loss=alpha_loss)
 
-        return log_pi, actor_loss + self.si_c * actor_surrogate_loss, alpha_loss + self.si_c * alpha_surrogate_loss
-
-    def update(self, replay_buffer, logger, step):
-        super().update(replay_buffer, logger, step)
+        if step % self.critic_target_update_freq == 0:
+            utils.soft_update_params(self.critic, self.critic_target,
+                                     self.critic_tau)
 
         # estimate weight importance
         self._estimate_importance()
@@ -135,7 +142,6 @@ class SiSacMlpAgent(SacMlpAgent):
         self.omegas = torch.load(
             '%s/omegas_%s.pt' % (model_dir, step)
         )
-
         self.prev_task_params = torch.load(
             '%s/prev_task_params_%s.pt' % (model_dir, step)
         )

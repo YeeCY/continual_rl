@@ -1,8 +1,8 @@
 import torch
 import numpy as np
-import src.utils as utils
 import torch.nn.functional as F
 
+import utils
 from agent.network import SacActorMlp, SacCriticMlp
 
 

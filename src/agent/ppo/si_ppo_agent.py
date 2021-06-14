@@ -62,10 +62,9 @@ class SiPpoMlpAgent(PpoMlpAgent):
         # clear importance buffers for the next task
         self.params_w = {}
 
-    def _estimate_importance(self, named_parameters):
-        assert isinstance(named_parameters, Iterable)
-
-        for name, param in named_parameters:
+    def _estimate_importance(self):
+        for name, param in chain(self.actor.named_parameters(),
+                                 self.critic.named_parameters()):
             if param.requires_grad:
                 self.params_w[name] = \
                     -param.grad.detach() * (param.detach() - self.prev_params[name]) + \
@@ -127,10 +126,7 @@ class SiPpoMlpAgent(PpoMlpAgent):
                 self.optimizer.step()
 
                 # estimate weight importance
-                self._estimate_importance(
-                    chain(self.actor.named_parameters(),
-                          self.critic.named_parameters())
-                )
+                self._estimate_importance()
 
     def save(self, model_dir, step):
         super().save(model_dir, step)

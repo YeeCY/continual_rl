@@ -54,6 +54,15 @@ class SiMultiHeadPpoMlpAgent(MultiHeadPpoMlpAgent, SiPpoMlpAgent):
         # clear importance buffers for the next task
         self.params_w = {}
 
+    def _estimate_importance(self):
+        for name, param in chain(self.actor.named_common_parameters(),
+                                 self.critic.named_common_parameters()):
+            if param.requires_grad:
+                self.params_w[name] = \
+                    -param.grad.detach() * (param.detach() - self.prev_params[name]) + \
+                    self.params_w.get(name, torch.zeros_like(param))
+                self.prev_params[name] = param.detach().clone()
+
     def update(self, rollouts, logger, step, **kwargs):
         advantages = rollouts.returns[:-1] - rollouts.value_preds[:-1]
         advantages = (advantages - advantages.mean()) / (
@@ -96,7 +105,4 @@ class SiMultiHeadPpoMlpAgent(MultiHeadPpoMlpAgent, SiPpoMlpAgent):
                 self.optimizer.step()
 
                 # estimate weight importance
-                self._estimate_importance(
-                    chain(self.actor.named_common_parameters(),
-                          self.critic.named_common_parameters())
-                )
+                self._estimate_importance()

@@ -402,12 +402,18 @@ def main(args):
 
             if 'ewc' in args.algo:
                 print(f"Estimating EWC fisher: {infos[0]['task_name']}")
-                agent.estimate_fisher(replay_buffer)
+                if 'mh' in args.algo:
+                    agent.estimate_fisher(replay_buffer, head_idx=task_id)
+                else:
+                    agent.estimate_fisher(replay_buffer)
             elif 'si' in args.algo:
                 agent.update_omegas()
             elif 'agem' in args.algo:
                 print(f"Constructing AGEM fisher: {infos[0]['task_name']}")
-                agent.construct_memory(replay_buffer)
+                if 'mh' in args.algo:
+                    agent.construct_memory(replay_buffer, head_idx=task_id)
+                else:
+                    agent.construct_memory(replay_buffer)
 
             agent.reset_target_critic()
             agent.reset_log_alpha()
