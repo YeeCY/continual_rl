@@ -37,6 +37,11 @@ CURVE_FORMAT = {
         'style': '-',
         'label': 'EWC_lambda50'
     },
+    'ewc_lambda150': {
+        'color': [160, 32, 240],
+        'style': '-',
+        'label': 'EWC_lambda150'
+    },
     'ewc_lambda500': {
         'color': [216, 30, 54],
         'style': '-',
@@ -86,6 +91,11 @@ CURVE_FORMAT = {
         'color': [0, 153, 153],
         'style': '-',
         'label': 'AGEM_REF_GRAD_BATCH_SIZE1024'
+    },
+    'agem_ref_grad_batch_size1500': {
+        'color': [0, 153, 153],
+        'style': '-',
+        'label': 'AGEM_REF_GRAD_BATCH_SIZE1500'
     },
     'agem_ref_grad_batch_size2048': {
         'color': [64, 64, 64],

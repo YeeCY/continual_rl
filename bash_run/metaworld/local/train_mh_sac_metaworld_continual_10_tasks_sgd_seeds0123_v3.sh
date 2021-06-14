@@ -20,9 +20,9 @@ for seed in "${seeds[@]}"; do
       plate-slide-side-v2 \
       sweep-into-v2 \
       faucet-close-v2 \
+      door-lock-v2 \
+      handle-pull-side-v2 \
       window-open-v2 \
-      handle-press-v2 \
-      drawer-close-v2 \
     --env_type metaworld \
     --algo mh_sac_mlp \
     --train_steps_per_task 500000 \
