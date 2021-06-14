@@ -24,7 +24,7 @@ for seed in "${seeds[@]}"; do
       handle-pull-side-v2 \
       window-open-v2 \
     --env_type metaworld \
-    --algo mh_sac_mlp \
+    --algo agem_mh_sac_mlp \
     --train_steps_per_task 500000 \
     --eval_freq 10 \
     --discount 0.99 \
@@ -32,10 +32,9 @@ for seed in "${seeds[@]}"; do
     --sac_num_expl_steps_per_process 1000 \
     --sac_num_processes 1 \
     --sac_num_train_iters 1000 \
-    --sac_ewc_lambda 500 \
-    --sac_ewc_estimate_fisher_iters 50 \
-    --sac_ewc_estimate_fisher_batch_size 1000 \
+    --sac_agem_memory_budget 5000 \
+    --sac_agem_ref_grad_batch_size 500 \
     --seed $seed \
-    --work_dir $PROJECT_DIR/vec_logs/mh_sac_mlp_metaworld_10_tasks_v3/ewc_lambda500/$seed \
-    > $PROJECT_DIR/terminal_logs/mh_sac_mlp_metaworld_10_tasks_v3-ewc-lambda500-seed"$seed".log 2>&1 &
+    --work_dir $PROJECT_DIR/vec_logs/mh_sac_mlp_metaworld_10_tasks_v3/agem_ref_grad_batch_size500/$seed \
+    > $PROJECT_DIR/terminal_logs/mh_sac_mlp_metaworld_10_tasks_v3-agem_ref_grad_batch_size500-seed"$seed".log 2>&1 &
 done

@@ -32,9 +32,10 @@ for seed in "${seeds[@]}"; do
     --ppo_num_processes 1 \
     --ppo_use_clipped_critic_loss \
     --ppo_use_proper_time_limits \
-    --ppo_ewc_lambda 150 \
+    --ppo_ewc_lambda 50 \
+    --ppo_ewc_estimate_fisher_epochs 50 \
     --ppo_ewc_rollout_steps_per_process 500 \
     --seed $seed \
-    --work_dir $PROJECT_DIR/vec_logs/mh_ppo_mlp_metaworld_10_tasks_v3/ewc_lambda150/$seed \
-  > $PROJECT_DIR/terminal_logs/mh_ppo_mlp_metaworld_10_tasks_v3-ewc_lambda150-seed"$seed".log 2>&1 &
+    --work_dir $PROJECT_DIR/vec_logs/mh_ppo_mlp_metaworld_10_tasks_v3/ewc_lambda50/$seed \
+  > $PROJECT_DIR/terminal_logs/mh_ppo_mlp_metaworld_10_tasks_v3-ewc_lambda50-seed"$seed".log 2>&1 &
 done

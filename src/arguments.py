@@ -103,7 +103,7 @@ def parse_args():
 
 	# sac si
 	parser.add_argument('--sac_si_c', default=1.0, type=float)
-	parser.add_argument('--sac_si_epsilon', default=0.1, type=float)
+	parser.add_argument('--sac_si_epsilon', default=1e-6, type=float)
 
 	# dqn
 	parser.add_argument('--double_q', default=False, action='store_true')
