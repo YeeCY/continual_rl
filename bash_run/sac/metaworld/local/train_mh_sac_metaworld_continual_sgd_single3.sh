@@ -1,17 +1,16 @@
 #!/bin/bash
 
 SCRIPT_DIR=$(dirname "$BASH_SOURCE")
-PROJECT_DIR=$(realpath "$SCRIPT_DIR/../../..")
+PROJECT_DIR=$(realpath "$SCRIPT_DIR/../../../..")
 
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/.mujoco/mujoco200/bin
 export PYTHONPATH=$PROJECT_DIR
 
 declare -a all_env_names=(
-  button-press-topdown-wall-v2
-  coffee-button-v2
-  hand-insert-v2
-  handle-press-side-v2
-  handle-press-v2
+  soccer-v2
+  sweep-into-v2
+  window-open-v2
+  reach-wall-v2
 )
 
 declare -a seeds=(4 5 6 7)

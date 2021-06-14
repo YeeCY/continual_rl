@@ -1,23 +1,17 @@
 #!/bin/bash
 
 SCRIPT_DIR=$(dirname "$BASH_SOURCE")
-PROJECT_DIR=$(realpath "$SCRIPT_DIR/../../..")
+PROJECT_DIR=$(realpath "$SCRIPT_DIR/../../../..")
 
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/.mujoco/mujoco200/bin
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/.mujoco/mujoco200/bin:/usr/lib/nvidia-418
 export PYTHONPATH=$PROJECT_DIR
 
-declare -a all_env_names=(
-  soccer-v2
-  sweep-into-v2
-  window-open-v2
-  reach-wall-v2
-)
-
-declare -a seeds=(4 5 6 7)
+declare -a all_env_names=(window-close-v2 button-press-topdown-v2 door-open-v2 peg-insert-side-v2 door-lock-v2)
+declare -a seeds=(2)
 
 for env_names in "${all_env_names[@]}"; do
   for seed in "${seeds[@]}"; do
-    export CUDA_VISIBLE_DEVICES="$(("$seed" - 4))"
+    export CUDA_VISIBLE_DEVICES="$seed"
     nohup \
     python $PROJECT_DIR/src/train_sac.py \
       --env_names $env_names \
@@ -33,7 +27,7 @@ for env_names in "${all_env_names[@]}"; do
       --sac_num_train_iters 1000 \
       --seed $seed \
       --save_video \
-      --work_dir $PROJECT_DIR/vec_logs/mh_sac_mlp_metaworld_single/sgd/$env_names/$seed \
-      > $PROJECT_DIR/terminal_logs/mh_sac_mlp_metaworld_single-sgd-"$env_names"-seed"$seed".log 2>&1 &
+      --work_dir $PROJECT_DIR/vec_logs/mh_sac_mlp_metaworld_5_tasks_single/sgd/$env_names/$seed \
+    > $PROJECT_DIR/terminal_logs/mh_sac_mlp_metaworld_5_tasks_single-sgd-"$env_names"-seed"$seed".log 2>&1 &
   done
 done

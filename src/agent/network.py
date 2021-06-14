@@ -33,7 +33,7 @@ class QFunction(nn.Module):
     def forward(self, obs, action):
         assert obs.size(0) == action.size(0)
 
-        obs_action = torch.cat([obs, action], dim=1)
+        obs_action = torch.cat([obs, action], dim=-1)
         return self.trunk(obs_action)
 
 

@@ -1,24 +1,24 @@
 #!/bin/bash
 
 SCRIPT_DIR=$(dirname "$BASH_SOURCE")
-PROJECT_DIR=$(realpath "$SCRIPT_DIR/../../..")
+PROJECT_DIR=$(realpath "$SCRIPT_DIR/../../../..")
 
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/.mujoco/mujoco200/bin
 export PYTHONPATH=$PROJECT_DIR
 
 declare -a all_env_names=(
-  peg-unplug-side-v2
-  soccer-v2
-  stick-push-v2
-  stick-pull-v2
-  push-wall-v2
+  button-press-topdown-wall-v2
+  coffee-button-v2
+  hand-insert-v2
+  handle-press-side-v2
+  handle-press-v2
 )
 
-declare -a seeds=(0 1 2 3)
+declare -a seeds=(4 5 6 7)
 
 for env_names in "${all_env_names[@]}"; do
   for seed in "${seeds[@]}"; do
-    export CUDA_VISIBLE_DEVICES="$(("$seed" - 1))"
+    export CUDA_VISIBLE_DEVICES="$(("$seed" - 4))"
     nohup \
     python $PROJECT_DIR/src/train_sac.py \
       --env_names $env_names \
