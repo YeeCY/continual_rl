@@ -109,10 +109,12 @@ def make_agent(obs_space, action_space, device, args):
         elif args.algo == 'sac_mlp':
             agent = SacMlpAgent(**kwargs)
         elif args.algo == 'ewc_sac_mlp':
-            kwargs['ewc_lambda'] = args.ewc_lambda
-            kwargs['ewc_fisher_sample_size'] = args.ewc_fisher_sample_size
-            kwargs['online_ewc'] = args.online_ewc
-            kwargs['online_ewc_gamma'] = args.online_ewc_gamma
+            kwargs['ewc_lambda'] = args.sac_ewc_lambda
+            kwargs['ewc_estimate_fisher_iters'] = args.sac_ewc_estimate_fisher_iters
+            kwargs['ewc_estimate_fisher_batch_size'] = args.sac_ewc_estimate_fisher_batch_size
+            kwargs['online_ewc'] = args.sac_online_ewc
+            kwargs['online_ewc_gamma'] = args.sac_online_ewc_gamma
+
             agent = EwcSacMlpAgent(**kwargs)
         elif args.algo == 'si_sac_mlp':
             kwargs['si_c'] = args.si_c

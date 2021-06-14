@@ -90,6 +90,13 @@ def parse_args():
 	parser.add_argument('--critic_tau', default=0.005, type=float)  # 0.01
 	parser.add_argument('--critic_target_update_freq', default=1, type=int)  # 1
 
+	# sac ewc
+	parser.add_argument('--sac_ewc_lambda', default=5000, type=float)
+	parser.add_argument('--sac_ewc_estimate_fisher_iters', default=50, type=int)
+	parser.add_argument('--sac_ewc_estimate_fisher_batch_size', default=1000, type=int)
+	parser.add_argument('--sac_online_ewc', default=False, action='store_true')
+	parser.add_argument('--sac_online_ewc_gamma', default=1.0, type=float)
+
 	# dqn
 	parser.add_argument('--double_q', default=False, action='store_true')
 	parser.add_argument('--dueling', default=False, action='store_true')

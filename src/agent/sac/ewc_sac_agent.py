@@ -26,7 +26,8 @@ class EwcSacMlpAgent(SacMlpAgent):
                  critic_target_update_freq=2,
                  batch_size=128,
                  ewc_lambda=5000,
-                 ewc_fisher_sample_size=100,
+                 ewc_estimate_fisher_iters=100,
+                 ewc_estimate_fisher_batch_size=1024,
                  online_ewc=False,
                  online_ewc_gamma=1.0,
                  ):
@@ -35,7 +36,8 @@ class EwcSacMlpAgent(SacMlpAgent):
                          critic_tau, critic_target_update_freq, batch_size)
 
         self.ewc_lambda = ewc_lambda
-        self.ewc_fisher_sample_size = ewc_fisher_sample_size
+        self.ewc_estimate_fisher_iters = ewc_estimate_fisher_iters
+        self.ewc_estimate_fisher_batch_size = ewc_estimate_fisher_batch_size
         self.online_ewc = online_ewc
         self.online_ewc_gamma = online_ewc_gamma
 
@@ -43,36 +45,53 @@ class EwcSacMlpAgent(SacMlpAgent):
         self.prev_task_params = {}
         self.prev_task_fishers = {}
 
-    def estimate_fisher(self, replay_buffer):
-        with utils.eval_mode(self):
-            obs, action, reward, next_obs, not_done = replay_buffer.sample(self.ewc_fisher_sample_size)
+    def estimate_fisher(self, replay_buffer, **kwargs):
+        fishers = {}
+        for _ in range(self.ewc_estimate_fisher_iters):
+            with utils.eval_mode(self):
+                obs, action, reward, next_obs, not_done = replay_buffer.sample(
+                    self.ewc_estimate_fisher_batch_size)
 
-            critic_loss = self.compute_critic_loss(obs, action, reward, next_obs, not_done)
-            self.critic_optimizer.zero_grad()
-            critic_loss.backward()
+                critic_loss = self.compute_critic_loss(obs, action, reward, next_obs, not_done, **kwargs)
+                self.critic_optimizer.zero_grad()
+                critic_loss.backward()
 
-            _, actor_loss, alpha_loss = self.compute_actor_and_alpha_loss(obs)
-            self.actor_optimizer.zero_grad()
-            actor_loss.backward()
-            self.log_alpha_optimizer.zero_grad()
-            alpha_loss.backward()
+                _, actor_loss, alpha_loss = self.compute_actor_and_alpha_loss(obs, **kwargs)
+                self.actor_optimizer.zero_grad()
+                actor_loss.backward()
+                self.log_alpha_optimizer.zero_grad()
+                alpha_loss.backward()
 
             for name, param in chain(self.critic.named_parameters(),
                                      self.actor.named_parameters(),
                                      iter([('log_alpha', self.log_alpha)])):
-                if param.grad is not None:
-                    if self.online_ewc:
-                        name = name + '_prev_task'
-                        self.prev_task_params[name] = param.detach().clone()
-                        self.prev_task_fishers[name] = \
-                            param.grad.detach().clone() ** 2 + \
-                            self.online_ewc_gamma * self.prev_task_fishers.get(name, torch.zeros_like(param.grad))
+                if param.requires_grad:
+                    if param.grad is not None:
+                        fishers[name] = param.grad.detach().clone() ** 2 + \
+                                        fishers.get(name, torch.zeros_like(param.grad))
                     else:
-                        name = name + f'_prev_task{self.ewc_task_count}'
-                        self.prev_task_params[name] = param.detach().clone()
-                        self.prev_task_fishers[name] = param.grad.detach().clone() ** 2
+                        fishers[name] = torch.zeros_like(param)
 
-            self.ewc_task_count += 1
+        for name, param in chain(self.critic.named_parameters(),
+                                 self.actor.named_parameters(),
+                                 iter([('log_alpha', self.log_alpha)])):
+            if param.requires_grad:
+                fisher = fishers[name]
+
+                if self.online_ewc:
+                    name = name + '_prev_task'
+                    self.prev_task_params[name] = param.detach().clone()
+                    self.prev_task_fishers[name] = \
+                        fisher / self.ewc_estimate_fisher_iters + \
+                        self.online_ewc_gamma * self.prev_task_fishers.get(
+                            name, torch.zeros_like(param.grad))
+                else:
+                    name = name + f'_prev_task{self.ewc_task_count}'
+                    self.prev_task_params[name] = param.detach().clone()
+                    self.prev_task_fishers[name] = \
+                        fisher / self.ewc_estimate_fisher_iters
+
+        self.ewc_task_count += 1
 
     def _compute_ewc_loss(self, named_parameters):
         assert isinstance(named_parameters, Iterable), "'named_parameters' must be a iterator"
@@ -100,25 +119,30 @@ class EwcSacMlpAgent(SacMlpAgent):
                             ewc_losses.append(ewc_loss)
             return torch.sum(torch.stack(ewc_losses)) / 2.0
         else:
-            _, param = next(named_parameters)
-            return torch.tensor(0.0, device=param.device)
+            return torch.tensor(0.0, device=self.device)
 
-    def compute_critic_loss(self, obs, action, reward, next_obs, not_done):
-        critic_loss = super().compute_critic_loss(obs, action, reward, next_obs, not_done)
+    def update(self, replay_buffer, logger, step, **kwargs):
+        obs, action, reward, next_obs, not_done = replay_buffer.sample(self.batch_size)
 
-        # critic ewc loss
+        logger.log('train/batch_reward', reward.mean(), step)
+
+        critic_loss = self.compute_critic_loss(obs, action, reward, next_obs, not_done, **kwargs)
         critic_ewc_loss = self._compute_ewc_loss(self.critic.named_parameters())
+        critic_loss = critic_loss + self.ewc_lambda * critic_ewc_loss
+        self.update_critic(critic_loss, logger, step)
 
-        return critic_loss + self.ewc_lambda * critic_ewc_loss
+        if step % self.actor_update_freq == 0:
+            log_pi, actor_loss, alpha_loss = self.compute_actor_and_alpha_loss(obs, **kwargs)
+            actor_ewc_loss = self._compute_ewc_loss(self.actor.named_parameters())
+            alpha_ewc_loss = self._compute_ewc_loss(iter([('log_alpha', self.log_alpha)]))
+            actor_loss = actor_loss + self.ewc_lambda * actor_ewc_loss
+            alpha_loss = alpha_loss + self.ewc_lambda * alpha_ewc_loss
 
-    def compute_actor_and_alpha_loss(self, obs, compute_alpha_loss=True):
-        log_pi, actor_loss, alpha_loss = super().compute_actor_and_alpha_loss(obs, compute_alpha_loss)
+            self.update_actor_and_alpha(log_pi, actor_loss, logger, step, alpha_loss=alpha_loss)
 
-        # actor and alpha ewc loss
-        actor_ewc_loss = self._compute_ewc_loss(self.actor.named_parameters())
-        alpha_ewc_loss = self._compute_ewc_loss(iter([('log_alpha', self.log_alpha)]))
-
-        return log_pi, actor_loss + self.ewc_lambda * actor_ewc_loss, alpha_loss + self.ewc_lambda * alpha_ewc_loss
+        if step % self.critic_target_update_freq == 0:
+            utils.soft_update_params(self.critic, self.critic_target,
+                                     self.critic_tau)
 
     def save(self, model_dir, step):
         super().save(model_dir, step)
