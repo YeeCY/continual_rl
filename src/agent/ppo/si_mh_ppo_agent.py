@@ -38,6 +38,7 @@ class SiMultiHeadPpoMlpAgent(MultiHeadPpoMlpAgent, SiPpoMlpAgent):
                                  self.critic.named_common_parameters()):
             if param.requires_grad:
                 self.prev_task_params[name] = param.detach().clone()
+                self.prev_params[name] = param.detach().clone()
 
     def update_omegas(self):
         for name, param in chain(self.actor.named_common_parameters(),

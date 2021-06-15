@@ -186,11 +186,11 @@ class AgemSacMlpAgent(SacMlpAgent):
 
         ref_critic_grad, ref_actor_grad, ref_alpha_grad = self._compute_ref_grad()
 
-        critic_loss = self.compute_critic_loss(obs, action, reward, next_obs, not_done)
+        critic_loss = self.compute_critic_loss(obs, action, reward, next_obs, not_done, **kwargs)
         self.update_critic(critic_loss, logger, step, ref_critic_grad=ref_critic_grad)
 
         if step % self.actor_update_freq == 0:
-            log_pi, actor_loss, alpha_loss = self.compute_actor_and_alpha_loss(obs)
+            log_pi, actor_loss, alpha_loss = self.compute_actor_and_alpha_loss(obs, **kwargs)
             self.update_actor_and_alpha(log_pi, actor_loss, logger, step, alpha_loss=alpha_loss,
                                         ref_actor_grad=ref_actor_grad, ref_alpha_grad=ref_alpha_grad)
 
