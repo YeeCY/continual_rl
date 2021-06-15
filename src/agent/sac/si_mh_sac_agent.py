@@ -62,8 +62,8 @@ class SiMultiHeadSacMlpAgent(MultiHeadSacMlpAgent, SiSacMlpAgent):
         self.params_w = {}
 
     def _estimate_importance(self):
-        for name, param in chain(self.critic.named_parameters(),
-                                 self.actor.named_parameters(),
+        for name, param in chain(self.critic.named_common_parameters(),
+                                 self.actor.named_common_parameters(),
                                  iter([('log_alpha', self.log_alpha)])):
             if param.requires_grad:
                 self.params_w[name] = \
