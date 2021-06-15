@@ -41,11 +41,12 @@ class AgemMultiHeadSacMlpAgent(MultiHeadSacMlpAgent, AgemSacMlpAgent):
         ref_critic_grad = []
         ref_actor_grad = []
         ref_alpha_grad = []
-        for memory in self.agem_memories.values():
+        for task_id, memory in enumerate(self.agem_memories.values()):
             obs, action, reward, next_obs, not_done = memory['obses'], memory['actions'], memory['rewards'], \
                                                       memory['next_obses'], memory['not_dones']
 
-            critic_loss = self.compute_critic_loss(obs, action, reward, next_obs, not_done)
+            critic_loss = self.compute_critic_loss(
+                obs, action, reward, next_obs, not_done, head_idx=task_id)
             self.critic_optimizer.zero_grad()  # clear current gradient
             critic_loss.backward()
 
@@ -57,7 +58,7 @@ class AgemMultiHeadSacMlpAgent(MultiHeadSacMlpAgent, AgemSacMlpAgent):
             self.critic_optimizer.zero_grad()
 
             _, actor_loss, alpha_loss = self.compute_actor_and_alpha_loss(
-                obs, compute_alpha_loss=compute_alpha_ref_grad)
+                obs, compute_alpha_loss=compute_alpha_ref_grad, head_idx=task_id)
             self.actor_optimizer.zero_grad()  # clear current gradient
             actor_loss.backward()
 

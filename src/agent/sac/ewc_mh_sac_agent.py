@@ -1,6 +1,5 @@
 import torch
 from itertools import chain
-from collections.abc import Iterable
 
 import utils
 from agent.sac import MultiHeadSacMlpAgent, EwcSacMlpAgent
