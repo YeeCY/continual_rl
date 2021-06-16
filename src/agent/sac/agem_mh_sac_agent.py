@@ -1,4 +1,5 @@
 import torch
+import numpy as np
 
 from agent.sac import MultiHeadSacMlpAgent, AgemSacMlpAgent
 
@@ -42,8 +43,13 @@ class AgemMultiHeadSacMlpAgent(MultiHeadSacMlpAgent, AgemSacMlpAgent):
         ref_actor_grad = []
         ref_alpha_grad = []
         for task_id, memory in enumerate(self.agem_memories.values()):
-            obs, action, reward, next_obs, not_done = memory['obses'], memory['actions'], memory['rewards'], \
-                                                      memory['next_obses'], memory['not_dones']
+            idxs = np.random.randint(
+                0, len(memory['obses']), size=self.agem_ref_grad_batch_size // self.agem_task_count
+            )
+
+            obs, action, reward, next_obs, not_done = \
+                memory['obses'][idxs], memory['actions'][idxs], memory['rewards'][idxs], \
+                memory['next_obses'][idxs], memory['not_dones'][idxs]
 
             critic_loss = self.compute_critic_loss(
                 obs, action, reward, next_obs, not_done, head_idx=task_id)
