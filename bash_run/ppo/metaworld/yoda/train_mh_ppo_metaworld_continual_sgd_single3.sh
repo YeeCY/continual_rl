@@ -35,7 +35,7 @@ declare -a seeds=(0 1 2 3)
 
 for env_names in "${all_env_names[@]}"; do
   for seed in "${seeds[@]}"; do
-    export CUDA_VISIBLE_DEVICES="$(("$seed" - 4))"
+    export CUDA_VISIBLE_DEVICES=$seed
     nohup \
     python $PROJECT_DIR/src/train_ppo.py \
       --env_names $env_names \
