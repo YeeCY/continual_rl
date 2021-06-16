@@ -1,7 +1,12 @@
 #!/bin/bash
 
+source $HOME/.bashrc
+source $HOME/cyzheng/env_vars
+
+conda activate pad
+
 SCRIPT_DIR=$(dirname "$BASH_SOURCE")
-PROJECT_DIR=$(realpath "$SCRIPT_DIR/../../../..")
+PROJECT_DIR=$(realpath "$SCRIPT_DIR/../../..")
 
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/.mujoco/mujoco200/bin
 export PYTHONPATH=$PROJECT_DIR
@@ -17,13 +22,13 @@ declare -a all_env_names=(
 #  door-close-v2
 #  door-lock-v2
 #  door-open-v2
-  door-unlock-v2
-  drawer-close-v2
-  drawer-open-v2
-  faucet-open-v2
-  faucet-close-v2
-#  reach-v2
-#  window-close-v2
+#  door-unlock-v2
+#  drawer-close-v2
+#  drawer-open-v2
+#  faucet-open-v2
+#  faucet-close-v2
+  reach-v2
+  window-close-v2
 )
 
 declare -a seeds=(0 1 2 3)

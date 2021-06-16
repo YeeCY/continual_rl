@@ -17,13 +17,13 @@ declare -a all_env_names=(
 #  door-close-v2
 #  door-lock-v2
 #  door-open-v2
-  door-unlock-v2
-  drawer-close-v2
-  drawer-open-v2
-  faucet-open-v2
-  faucet-close-v2
-#  reach-v2
-#  window-close-v2
+#  door-unlock-v2
+#  drawer-close-v2
+#  drawer-open-v2
+#  faucet-open-v2
+#  faucet-close-v2
+  reach-v2
+  window-close-v2
 )
 
 declare -a seeds=(0 1 2 3)
