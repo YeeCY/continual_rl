@@ -107,6 +107,11 @@ CURVE_FORMAT = {
         'style': '-',
         'label': 'AGEM_REF_GRAD_BATCH_SIZE2048'
     },
+    'agem_ref_grad_batch_size5000': {
+        'color': [64, 64, 64],
+        'style': '-',
+        'label': 'AGEM_REF_GRAD_BATCH_SIZE5000'
+    },
 }
 
 
