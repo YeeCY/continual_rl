@@ -407,9 +407,10 @@ def main(args):
                 else:
                     agent.estimate_fisher(replay_buffer)
             elif 'si' in args.algo:
+                print(f"Updating SI omega: {infos[0]['task_name']}")
                 agent.update_omegas()
             elif 'agem' in args.algo:
-                print(f"Constructing AGEM fisher: {infos[0]['task_name']}")
+                print(f"Constructing AGEM memory: {infos[0]['task_name']}")
                 agent.construct_memory(replay_buffer)
 
             agent.reset_target_critic()

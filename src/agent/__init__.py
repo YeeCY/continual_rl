@@ -134,16 +134,7 @@ def make_agent(obs_space, action_space, device, args):
             agent = AgemSacMlpAgent(**kwargs)
         elif args.algo == 'mh_sac_mlp':
             agent = MultiHeadSacMlpAgent(**kwargs)
-        elif args.algo == 'mh_ppo_mlp_v2':
-            agent = MultiHeadPpoMlpAgentV2(**kwargs)
         elif args.algo == 'ewc_mh_sac_mlp':
-            kwargs['ewc_lambda'] = args.sac_ewc_lambda
-            kwargs['ewc_estimate_fisher_iters'] = args.sac_ewc_estimate_fisher_iters
-            kwargs['ewc_estimate_fisher_batch_size'] = args.sac_ewc_estimate_fisher_batch_size
-            kwargs['online_ewc'] = args.sac_online_ewc
-            kwargs['online_ewc_gamma'] = args.sac_online_ewc_gamma
-            agent = EwcMultiHeadSacMlpAgent(**kwargs)
-        elif args.algo == 'ewc_mh_sac_mlp_v2':
             kwargs['ewc_lambda'] = args.sac_ewc_lambda
             kwargs['ewc_estimate_fisher_iters'] = args.sac_ewc_estimate_fisher_iters
             kwargs['ewc_estimate_fisher_batch_size'] = args.sac_ewc_estimate_fisher_batch_size
@@ -154,15 +145,7 @@ def make_agent(obs_space, action_space, device, args):
             kwargs['si_c'] = args.sac_si_c
             kwargs['si_epsilon'] = args.sac_si_epsilon
             agent = SiMultiHeadSacMlpAgent(**kwargs)
-        elif args.algo == 'si_mh_sac_mlp_v2':
-            kwargs['si_c'] = args.sac_si_c
-            kwargs['si_epsilon'] = args.sac_si_epsilon
-            agent = SiMultiHeadSacMlpAgent(**kwargs)
         elif args.algo == 'agem_mh_sac_mlp':
-            kwargs['agem_memory_budget'] = args.sac_agem_memory_budget
-            kwargs['agem_ref_grad_batch_size'] = args.sac_agem_ref_grad_batch_size
-            agent = AgemMultiHeadSacMlpAgent(**kwargs)
-        elif args.algo == 'agem_mh_sac_mlp_v2':
             kwargs['agem_memory_budget'] = args.sac_agem_memory_budget
             kwargs['agem_ref_grad_batch_size'] = args.sac_agem_ref_grad_batch_size
             agent = AgemMultiHeadSacMlpAgent(**kwargs)
@@ -196,20 +179,36 @@ def make_agent(obs_space, action_space, device, args):
             agent = AgemPpoMlpAgent(**kwargs)
         elif args.algo == 'mh_ppo_mlp':
             agent = MultiHeadPpoMlpAgent(**kwargs)
+        elif args.algo == 'mh_ppo_mlp_v2':
+            agent = MultiHeadPpoMlpAgentV2(**kwargs)
         elif args.algo == 'ewc_mh_ppo_mlp':
             kwargs['ewc_lambda'] = args.ppo_ewc_lambda
             kwargs['ewc_estimate_fisher_epochs'] = args.ppo_ewc_estimate_fisher_epochs
             kwargs['online_ewc'] = args.ppo_online_ewc
             kwargs['online_ewc_gamma'] = args.ppo_online_ewc_gamma
             agent = EwcMultiHeadPpoMlpAgent(**kwargs)
+        elif args.algo == 'ewc_mh_ppo_mlp_v2':
+            kwargs['ewc_lambda'] = args.ppo_ewc_lambda
+            kwargs['ewc_estimate_fisher_epochs'] = args.ppo_ewc_estimate_fisher_epochs
+            kwargs['online_ewc'] = args.ppo_online_ewc
+            kwargs['online_ewc_gamma'] = args.ppo_online_ewc_gamma
+            agent = EwcMultiHeadPpoMlpAgentV2(**kwargs)
         elif args.algo == 'si_mh_ppo_mlp':
             kwargs['si_c'] = args.ppo_si_c
             kwargs['si_epsilon'] = args.ppo_si_epsilon
             agent = SiMultiHeadPpoMlpAgent(**kwargs)
+        elif args.algo == 'si_mh_ppo_mlp_v2':
+            kwargs['si_c'] = args.ppo_si_c
+            kwargs['si_epsilon'] = args.ppo_si_epsilon
+            agent = SiMultiHeadPpoMlpAgentV2(**kwargs)
         elif args.algo == 'agem_mh_ppo_mlp':
             kwargs['agem_memory_budget'] = args.ppo_agem_memory_budget
             kwargs['agem_ref_grad_batch_size'] = args.ppo_agem_ref_grad_batch_size
             agent = AgemMultiHeadPpoMlpAgent(**kwargs)
+        elif args.algo == 'agem_mh_ppo_mlp_v2':
+            kwargs['agem_memory_budget'] = args.ppo_agem_memory_budget
+            kwargs['agem_ref_grad_batch_size'] = args.ppo_agem_ref_grad_batch_size
+            agent = AgemMultiHeadPpoMlpAgentV2(**kwargs)
     else:
         raise ValueError(f"Unknown algorithm {args.algo}")
 

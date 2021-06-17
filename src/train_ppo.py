@@ -354,6 +354,7 @@ def main(args):
                 else:
                     agent.estimate_fisher(env, est_fisher_rollouts, compute_returns_kwargs)
             elif 'si' in args.algo:
+                print(f"Updating SI omega: {infos[0]['task_name']}")
                 agent.update_omegas()
             elif 'agem' in args.algo:
                 compute_returns_kwargs = {
@@ -361,7 +362,7 @@ def main(args):
                     'gae_lambda': args.ppo_gae_lambda,
                     'use_proper_time_limits': args.ppo_use_proper_time_limits
                 }
-                print(f"Constructing AGEM fisher: {infos[0]['task_name']}")
+                print(f"Constructing AGEM memory: {infos[0]['task_name']}")
                 if 'mh' in args.algo:
                     agent.construct_memory(env, args.ppo_num_processes, compute_returns_kwargs, head_idx=task_id)
                 else:

@@ -42,7 +42,9 @@ class MultiHeadPpoMlpAgentV2(PpoMlpAgent):
         #     self.obs_shape, self.hidden_dim, len(self.action_shape)
         # ).to(self.device)
 
-        self.critic = PpoCriticMlp(self.obs_shape, self.hidden_dim)
+        self.critic = PpoCriticMlp(
+            self.obs_shape, self.hidden_dim
+        ).to(self.device)
 
         self.optimizer = torch.optim.Adam(chain(self.actor.parameters(), self.critic.parameters()),
                                           lr=self.lr, eps=self.eps)

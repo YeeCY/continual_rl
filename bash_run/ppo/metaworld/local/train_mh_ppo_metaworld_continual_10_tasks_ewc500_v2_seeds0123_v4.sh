@@ -33,7 +33,7 @@ for seed in "${seeds[@]}"; do
     --ppo_use_clipped_critic_loss \
     --ppo_use_proper_time_limits \
     --ppo_ewc_lambda 500 \
-    --ppo_ewc_estimate_fisher_epochs 50 \
+    --ppo_ewc_estimate_fisher_epochs 10 \
     --ppo_ewc_rollout_steps_per_process 1000 \
     --seed $seed \
     --work_dir $PROJECT_DIR/vec_logs/mh_ppo_mlp_v2_metaworld_10_tasks_v4/ewc_lambda500/$seed \
