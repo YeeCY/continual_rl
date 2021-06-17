@@ -109,7 +109,7 @@ def window_smooth(y):
     return np.array(yw).flatten()
 
 
-def plot(ax, data, algos, curve_format=CURVE_FORMAT):
+def print_stats(task_name, data, algos):
     for algo in algos:
         algo_data = data[algo]
         # if len(data['y']) == 1:
@@ -142,14 +142,21 @@ def plot(ax, data, algos, curve_format=CURVE_FORMAT):
         y_mean = window_smooth(y_mean)
         y_std = window_smooth(y_std)
 
+        print()
+        print("Task Name: {}".format(task_name))
+        print("Timesteps: {}".format(x[-1]))
+        print("Mean: {}".format(y_mean[-1]))
+        print("Std: {}".format(y_std[-1]))
+        print()
+
         # x = np.array(x)
 
         # key = 'task-' + str(task_names.index(task_name))
-        color = np.array(curve_format[algo]['color']) / 255.
-        style = curve_format[algo]['style']
-        label = curve_format[algo]['label']
-        ax.plot(x, y_mean, color=color, label=label, linestyle=style)
-        ax.fill_between(x, y_mean - 0.5 * y_std, y_mean + 0.5 * y_std, facecolor=color, alpha=0.1)
+        # color = np.array(curve_format[algo]['color']) / 255.
+        # style = curve_format[algo]['style']
+        # label = curve_format[algo]['label']
+        # ax.plot(x, y_mean, color=color, label=label, linestyle=style)
+        # ax.fill_between(x, y_mean - 0.5 * y_std, y_mean + 0.5 * y_std, facecolor=color, alpha=0.1)
 
 
 def main(args):
@@ -171,7 +178,6 @@ def main(args):
         fig, _ = plt.subplots(1, len(stats))
         fig.set_size_inches(15, 15)
 
-        print(task_name)
         for stat_idx, stat in enumerate(stats):
             ax = plt.subplot(1, len(stats), stat_idx + 1)
             ax.set_title(task_name, fontsize=15)
@@ -208,15 +214,15 @@ def main(args):
                     except:
                         raise RuntimeError(f"Statistics '{stat}' doesn't exist in '{data_path}'!")
 
-            plot(ax, data, algos)
+            print_stats(task_name, data, algos)
 
-            fig_path = osp.abspath(osp.join(save_dir, task_name + '.png'))
-            # plt.title(exp_name, fontsize=16)
-            fig.suptitle(exp_name + '/' + task_name, fontsize=20).set_y(0.9875)
-            plt.tight_layout()
-            plt.legend(framealpha=0.)
-            plt.savefig(fname=fig_path)
-            print(f"Save figure: {fig_path}")
+            # fig_path = osp.abspath(osp.join(save_dir, task_name + '.png'))
+            # # plt.title(exp_name, fontsize=16)
+            # fig.suptitle(exp_name + '/' + task_name, fontsize=20).set_y(0.9875)
+            # plt.tight_layout()
+            # plt.legend(framealpha=0.)
+            # plt.savefig(fname=fig_path)
+            # print(f"Save figure: {fig_path}")
 
 
 if __name__ == '__main__':
