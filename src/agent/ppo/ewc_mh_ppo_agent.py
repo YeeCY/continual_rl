@@ -81,7 +81,8 @@ class EwcMultiHeadPpoMlpAgent(MultiHeadPpoMlpAgent, EwcPpoMlpAgent):
                 self.optimizer.zero_grad()
                 loss.backward()
                 torch.nn.utils.clip_grad_norm_(
-                    chain(self.actor.parameters(), self.critic.parameters()),
+                    chain(self.actor.common_parameters(),
+                          self.critic.common_parameters()),
                     self.grad_clip_norm)
 
                 for name, param in chain(self.actor.named_common_parameters(),

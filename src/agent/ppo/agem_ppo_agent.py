@@ -66,6 +66,9 @@ class AgemPpoMlpAgent(PpoMlpAgent):
 
             self.optimizer.zero_grad()
             loss.backward()
+            torch.nn.utils.clip_grad_norm_(
+                chain(self.actor.parameters(), self.critic.parameters()),
+                self.grad_clip_norm)
 
             # compute reference gradient
             single_ref_grad = []

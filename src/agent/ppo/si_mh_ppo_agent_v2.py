@@ -1,10 +1,10 @@
 import torch
 from itertools import chain
 
-from agent.ppo import MultiHeadPpoMlpAgent, SiPpoMlpAgent
+from agent.ppo import MultiHeadPpoMlpAgentV2, SiPpoMlpAgentV2
 
 
-class SiMultiHeadPpoMlpAgent(MultiHeadPpoMlpAgent, SiPpoMlpAgent):
+class SiMultiHeadPpoMlpAgentV2(MultiHeadPpoMlpAgentV2, SiPpoMlpAgentV2):
     """Adapt https://github.com/GMvandeVen/continual-learning"""
     def __init__(self,
                  obs_shape,
@@ -24,25 +24,23 @@ class SiMultiHeadPpoMlpAgent(MultiHeadPpoMlpAgent, SiPpoMlpAgent):
                  si_c=1.0,
                  si_epsilon=0.1
                  ):
-        MultiHeadPpoMlpAgent.__init__(self, obs_shape, action_shape, device, hidden_dim, discount, clip_param,
-                                      ppo_epoch, critic_loss_coef, entropy_coef, lr, eps, grad_clip_norm,
-                                      use_clipped_critic_loss, num_batch)
+        MultiHeadPpoMlpAgentV2.__init__(self, obs_shape, action_shape, device, hidden_dim, discount, clip_param,
+                                        ppo_epoch, critic_loss_coef, entropy_coef, lr, eps, grad_clip_norm,
+                                        use_clipped_critic_loss, num_batch)
 
-        SiPpoMlpAgent.__init__(self, obs_shape, action_shape, device, hidden_dim, discount, clip_param,
-                               ppo_epoch, critic_loss_coef, entropy_coef, lr, eps, grad_clip_norm,
-                               use_clipped_critic_loss, num_batch, si_c, si_epsilon)
+        SiPpoMlpAgentV2.__init__(self, obs_shape, action_shape, device, hidden_dim, discount, clip_param,
+                                 ppo_epoch, critic_loss_coef, entropy_coef, lr, eps, grad_clip_norm,
+                                 use_clipped_critic_loss, num_batch, si_c, si_epsilon)
 
     def _save_init_params(self):
         # set prev_task_params as weight initializations
-        for name, param in chain(self.actor.named_common_parameters(),
-                                 self.critic.named_common_parameters()):
+        for name, param in self.actor.named_common_parameters():
             if param.requires_grad:
                 self.prev_task_params[name] = param.detach().clone()
                 self.prev_params[name] = param.detach().clone()
 
     def update_omegas(self):
-        for name, param in chain(self.actor.named_common_parameters(),
-                                 self.critic.named_common_parameters()):
+        for name, param in self.actor.named_common_parameters():
             if param.requires_grad:
                 prev_param = self.prev_task_params[name]
                 current_param = param.detach().clone()
@@ -56,8 +54,7 @@ class SiMultiHeadPpoMlpAgent(MultiHeadPpoMlpAgent, SiPpoMlpAgent):
         self.params_w = {}
 
     def _estimate_importance(self):
-        for name, param in chain(self.actor.named_common_parameters(),
-                                 self.critic.named_common_parameters()):
+        for name, param in self.actor.named_common_parameters():
             if param.requires_grad:
                 self.params_w[name] = \
                     -param.grad.detach() * (param.detach() - self.prev_params[name]) + \
@@ -80,16 +77,12 @@ class SiMultiHeadPpoMlpAgent(MultiHeadPpoMlpAgent, SiPpoMlpAgent):
                 return_batch, old_log_pis, adv_targets = sample
 
                 # Reshape to do in a single forward pass for all steps
-                # values, action_log_probs, dist_entropy, _ = self.actor_critic.evaluate_actions(
-                #     obs_batch, recurrent_hidden_states_batch, masks_batch,
-                #     actions_batch)
                 actor_loss, entropy = self.compute_actor_loss(
                     obs_batch, actions_batch, old_log_pis, adv_targets, **kwargs)
                 critic_loss = self.compute_critic_loss(
                     obs_batch, value_preds_batch, return_batch, **kwargs)
                 si_surrogate_loss = self._compute_surrogate_loss(
-                    chain(self.actor.named_common_parameters(),
-                          self.critic.named_common_parameters())
+                    self.actor.named_common_parameters()
                 )
                 loss = actor_loss + self.critic_loss_coef * critic_loss - \
                        self.entropy_coef * entropy + self.si_c * si_surrogate_loss

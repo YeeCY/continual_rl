@@ -5,7 +5,7 @@ from collections.abc import Iterable
 from agent.ppo.base_ppo_agent import PpoMlpAgent
 
 
-class SiPpoMlpAgent(PpoMlpAgent):
+class SiPpoMlpAgentV2(PpoMlpAgent):
     """Adapt from https://github.com/GMvandeVen/continual-learning"""
     def __init__(self,
                  obs_shape,
@@ -41,15 +41,13 @@ class SiPpoMlpAgent(PpoMlpAgent):
 
     def _save_init_params(self):
         # set prev_task_params as weight initializations
-        for name, param in chain(self.actor.named_parameters(),
-                                 self.critic.named_parameters()):
+        for name, param in self.actor.named_parameters():
             if param.requires_grad:
                 self.prev_task_params[name] = param.detach().clone()
                 self.prev_params[name] = param.detach().clone()
 
     def update_omegas(self):
-        for name, param in chain(self.actor.named_parameters(),
-                                 self.critic.named_parameters()):
+        for name, param in self.actor.named_parameters():
             if param.requires_grad:
                 prev_param = self.prev_task_params[name]
                 current_param = param.detach().clone()
@@ -63,8 +61,7 @@ class SiPpoMlpAgent(PpoMlpAgent):
         self.params_w = {}
 
     def _estimate_importance(self):
-        for name, param in chain(self.actor.named_parameters(),
-                                 self.critic.named_parameters()):
+        for name, param in self.actor.named_parameters():
             if param.requires_grad:
                 self.params_w[name] = \
                     -param.grad.detach() * (param.detach() - self.prev_params[name]) + \
@@ -100,16 +97,12 @@ class SiPpoMlpAgent(PpoMlpAgent):
                 return_batch, old_log_pis, adv_targets = sample
 
                 # Reshape to do in a single forward pass for all steps
-                # values, action_log_probs, dist_entropy, _ = self.actor_critic.evaluate_actions(
-                #     obs_batch, recurrent_hidden_states_batch, masks_batch,
-                #     actions_batch)
                 actor_loss, entropy = self.compute_actor_loss(
                     obs_batch, actions_batch, old_log_pis, adv_targets, **kwargs)
                 critic_loss = self.compute_critic_loss(
                     obs_batch, value_preds_batch, return_batch, **kwargs)
                 si_surrogate_loss = self._compute_surrogate_loss(
-                    chain(self.actor.named_parameters(),
-                          self.critic.named_parameters())
+                    self.actor.named_parameters()
                 )
                 loss = actor_loss + self.critic_loss_coef * critic_loss - \
                        self.entropy_coef * entropy + self.si_c * si_surrogate_loss

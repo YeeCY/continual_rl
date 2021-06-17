@@ -1,12 +1,11 @@
 import torch
 import numpy as np
-from itertools import chain
 
 import utils
-from agent.ppo import MultiHeadPpoMlpAgentV2, EwcPpoMlpAgent
+from agent.ppo import MultiHeadPpoMlpAgentV2, EwcPpoMlpAgentV2
 
 
-class EwcMultiHeadPpoMlpAgent(MultiHeadPpoMlpAgent, EwcPpoMlpAgent):
+class EwcMultiHeadPpoMlpAgentV2(MultiHeadPpoMlpAgentV2, EwcPpoMlpAgentV2):
     """Adapt https://github.com/GMvandeVen/continual-learning"""
     def __init__(self,
                  obs_shape,
@@ -28,14 +27,14 @@ class EwcMultiHeadPpoMlpAgent(MultiHeadPpoMlpAgent, EwcPpoMlpAgent):
                  online_ewc=False,
                  online_ewc_gamma=1.0,
                  ):
-        MultiHeadPpoMlpAgent.__init__(self, obs_shape, action_shape, device, hidden_dim, discount, clip_param,
-                                      ppo_epoch, critic_loss_coef, entropy_coef, lr, eps, grad_clip_norm,
-                                      use_clipped_critic_loss, num_batch)
+        MultiHeadPpoMlpAgentV2.__init__(self, obs_shape, action_shape, device, hidden_dim, discount, clip_param,
+                                        ppo_epoch, critic_loss_coef, entropy_coef, lr, eps, grad_clip_norm,
+                                        use_clipped_critic_loss, num_batch)
 
-        EwcPpoMlpAgent.__init__(self, obs_shape, action_shape, device, hidden_dim, discount, clip_param,
-                                ppo_epoch, critic_loss_coef, entropy_coef, lr, eps, grad_clip_norm,
-                                use_clipped_critic_loss, num_batch, ewc_lambda, ewc_estimate_fisher_epochs,
-                                online_ewc, online_ewc_gamma)
+        EwcPpoMlpAgentV2.__init__(self, obs_shape, action_shape, device, hidden_dim, discount, clip_param,
+                                  ppo_epoch, critic_loss_coef, entropy_coef, lr, eps, grad_clip_norm,
+                                  use_clipped_critic_loss, num_batch, ewc_lambda, ewc_estimate_fisher_epochs,
+                                  online_ewc, online_ewc_gamma)
 
     def estimate_fisher(self, env, rollouts, compute_returns_kwargs, **kwargs):
         fishers = {}
@@ -73,19 +72,25 @@ class EwcMultiHeadPpoMlpAgent(MultiHeadPpoMlpAgent, EwcPpoMlpAgent):
                 # Reshape to do in a single forward pass for all steps
                 actor_loss, entropy = self.compute_actor_loss(
                     obs_batch, actions_batch, old_log_pis, adv_targets, **kwargs)
-                critic_loss = self.compute_critic_loss(
-                    obs_batch, value_preds_batch, return_batch, **kwargs)
-                loss = actor_loss + self.critic_loss_coef * critic_loss - \
-                       self.entropy_coef * entropy
+
+                # TODO (chongyi zheng): delete this block
+                # critic_loss = self.compute_critic_loss(
+                #     obs_batch, value_preds_batch, return_batch, **kwargs)
+                loss = actor_loss - self.entropy_coef * entropy
+
+                # self.optimizer.zero_grad()
+                # loss.backward()
+                # torch.nn.utils.clip_grad_norm_(
+                #     chain(self.actor.parameters(), self.critic.parameters()),
+                #     self.grad_clip_norm)
 
                 self.optimizer.zero_grad()
                 loss.backward()
                 torch.nn.utils.clip_grad_norm_(
-                    chain(self.actor.parameters(), self.critic.parameters()),
+                    self.actor.common_parameters(),
                     self.grad_clip_norm)
 
-                for name, param in chain(self.actor.named_common_parameters(),
-                                         self.critic.named_common_parameters()):
+                for name, param in self.actor.named_common_parameters():
                     if param.requires_grad:
                         # TODO (chongyi zheng): Average this accumulated fishers over num_batch?
                         if param.grad is not None:
@@ -96,8 +101,7 @@ class EwcMultiHeadPpoMlpAgent(MultiHeadPpoMlpAgent, EwcPpoMlpAgent):
 
             rollouts.after_update()
 
-        for name, param in chain(self.actor.named_common_parameters(),
-                                 self.critic.named_common_parameters()):
+        for name, param in self.actor.named_common_parameters():
             if param.requires_grad:
                 fisher = fishers[name]
 
@@ -122,8 +126,7 @@ class EwcMultiHeadPpoMlpAgent(MultiHeadPpoMlpAgent, EwcPpoMlpAgent):
         ewc_losses = []
         if self.ewc_task_count >= 1:
             if self.online_ewc:
-                for name, param in chain(self.actor.named_common_parameters(),
-                                         self.critic.named_common_parameters()):
+                for name, param in self.actor.named_common_parameters():
                     if param.requires_grad:
                         name = name + '_prev_task'
                         mean = self.prev_task_params[name]
@@ -134,8 +137,7 @@ class EwcMultiHeadPpoMlpAgent(MultiHeadPpoMlpAgent, EwcPpoMlpAgent):
             else:
                 for task in range(self.ewc_task_count):
                     # compute ewc loss for each parameter
-                    for name, param in chain(self.actor.named_common_parameters(),
-                                             self.critic.named_common_parameters()):
+                    for name, param in self.actor.named_common_parameters():
                         if param.requires_grad:
                             name = name + f'_prev_task{task}'
                             mean = self.prev_task_params[name]

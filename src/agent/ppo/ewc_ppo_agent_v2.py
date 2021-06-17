@@ -81,11 +81,10 @@ class EwcPpoMlpAgentV2(PpoMlpAgent):
                 # TODO (chongyi zheng): delete this block
                 # critic_loss = self.compute_critic_loss(
                 #     obs_batch, value_preds_batch, return_batch, **kwargs)
-                # loss = actor_loss + self.critic_loss_coef * critic_loss - \
-                #        self.entropy_coef * entropy
+                loss = actor_loss - self.entropy_coef * entropy
 
                 self.optimizer.zero_grad()
-                actor_loss.backward()
+                loss.backward()
                 torch.nn.utils.clip_grad_norm_(
                     self.actor.parameters(),
                     self.grad_clip_norm

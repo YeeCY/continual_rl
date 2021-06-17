@@ -1,11 +1,11 @@
 import torch
 from itertools import chain
 
-from agent.ppo.mh_ppo_agent import MultiHeadPpoMlpAgent
-from agent.ppo.agem_ppo_agent import AgemPpoMlpAgent
+from agent.ppo import MultiHeadPpoMlpAgentV2
+from agent.ppo import AgemPpoMlpAgentV2
 
 
-class AgemMultiHeadPpoMlpAgentV2(MultiHeadPpoMlpAgent, AgemPpoMlpAgent):
+class AgemMultiHeadPpoMlpAgentV2(MultiHeadPpoMlpAgentV2, AgemPpoMlpAgentV2):
     """Adapt https://github.com/GMvandeVen/continual-learning"""
     def __init__(self,
                  obs_shape,
@@ -25,13 +25,13 @@ class AgemMultiHeadPpoMlpAgentV2(MultiHeadPpoMlpAgent, AgemPpoMlpAgent):
                  agem_memory_budget=3072,
                  agem_ref_grad_batch_size=1024,
                  ):
-        MultiHeadPpoMlpAgent.__init__(self, obs_shape, action_shape, device, hidden_dim, discount, clip_param,
-                                      ppo_epoch, critic_loss_coef, entropy_coef, lr, eps, grad_clip_norm,
-                                      use_clipped_critic_loss, num_batch)
+        MultiHeadPpoMlpAgentV2.__init__(self, obs_shape, action_shape, device, hidden_dim, discount, clip_param,
+                                        ppo_epoch, critic_loss_coef, entropy_coef, lr, eps, grad_clip_norm,
+                                        use_clipped_critic_loss, num_batch)
 
-        AgemPpoMlpAgent.__init__(self, obs_shape, action_shape, device, hidden_dim, discount, clip_param,
-                                 ppo_epoch, critic_loss_coef, entropy_coef, lr, eps, grad_clip_norm,
-                                 use_clipped_critic_loss, num_batch, agem_memory_budget, agem_ref_grad_batch_size)
+        AgemPpoMlpAgentV2.__init__(self, obs_shape, action_shape, device, hidden_dim, discount, clip_param,
+                                   ppo_epoch, critic_loss_coef, entropy_coef, lr, eps, grad_clip_norm,
+                                   use_clipped_critic_loss, num_batch, agem_memory_budget, agem_ref_grad_batch_size)
 
     def _compute_ref_grad(self):
         if not self.agem_memories:
@@ -51,18 +51,17 @@ class AgemMultiHeadPpoMlpAgentV2(MultiHeadPpoMlpAgent, AgemPpoMlpAgent):
 
             actor_loss, entropy = self.compute_actor_loss(
                 obs_batch, actions_batch, old_log_pis, adv_targets, head_idx=task_id)
-            critic_loss = self.compute_critic_loss(
-                obs_batch, value_preds_batch, return_batch, head_idx=task_id)
-            loss = actor_loss + self.critic_loss_coef * critic_loss - \
-                   self.entropy_coef * entropy
+            loss = actor_loss - self.entropy_coef * entropy
 
             self.optimizer.zero_grad()
             loss.backward()
+            torch.nn.utils.clip_grad_norm_(
+                self.actor.common_parameters(),
+                self.grad_clip_norm)
 
             # compute reference gradient
             single_ref_grad = []
-            for param in chain(self.actor.common_parameters(),
-                               self.critic.common_parameters()):
+            for param in self.actor.common_parameters():
                 if param.requires_grad:
                     single_ref_grad.append(param.grad.detach().clone().flatten())
             single_ref_grad = torch.cat(single_ref_grad)
@@ -79,8 +78,7 @@ class AgemMultiHeadPpoMlpAgentV2(MultiHeadPpoMlpAgent, AgemPpoMlpAgent):
             return
 
         grad = []
-        for param in chain(self.actor.common_parameters(),
-                           self.critic.common_parameters()):
+        for param in self.actor.common_parameters():
             if param.requires_grad:
                 grad.append(param.grad.flatten())
         grad = torch.cat(grad)
@@ -92,8 +90,7 @@ class AgemMultiHeadPpoMlpAgentV2(MultiHeadPpoMlpAgent, AgemPpoMlpAgent):
             proj_grad = grad - (angle / (ref_grad * ref_grad).sum()) * ref_grad
             # replace all the gradients within the model with this projected gradient
             idx = 0
-            for param in chain(self.actor.common_parameters(),
-                               self.critic.common_parameters()):
+            for param in self.actor.common_parameters():
                 if param.requires_grad:
                     num_param = param.numel()  # number of parameters in [p]
                     param.grad.copy_(proj_grad[idx:idx + num_param].reshape(param.shape))

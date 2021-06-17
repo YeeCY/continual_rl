@@ -59,17 +59,17 @@ class AgemPpoMlpAgentV2(PpoMlpAgent):
 
             actor_loss, entropy = self.compute_actor_loss(
                 obs_batch, actions_batch, old_log_pis, adv_targets)
-            critic_loss = self.compute_critic_loss(
-                obs_batch, value_preds_batch, return_batch)
-            loss = actor_loss + self.critic_loss_coef * critic_loss - \
-                   self.entropy_coef * entropy
+            loss = actor_loss - self.entropy_coef * entropy
 
             self.optimizer.zero_grad()
             loss.backward()
+            torch.nn.utils.clip_grad_norm_(
+                self.actor.parameters(),
+                self.grad_clip_norm)
 
             # compute reference gradient
             single_ref_grad = []
-            for param in chain(self.actor.parameters(), self.critic.parameters()):
+            for param in self.actor.parameters():
                 if param.requires_grad:
                     single_ref_grad.append(param.grad.detach().clone().flatten())
             single_ref_grad = torch.cat(single_ref_grad)
@@ -86,7 +86,7 @@ class AgemPpoMlpAgentV2(PpoMlpAgent):
             return
 
         grad = []
-        for param in chain(self.actor.parameters(), self.critic.parameters()):
+        for param in self.actor.parameters():
             if param.requires_grad:
                 grad.append(param.grad.flatten())
         grad = torch.cat(grad)
@@ -98,7 +98,7 @@ class AgemPpoMlpAgentV2(PpoMlpAgent):
             proj_grad = grad - (angle / (ref_grad * ref_grad).sum()) * ref_grad
             # replace all the gradients within the model with this projected gradient
             idx = 0
-            for param in chain(self.actor.parameters(), self.critic.parameters()):
+            for param in self.actor.parameters():
                 if param.requires_grad:
                     num_param = param.numel()  # number of parameters in [p]
                     param.grad.copy_(proj_grad[idx:idx + num_param].reshape(param.shape))
