@@ -1,5 +1,6 @@
 from agent.ppo.base_ppo_agent import PpoMlpAgent
 from agent.ppo.ewc_ppo_agent import EwcPpoMlpAgent
+from agent.ppo.ewc_ppo_agent_v2 import EwcPpoMlpAgent
 from agent.ppo.si_ppo_agent import SiPpoMlpAgent
 from agent.ppo.agem_ppo_agent import AgemPpoMlpAgent
 from agent.ppo.mh_ppo_agent import MultiHeadPpoMlpAgent
