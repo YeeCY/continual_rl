@@ -526,7 +526,7 @@ class PpoCriticMlp(nn.Module):
         )
         self.apply(weight_init)
 
-    def forward(self, obs):
+    def forward(self, obs, **kwargs):
         return self.trunk(obs)
 
 
