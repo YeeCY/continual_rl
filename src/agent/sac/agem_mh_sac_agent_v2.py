@@ -38,7 +38,7 @@ class AgemMultiHeadSacMlpAgentV2(MultiHeadSacMlpAgentV2, AgemSacMlpAgentV2):
 
     def _compute_ref_grad(self):
         if not self.agem_memories:
-            return None, None, None
+            return None
 
         ref_actor_grad = []
         for task_id, memory in enumerate(self.agem_memories.values()):

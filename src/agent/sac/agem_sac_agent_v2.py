@@ -48,7 +48,7 @@ class AgemSacMlpAgentV2(SacMlpAgent):
     def _compute_ref_grad(self):
         # (chongyi zheng): We compute reference gradients for actor only
         if not self.agem_memories:
-            return None, None, None
+            return None
 
         ref_actor_grad = []
         for memory in self.agem_memories.values():
