@@ -377,7 +377,7 @@ class SacCriticMlp(nn.Module):
         self.Q2 = QFunction(obs_shape[0], action_shape[0], hidden_dim)
         self.apply(weight_init)
 
-    def forward(self, obs, action):
+    def forward(self, obs, action, **kwargs):
         q1 = self.Q1(obs, action)
         q2 = self.Q2(obs, action)
 

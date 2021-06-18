@@ -141,8 +141,8 @@ class SacMlpAgent:
 
     def update_actor_and_alpha(self, log_pi, actor_loss, logger, step, alpha_loss=None):
         logger.log('train_actor/loss', actor_loss, step)
-        logger.log('train_actor/target_entropy', self.target_entropy, step)
-        logger.log('train_actor/entropy', -log_pi.mean(), step)
+        logger.log('train/target_entropy', self.target_entropy, step)
+        logger.log('train/entropy', -log_pi.mean(), step)
 
         # optimize the actor
         self.actor_optimizer.zero_grad()

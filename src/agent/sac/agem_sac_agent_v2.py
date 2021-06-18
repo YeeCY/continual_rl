@@ -5,7 +5,7 @@ import utils
 from agent.sac.base_sac_agent import SacMlpAgent
 
 
-class AgemSacMlpAgent(SacMlpAgent):
+class AgemSacMlpAgentV2(SacMlpAgent):
     """Adapt from https://github.com/GMvandeVen/continual-learning"""
     def __init__(self,
                  obs_shape,
@@ -45,31 +45,30 @@ class AgemSacMlpAgent(SacMlpAgent):
             mem['next_obses'] = mem['next_obses'][:size]
             mem['not_dones'] = mem['not_dones'][:size]
 
-    def _compute_ref_grad(self, compute_alpha_ref_grad=True):
-        # (chongyi zheng): We compute reference gradients for actor and critic separately
+    def _compute_ref_grad(self):
+        # (chongyi zheng): We compute reference gradients for actor only
         if not self.agem_memories:
             return None, None, None
 
-        ref_critic_grad = []
         ref_actor_grad = []
-        ref_alpha_grad = []
         for memory in self.agem_memories.values():
             obs, action, reward, next_obs, not_done = memory['obses'], memory['actions'], memory['rewards'], \
                                                       memory['next_obses'], memory['not_dones']
 
-            critic_loss = self.compute_critic_loss(obs, action, reward, next_obs, not_done)
-            self.critic_optimizer.zero_grad()  # clear current gradient
-            critic_loss.backward()
+            # TODO (chongyi zheng): delete this block
+            # critic_loss = self.compute_critic_loss(obs, action, reward, next_obs, not_done)
+            # self.critic_optimizer.zero_grad()  # clear current gradient
+            # critic_loss.backward()
 
-            single_ref_critic_grad = []
-            for param in self.critic.parameters():
-                if param.requires_grad:
-                    single_ref_critic_grad.append(param.grad.detach().clone().flatten())
-            single_ref_critic_grad = torch.cat(single_ref_critic_grad)
-            self.critic_optimizer.zero_grad()
+            # single_ref_critic_grad = []
+            # for param in self.critic.parameters():
+            #     if param.requires_grad:
+            #         single_ref_critic_grad.append(param.grad.detach().clone().flatten())
+            # single_ref_critic_grad = torch.cat(single_ref_critic_grad)
+            # self.critic_optimizer.zero_grad()
 
-            _, actor_loss, alpha_loss = self.compute_actor_and_alpha_loss(
-                obs, compute_alpha_loss=compute_alpha_ref_grad)
+            _, actor_loss, _ = self.compute_actor_and_alpha_loss(
+                obs, compute_alpha_loss=False)
             self.actor_optimizer.zero_grad()  # clear current gradient
             actor_loss.backward()
 
@@ -80,27 +79,28 @@ class AgemSacMlpAgent(SacMlpAgent):
             single_ref_actor_grad = torch.cat(single_ref_actor_grad)
             self.actor_optimizer.zero_grad()
 
-            if compute_alpha_ref_grad:
-                self.log_alpha_optimizer.zero_grad()  # clear current gradient
-                alpha_loss.backward()
-                single_ref_alpha_grad = self.log_alpha.grad.detach().clone()
-                self.log_alpha_optimizer.zero_grad()
-            else:
-                single_ref_alpha_grad = None
+            # TODO (chongyi zheng): delete this block
+            # if compute_alpha_ref_grad:
+            #     self.log_alpha_optimizer.zero_grad()  # clear current gradient
+            #     alpha_loss.backward()
+            #     single_ref_alpha_grad = self.log_alpha.grad.detach().clone()
+            #     self.log_alpha_optimizer.zero_grad()
+            # else:
+            #     single_ref_alpha_grad = None
 
-            ref_critic_grad.append(single_ref_critic_grad)
+            # ref_critic_grad.append(single_ref_critic_grad)
             ref_actor_grad.append(single_ref_actor_grad)
-            if single_ref_alpha_grad is not None:
-                ref_alpha_grad.append(single_ref_alpha_grad)
-            else:
-                ref_alpha_grad = None
+            # if single_ref_alpha_grad is not None:
+            #     ref_alpha_grad.append(single_ref_alpha_grad)
+            # else:
+            #     ref_alpha_grad = None
 
-        ref_critic_grad = torch.stack(ref_critic_grad).mean(dim=0)
+        # ref_critic_grad = torch.stack(ref_critic_grad).mean(dim=0)
         ref_actor_grad = torch.stack(ref_actor_grad).mean(dim=0)
-        if ref_alpha_grad is not None:
-            ref_alpha_grad = torch.stack(ref_alpha_grad).mean(dim=0)
+        # if ref_alpha_grad is not None:
+        #     ref_alpha_grad = torch.stack(ref_alpha_grad).mean(dim=0)
 
-        return ref_critic_grad, ref_actor_grad, ref_alpha_grad
+        return ref_actor_grad
 
     def _project_grad(self, parameters, ref_grad):
         assert isinstance(parameters, Iterable), "'parameters' must be a iterator"
@@ -144,18 +144,18 @@ class AgemSacMlpAgent(SacMlpAgent):
 
         self.agem_task_count += 1
 
-    def update_critic(self, critic_loss, logger, step, ref_critic_grad=None):
-        # Optimize the critic
-        logger.log('train_critic/loss', critic_loss, step)
-        self.critic_optimizer.zero_grad()
-        critic_loss.backward()
+    # TODO (chongyi zheng): delete this block
+    # def update_critic(self, critic_loss, logger, step, ref_critic_grad=None):
+    #     # Optimize the critic
+    #     logger.log('train_critic/loss', critic_loss, step)
+    #     self.critic_optimizer.zero_grad()
+    #     critic_loss.backward()
+    #
+    #     self._project_grad(self.critic.parameters(), ref_critic_grad)
+    #
+    #     self.critic_optimizer.step()
 
-        self._project_grad(self.critic.parameters(), ref_critic_grad)
-
-        self.critic_optimizer.step()
-
-    def update_actor_and_alpha(self, log_pi, actor_loss, logger, step, alpha_loss=None, ref_actor_grad=None,
-                               ref_alpha_grad=None):
+    def update_actor_and_alpha(self, log_pi, actor_loss, logger, step, alpha_loss=None, ref_actor_grad=None):
         logger.log('train_actor/loss', actor_loss, step)
         logger.log('train/target_entropy', self.target_entropy, step)
         logger.log('train/entropy', -log_pi.mean(), step)
@@ -174,9 +174,7 @@ class AgemSacMlpAgent(SacMlpAgent):
 
             self.log_alpha_optimizer.zero_grad()
             alpha_loss.backward()
-
-            self._project_grad(iter([self.log_alpha]), ref_alpha_grad)
-
+            # self._project_grad(iter([self.log_alpha]), ref_alpha_grad)
             self.log_alpha_optimizer.step()
 
     def update(self, replay_buffer, logger, step, **kwargs):
@@ -184,15 +182,14 @@ class AgemSacMlpAgent(SacMlpAgent):
 
         logger.log('train/batch_reward', reward.mean(), step)
 
-        ref_critic_grad, ref_actor_grad, ref_alpha_grad = self._compute_ref_grad()
-
         critic_loss = self.compute_critic_loss(obs, action, reward, next_obs, not_done, **kwargs)
-        self.update_critic(critic_loss, logger, step, ref_critic_grad=ref_critic_grad)
+        self.update_critic(critic_loss, logger, step)
 
         if step % self.actor_update_freq == 0:
+            ref_actor_grad = self._compute_ref_grad()
             log_pi, actor_loss, alpha_loss = self.compute_actor_and_alpha_loss(obs, **kwargs)
             self.update_actor_and_alpha(log_pi, actor_loss, logger, step, alpha_loss=alpha_loss,
-                                        ref_actor_grad=ref_actor_grad, ref_alpha_grad=ref_alpha_grad)
+                                        ref_actor_grad=ref_actor_grad)
 
         if step % self.critic_target_update_freq == 0:
             utils.soft_update_params(self.critic, self.critic_target,
