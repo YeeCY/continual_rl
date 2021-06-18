@@ -115,6 +115,7 @@ class AgemPpoMlpAgentV2(PpoMlpAgent):
         obs = env.reset()
         memory.obs[0].copy_(torch.Tensor(obs).to(self.device))
 
+        # construct memory using final policy for each task
         for _ in range(memory_size_per_task):
             with utils.eval_mode(self):
                 action, log_pi = self.act(obs, sample=True, compute_log_pi=True, **kwargs)
