@@ -134,42 +134,58 @@ def window_smooth(y):
     return np.array(yw).flatten()
 
 
-def plot(ax, data, algos, curve_format=CURVE_FORMAT):
+def plot(ax, data, task_names, algos, curve_format=CURVE_FORMAT):
+    algo_norm_data = {}
+    for task_name, oracle_return in task_names:
+        oracle_return = float(oracle_return)
+
+        for algo in algos:
+            algo_data = data[task_name][algo]
+            if 'y' not in algo_data:
+                continue
+
+            # if len(algo_data['x']) != len(algo_data['y'][0]):
+            #     min_len = len(algo_data['x'])
+            #     for y in algo_data['y']:
+            #         min_len = min(min_len, len(y))
+            #
+            #     algo_data['x'] = algo_data['x'][:min_len]
+            #     for idx, y in enumerate(algo_data['y']):
+            #         algo_data['y'][idx] = y[:min_len]
+            y_len = 1E10
+            for y in algo_data['y']:
+                y_len = min(len(y), y_len)
+
+            algo_data['x'] = algo_data['x'][:y_len]
+            for idx in range(len(algo_data['y'])):
+                algo_data['y'][idx] = algo_data['y'][idx][:y_len]
+
+            # normalize via oracle returns
+            y_mean = np.mean(np.array(algo_data['y']) / oracle_return, axis=0)
+            if algo not in algo_norm_data:
+                algo_norm_data[algo] = {}
+                algo_norm_data[algo]['x'] = algo_data['x']
+                algo_norm_data[algo]['y'] = [y_mean]
+            else:
+                algo_norm_data[algo]['y'].append(y_mean)
+
     for algo in algos:
-        algo_data = data[algo]
-        # if len(data['y']) == 1:
-        #     continue
+        algo_data = algo_norm_data[algo]
+
         if 'y' not in algo_data:
             continue
 
-        if len(algo_data['x']) != len(algo_data['y'][0]):
-            min_len = len(algo_data['x'])
-            for y in algo_data['y']:
-                min_len = min(min_len, len(y))
-
-            algo_data['x'] = algo_data['x'][:min_len]
-            for idx, y in enumerate(algo_data['y']):
-                algo_data['y'][idx] = y[:min_len]
-
-        x = np.array(algo_data['x'])
         y_len = 1E10
-
         for y in algo_data['y']:
             y_len = min(len(y), y_len)
 
-        for y in range(len(algo_data['y'])):
-            algo_data['y'][y] = algo_data['y'][y][:y_len]
-        x = x[:y_len]
+        x = algo_data['x'][:y_len]
+        for idx in range(len(algo_data['y'])):
+            algo_data['y'][idx] = algo_data['y'][idx][:y_len]
 
         y_mean = np.mean(np.array(algo_data['y']), axis=0)
         y_std = np.std(np.array(algo_data['y']), axis=0)
 
-        y_mean = window_smooth(y_mean)
-        y_std = window_smooth(y_std)
-
-        # x = np.array(x)
-
-        # key = 'task-' + str(task_names.index(task_name))
         color = np.array(curve_format[algo]['color']) / 255.
         style = curve_format[algo]['style']
         label = curve_format[algo]['label']
@@ -189,21 +205,23 @@ def main(args):
     max_timesteps = args.max_timesteps
     # num_fig = len(stats)
 
-    assert osp.exists(data_dir), print("The directory to load data doesn't exit")
+    if not osp.exists(data_dir):
+        print("The directory to load data doesn't exit")
     os.makedirs(save_dir, exist_ok=True)
 
-    fig, _ = plt.subplots(len(task_names), len(stats))
-    fig.set_size_inches(16 * len(stats), 8 * len(task_names))
-    for task_idx, task_name in enumerate(task_names):
-        for stat_idx, stat in enumerate(stats):
-            ax = plt.subplot(len(task_names), len(stats), task_idx * len(stats) + stat_idx + 1)
-            ax.set_title(task_name, fontsize=15)
-            ax.set_xlabel('Total Timesteps', fontsize=15)
-            ax.set_ylabel(stat, fontsize=15)
-            data = {}
+    fig, _ = plt.subplots(1, len(stats))
+    fig.set_size_inches(10 * len(stats), 8)
+    for stat_idx, stat in enumerate(stats):
+        ax = plt.subplot(1, len(stats), stat_idx + 1)
+        # ax.set_title(task_name, fontsize=15)
+        ax.set_xlabel('Total Timesteps', fontsize=15)
+        ax.set_ylabel('normalized_' + stat, fontsize=15)
+        data = {}
 
+        for task_name, _ in task_names:
+            data[task_name] = {}
             for algo in algos:
-                data[algo] = {}
+                data[task_name][algo] = {}
 
                 for seed in seeds:
                     data_path = osp.join(data_dir, exp_name, algo, str(seed), 'eval.csv')
@@ -220,18 +238,18 @@ def main(args):
 
                     task_df = df[df['task_name'] == task_name]
                     task_df = task_df[task_df['step'] <= max_timesteps]
-                    data[algo].update(x=task_df['step'].values)
+                    data[task_name][algo].update(x=task_df['step'].values)
 
                     try:
                         y = task_df[stat].values
-                        if 'y' not in data[algo]:
-                            data[algo].update(y=[y])
+                        if 'y' not in data[task_name][algo]:
+                            data[task_name][algo].update(y=[y])
                         else:
-                            data[algo]['y'].append(y)
+                            data[task_name][algo]['y'].append(y)
                     except:
                         raise RuntimeError(f"Statistics '{stat}' doesn't exist in '{data_path}'!")
 
-            plot(ax, data, algos)
+        plot(ax, data, task_names, algos)
 
     fig_path = osp.abspath(osp.join(save_dir, exp_name + '.png'))
     # plt.title(exp_name, fontsize=16)
@@ -244,18 +262,21 @@ def main(args):
 
 if __name__ == '__main__':
     # custom argument type
-    # def str_pair(s):
-    #     splited_s = s.split(',')
-    #     assert splited_s, 'invalid string pair'
-    #     return (splited_s[0], splited_s[1])
+    def str_pair(s):
+        splited_s = s.split(',')
+        assert splited_s, 'invalid string pair'
+        return (splited_s[0], splited_s[1])
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--exp_name', type=str, default='reach_window-close_button-press-topdown')
     parser.add_argument('--data_dir', type=str, default='vec_logs')
-    parser.add_argument('--save_dir', type=str, default='figures')
+    parser.add_argument('--save_dir', type=str, default='figures_avg')
     # parser.add_argument('--setting', type=int, default=1)
-    parser.add_argument('--task_names', type=str, nargs='+',
-                        default=['reach-v2', 'window-close-v2', 'button-press-topdown-v2'])
+    parser.add_argument('--task_names', type=str_pair, nargs='+', default=[
+        ('reach-v2', '1.0'),
+        ('window-close-v2', '1.0'),
+        ('button-press-topdown-v2', '1.0')
+    ])
     parser.add_argument('--algos', type=str, nargs='+',
                         default=['sgd', 'ewc', 'si'])
     parser.add_argument('--seeds', type=int, nargs='+', default=[0, 1, 2, 3, 4, 5, 6])

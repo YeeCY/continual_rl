@@ -37,6 +37,11 @@ CURVE_FORMAT = {
         'style': '-',
         'label': 'EWC_lambda50'
     },
+    'ewc_lambda150': {
+        'color': [160, 32, 240],
+        'style': '-',
+        'label': 'EWC_lambda150'
+    },
     'ewc_lambda500': {
         'color': [216, 30, 54],
         'style': '-',
@@ -72,20 +77,40 @@ CURVE_FORMAT = {
         'style': '-',
         'label': 'AGEM_REF_GRAD_BATCH_SIZE256'
     },
+    'agem_ref_grad_batch_size500': {
+        'color': [64, 64, 64],
+        'style': '-',
+        'label': 'AGEM_REF_GRAD_BATCH_SIZE500'
+    },
     'agem_ref_grad_batch_size512': {
         'color': [64, 64, 64],
         'style': '-',
         'label': 'AGEM_REF_GRAD_BATCH_SIZE512'
+    },
+    'agem_ref_grad_batch_size1000': {
+        'color': [0, 153, 153],
+        'style': '-',
+        'label': 'AGEM_REF_GRAD_BATCH_SIZE1000'
     },
     'agem_ref_grad_batch_size1024': {
         'color': [0, 153, 153],
         'style': '-',
         'label': 'AGEM_REF_GRAD_BATCH_SIZE1024'
     },
-    'agem_ref_grad_batch_size3072': {
+    'agem_ref_grad_batch_size1500': {
+        'color': [0, 153, 153],
+        'style': '-',
+        'label': 'AGEM_REF_GRAD_BATCH_SIZE1500'
+    },
+    'agem_ref_grad_batch_size2048': {
         'color': [64, 64, 64],
         'style': '-',
-        'label': 'AGEM_REF_GRAD_BATCH_SIZE3072'
+        'label': 'AGEM_REF_GRAD_BATCH_SIZE2048'
+    },
+    'agem_ref_grad_batch_size5000': {
+        'color': [64, 64, 64],
+        'style': '-',
+        'label': 'AGEM_REF_GRAD_BATCH_SIZE5000'
     },
 }
 
@@ -127,14 +152,14 @@ def plot(ax, data, algos, curve_format=CURVE_FORMAT):
                 algo_data['y'][idx] = y[:min_len]
 
         x = np.array(algo_data['x'])
-        # y_len = 1E10
-        #
-        # for y in algo_data:
-        #     y_len = min(len(y), y_len)
-        #
-        # for y in range(len(data)):
-        #     data[y] = data[y][:y_len]
-        # x = x[:y_len]
+        y_len = 1E10
+
+        for y in algo_data['y']:
+            y_len = min(len(y), y_len)
+
+        for y in range(len(algo_data['y'])):
+            algo_data['y'][y] = algo_data['y'][y][:y_len]
+        x = x[:y_len]
 
         y_mean = np.mean(np.array(algo_data['y']), axis=0)
         y_std = np.std(np.array(algo_data['y']), axis=0)
@@ -164,16 +189,15 @@ def main(args):
     max_timesteps = args.max_timesteps
     # num_fig = len(stats)
 
-    assert osp.exists(data_dir), print("The directory to load data doesn't exit")
+    if not osp.exists(data_dir):
+        print("The directory to load data doesn't exit")
     os.makedirs(save_dir, exist_ok=True)
 
+    fig, _ = plt.subplots(len(task_names), len(stats))
+    fig.set_size_inches(16 * len(stats), 8 * len(task_names))
     for task_idx, task_name in enumerate(task_names):
-        fig, _ = plt.subplots(1, len(stats))
-        fig.set_size_inches(15, 15)
-
-        print(task_name)
         for stat_idx, stat in enumerate(stats):
-            ax = plt.subplot(1, len(stats), stat_idx + 1)
+            ax = plt.subplot(len(task_names), len(stats), task_idx * len(stats) + stat_idx + 1)
             ax.set_title(task_name, fontsize=15)
             ax.set_xlabel('Total Timesteps', fontsize=15)
             ax.set_ylabel(stat, fontsize=15)
@@ -183,7 +207,7 @@ def main(args):
                 data[algo] = {}
 
                 for seed in seeds:
-                    data_path = osp.join(data_dir, exp_name, algo, task_name, str(seed), 'eval.csv')
+                    data_path = osp.join(data_dir, exp_name, algo, str(seed), 'eval.csv')
                     data_path = os.path.abspath(data_path)
 
                     try:
@@ -210,13 +234,13 @@ def main(args):
 
             plot(ax, data, algos)
 
-            fig_path = osp.abspath(osp.join(save_dir, task_name + '.png'))
-            # plt.title(exp_name, fontsize=16)
-            fig.suptitle(exp_name + '/' + task_name, fontsize=20).set_y(0.9875)
-            plt.tight_layout()
-            plt.legend(framealpha=0.)
-            plt.savefig(fname=fig_path)
-            print(f"Save figure: {fig_path}")
+    fig_path = osp.abspath(osp.join(save_dir, exp_name + '.png'))
+    # plt.title(exp_name, fontsize=16)
+    fig.suptitle(exp_name, fontsize=20).set_y(0.9875)
+    plt.tight_layout()
+    plt.legend(framealpha=0.)
+    plt.savefig(fname=fig_path)
+    print(f"Save figure: {fig_path}")
 
 
 if __name__ == '__main__':
@@ -229,7 +253,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--exp_name', type=str, default='reach_window-close_button-press-topdown')
     parser.add_argument('--data_dir', type=str, default='vec_logs')
-    parser.add_argument('--save_dir', type=str, default='figures_single')
+    parser.add_argument('--save_dir', type=str, default='figures_continual')
     # parser.add_argument('--setting', type=int, default=1)
     parser.add_argument('--task_names', type=str, nargs='+',
                         default=['reach-v2', 'window-close-v2', 'button-press-topdown-v2'])
