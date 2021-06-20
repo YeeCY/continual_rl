@@ -22,10 +22,10 @@ CURVE_FORMAT = {
         'style': '-',
         'label': 'SAC',
     },
-    'si': {
+    'sac_rlkit_single': {
         'color': [139, 101, 8],
         'style': '-',
-        'label': 'SI',
+        'label': 'RLKIT_SAC',
     },
     'ewc_lambda5': {
         'color': [0, 100, 0],
@@ -183,7 +183,10 @@ def main(args):
                 data[exp_name] = {}
 
                 for seed in seeds:
-                    data_path = osp.join(data_dir, exp_name, 'sgd', task_name, str(seed), 'eval.csv')
+                    if exp_name == 'sac_rlkit_single':
+                        data_path = osp.join(data_dir, exp_name, 'SAC-' + task_name, 's-' + str(seed), 'progress.csv')
+                    else:
+                        data_path = osp.join(data_dir, exp_name, 'sgd', task_name, str(seed), 'eval.csv')
                     data_path = os.path.abspath(data_path)
 
                     try:
@@ -195,12 +198,20 @@ def main(args):
                     # file = file[file['step'] <= args.timesteps]
                     # x = file['exploration/all num steps total'].values
 
-                    task_df = df[df['task_name'] == task_name]
-                    task_df = task_df[task_df['step'] <= max_timesteps]
-                    data[exp_name].update(x=task_df['step'].values)
+                    if exp_name == 'sac_rlkit_single':
+                        task_df = df[df['exploration/num steps total'] <= max_timesteps]
+                        data[exp_name].update(x=task_df['exploration/num steps total'].values)
+                    else:
+                        task_df = df[df['task_name'] == task_name]
+                        task_df = task_df[task_df['step'] <= max_timesteps]
+                        data[exp_name].update(x=task_df['step'].values)
 
                     try:
-                        y = task_df[stat].values
+                        if exp_name == 'sac_rlkit_single':
+                            y = task_df['evaluation/Returns Mean'].values
+                        else:
+                            y = task_df[stat].values
+
                         if 'y' not in data[exp_name]:
                             data[exp_name].update(y=[y])
                         else:

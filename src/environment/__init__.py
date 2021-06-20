@@ -31,7 +31,7 @@ def make_atari_env(env_name, seed=None, action_repeat=4, frame_stack=4):
 
 
 def make_single_metaworld_env(env_name, seed=None):
-    mt1 = metaworld.MT1(env_name)
+    mt1 = metaworld.MT1(env_name, seed=seed)
     env = mt1.train_classes[env_name]()
     # task = random.choice(mt1.train_tasks)
     # environment.set_task(task)
