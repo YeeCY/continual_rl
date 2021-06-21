@@ -5,6 +5,7 @@ from src.agent.sac import MultiHeadSacMlpAgentV2, EwcMultiHeadSacMlpAgentV2, SiM
     AgemMultiHeadSacMlpAgentV2
 from src.agent.ppo import PpoMlpAgent, EwcPpoMlpAgent, SiPpoMlpAgent, AgemPpoMlpAgent, \
     MultiHeadPpoMlpAgent, EwcMultiHeadPpoMlpAgent, SiMultiHeadPpoMlpAgent, AgemMultiHeadPpoMlpAgent
+from src.agent.ppo import EwcPpoMlpAgentV2, SiPpoMlpAgentV2, AgemPpoMlpAgentV2
 from src.agent.ppo import MultiHeadPpoMlpAgentV2, EwcMultiHeadPpoMlpAgentV2, SiMultiHeadPpoMlpAgentV2, \
     AgemMultiHeadPpoMlpAgentV2
 
@@ -29,8 +30,11 @@ ALGOS = [
     'agem_mh_sac_mlp_v2',
     'ppo_mlp',
     'ewc_ppo_mlp',
+    'ewc_ppo_mlp_v2',
     'si_ppo_mlp',
+    'si_ppo_mlp_v2',
     'agem_ppo_mlp',
+    'agem_ppo_mlp_v2',
     'mh_ppo_mlp',
     'mh_ppo_mlp_v2',
     'ewc_mh_ppo_mlp',
@@ -192,14 +196,28 @@ def make_agent(obs_space, action_space, device, args):
             kwargs['online_ewc'] = args.ppo_online_ewc
             kwargs['online_ewc_gamma'] = args.ppo_online_ewc_gamma
             agent = EwcPpoMlpAgent(**kwargs)
+        elif args.algo == 'ewc_ppo_mlp_v2':
+            kwargs['ewc_lambda'] = args.ppo_ewc_lambda
+            kwargs['ewc_estimate_fisher_epochs'] = args.ppo_ewc_estimate_fisher_epochs
+            kwargs['online_ewc'] = args.ppo_online_ewc
+            kwargs['online_ewc_gamma'] = args.ppo_online_ewc_gamma
+            agent = EwcPpoMlpAgentV2(**kwargs)
         elif args.algo == 'si_ppo_mlp':
             kwargs['si_c'] = args.ppo_si_c
             kwargs['si_epsilon'] = args.ppo_si_epsilon
             agent = SiPpoMlpAgent(**kwargs)
+        elif args.algo == 'si_ppo_mlp_v2':
+            kwargs['si_c'] = args.ppo_si_c
+            kwargs['si_epsilon'] = args.ppo_si_epsilon
+            agent = SiPpoMlpAgentV2(**kwargs)
         elif args.algo == 'agem_ppo_mlp':
             kwargs['agem_memory_budget'] = args.ppo_agem_memory_budget
             kwargs['agem_ref_grad_batch_size'] = args.ppo_agem_ref_grad_batch_size
             agent = AgemPpoMlpAgent(**kwargs)
+        elif args.algo == 'agem_ppo_mlp_v2':
+            kwargs['agem_memory_budget'] = args.ppo_agem_memory_budget
+            kwargs['agem_ref_grad_batch_size'] = args.ppo_agem_ref_grad_batch_size
+            agent = AgemPpoMlpAgentV2(**kwargs)
         elif args.algo == 'mh_ppo_mlp':
             agent = MultiHeadPpoMlpAgent(**kwargs)
         elif args.algo == 'mh_ppo_mlp_v2':
