@@ -170,6 +170,9 @@ def plot(ax, data, task_names, algos, curve_format=CURVE_FORMAT):
                 algo_norm_data[algo]['y'].append(y_mean)
 
     for algo in algos:
+        if algo not in algo_norm_data:
+            continue
+
         algo_data = algo_norm_data[algo]
 
         if 'y' not in algo_data:

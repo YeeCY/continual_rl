@@ -33,7 +33,7 @@ for seed in "${seeds[@]}"; do
     --sac_num_processes 1 \
     --sac_num_train_iters 1000 \
     --sac_agem_memory_budget 10000 \
-    --sac_agem_ref_grad_batch_size 5050000 \
+    --sac_agem_ref_grad_batch_size 5000 \
     --seed $seed \
     --work_dir $PROJECT_DIR/vec_logs/mh_sac_mlp_v2_metaworld_10_tasks_v3/agem_ref_grad_batch_size5000/$seed \
     > $PROJECT_DIR/terminal_logs/mh_sac_mlp_v2_metaworld_10_tasks_v3-agem_ref_grad_batch_size5000-seed"$seed".log 2>&1 &

@@ -27,10 +27,10 @@ CURVE_FORMAT = {
         'style': '-',
         'label': 'RLKIT_SAC',
     },
-    'ewc_lambda5': {
+    'sac_garage_single': {
         'color': [0, 100, 0],
         'style': '-',
-        'label': 'EWC_lambda5',
+        'label': 'GARAGE_SAC',
     },
     'ewc_lambda50': {
         'color': [160, 32, 240],
@@ -117,24 +117,24 @@ def plot(ax, data, algos, curve_format=CURVE_FORMAT):
         if 'y' not in algo_data:
             continue
 
-        if len(algo_data['x']) != len(algo_data['y'][0]):
-            min_len = len(algo_data['x'])
-            for y in algo_data['y']:
-                min_len = min(min_len, len(y))
-
-            algo_data['x'] = algo_data['x'][:min_len]
-            for idx, y in enumerate(algo_data['y']):
-                algo_data['y'][idx] = y[:min_len]
+        # if len(algo_data['x']) != len(algo_data['y'][0]):
+        #     min_len = len(algo_data['x'])
+        #     for y in algo_data['y']:
+        #         min_len = min(min_len, len(y))
+        #
+        #     algo_data['x'] = algo_data['x'][:min_len]
+        #     for idx, y in enumerate(algo_data['y']):
+        #         algo_data['y'][idx] = y[:min_len]
 
         x = np.array(algo_data['x'])
-        # y_len = 1E10
-        #
-        # for y in algo_data:
-        #     y_len = min(len(y), y_len)
-        #
-        # for y in range(len(data)):
-        #     data[y] = data[y][:y_len]
-        # x = x[:y_len]
+        y_len = 1E10
+
+        for y in algo_data['y']:
+            y_len = min(len(y), y_len)
+
+        for y in range(len(algo_data['y'])):
+            algo_data['y'][y] = algo_data['y'][y][:y_len]
+        x = x[:y_len]
 
         y_mean = np.mean(np.array(algo_data['y']), axis=0)
         y_std = np.std(np.array(algo_data['y']), axis=0)
@@ -185,6 +185,8 @@ def main(args):
                 for seed in seeds:
                     if exp_name == 'sac_rlkit_single':
                         data_path = osp.join(data_dir, exp_name, 'SAC-' + task_name, 's-' + str(seed), 'progress.csv')
+                    elif exp_name == 'sac_garage_single':
+                        data_path = osp.join(data_dir, exp_name, 'sac-' + task_name, 's-' + str(seed), 'progress.csv')
                     else:
                         data_path = osp.join(data_dir, exp_name, 'sgd', task_name, str(seed), 'eval.csv')
                     data_path = os.path.abspath(data_path)
@@ -201,6 +203,9 @@ def main(args):
                     if exp_name == 'sac_rlkit_single':
                         task_df = df[df['exploration/num steps total'] <= max_timesteps]
                         data[exp_name].update(x=task_df['exploration/num steps total'].values)
+                    elif exp_name == 'sac_garage_single':
+                        task_df = df[df['TotalEnvSteps'] <= max_timesteps]
+                        data[exp_name].update(x=task_df['TotalEnvSteps'].values)
                     else:
                         task_df = df[df['task_name'] == task_name]
                         task_df = task_df[task_df['step'] <= max_timesteps]
@@ -209,6 +214,8 @@ def main(args):
                     try:
                         if exp_name == 'sac_rlkit_single':
                             y = task_df['evaluation/Returns Mean'].values
+                        elif exp_name == 'sac_garage_single':
+                            y = task_df['Evaluation/AverageReturn'].values
                         else:
                             y = task_df[stat].values
 
