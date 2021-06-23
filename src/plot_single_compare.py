@@ -32,10 +32,10 @@ CURVE_FORMAT = {
         'style': '-',
         'label': 'GARAGE_SAC',
     },
-    'ewc_lambda50': {
+    'ppo_mlp_overparam_metaworld_single': {
         'color': [160, 32, 240],
         'style': '-',
-        'label': 'EWC_lambda50'
+        'label': 'PPO_overparameterized'
     },
     'ewc_lambda500': {
         'color': [216, 30, 54],
