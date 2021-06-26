@@ -466,12 +466,13 @@ class MultiEnvWrapper(gym.Wrapper):
         if self._mode == 'vanilla':
             self.observation_space = self._task_envs[idx].observation_space
         elif self._mode == 'add-onehot':
-            task_lb, task_ub = self.task_space.bounds
-            env_lb, env_ub = self._task_envs[idx].observation_space.bounds
+            task_lb, task_ub = self.task_space.low, self.task_space.high
+            env_lb, env_ub = self._task_envs[idx].observation_space.low, \
+                             self._task_envs[idx].observation_space.high,
             self.observation_space = Box(np.concatenate([env_lb, task_lb]),
                                          np.concatenate([env_ub, task_ub]))
         else:  # self._mode == 'del-onehot'
-            env_lb, env_ub = self._task_envs[idx].bounds
+            env_lb, env_ub = self._task_envs[idx].low, self._task_envs[idx].high
             num_tasks = self._num_tasks
             self.observation_space = Box(env_lb[:-num_tasks], env_ub[:-num_tasks])
 
@@ -586,14 +587,17 @@ class MultiEnvWrapper(gym.Wrapper):
 
         obs = self.env.reset()
 
-        obs = self._augment_observation(obs)
-
         if self._mode == 'vanilla':
             pass
         elif self._mode == 'add-onehot':
-            obs = np.concatenate([obs, self._active_task_one_hot()])
+            one_hots = np.repeat(
+                np.expand_dims(self._active_task_one_hot(), axis=0),
+                obs.shape[0], axis=0)
+            obs = np.concatenate([obs, one_hots], axis=-1)
         else:  # self._mode == 'del-onehot'
-            obs = obs[:-self._num_tasks]
+            obs = obs[:, :-self._num_tasks]
+
+        obs = self._augment_observation(obs)
 
         return obs
 
@@ -610,9 +614,12 @@ class MultiEnvWrapper(gym.Wrapper):
         obs, reward, done, info = self.env.step(action)
 
         if self._mode == 'add-onehot':
-            obs = np.concatenate([obs, self._active_task_one_hot()])
+            one_hots = np.repeat(
+                np.expand_dims(self._active_task_one_hot(), axis=0),
+                obs.shape[0], axis=0)
+            obs = np.concatenate([obs, one_hots], axis=-1)
         elif self._mode == 'del-onehot':
-            obs = obs[:-self._num_tasks]
+            obs = obs[:, :-self._num_tasks]
         else:  # self._mode == 'vanilla'
             obs = obs
 

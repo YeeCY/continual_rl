@@ -13,6 +13,16 @@ ENV_TYPES = [
 
 
 def parse_args():
+	def str2bool(v):
+		if isinstance(v, bool):
+			return v
+		if v.lower() in ('yes', 'true', 't', 'y', '1'):
+			return True
+		elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+			return False
+		else:
+			raise argparse.ArgumentTypeError('Boolean value expected.')
+
 	parser = argparse.ArgumentParser()
 
 	# environment
@@ -27,6 +37,7 @@ def parse_args():
 	parser.add_argument('--frame_stack', default=3, type=int)
 	parser.add_argument('--action_repeat', default=1, type=int)  # 1
 	parser.add_argument('--mode', default='train', type=str)
+	parser.add_argument('--add_onehot', default=False, type=str2bool)
 
 	# locomotion tasks
 	parser.add_argument('--pixel_obs', default=False, action='store_true')  # (chongyi zheng)
