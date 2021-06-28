@@ -1,3 +1,5 @@
+import copy
+
 import torch
 from itertools import chain
 import utils
@@ -60,6 +62,13 @@ class PpoMlpAgent:
 
         self.optimizer = torch.optim.Adam(chain(self.actor.parameters(), self.critic.parameters()),
                                           lr=self.lr, eps=self.eps)
+
+        self._critic_init_state = copy.deepcopy(self.critic.state_dict())
+        self._optimizer_init_state = copy.deepcopy(self.optimizer.state_dict())
+
+    def reset(self):
+        self.critic.load_state_dict(self._critic_init_state)
+        self.optimizer.load_state_dict(self._optimizer_init_state)
 
     def train(self, training=True):
         self.training = training

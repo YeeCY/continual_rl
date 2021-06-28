@@ -1,4 +1,5 @@
 import torch
+import copy
 from itertools import chain
 
 from agent.ppo.base_ppo_agent import PpoMlpAgent
@@ -48,3 +49,10 @@ class MultiHeadPpoMlpAgentV2(PpoMlpAgent):
 
         self.optimizer = torch.optim.Adam(chain(self.actor.parameters(), self.critic.parameters()),
                                           lr=self.lr, eps=self.eps)
+
+        self._critic_init_state = copy.deepcopy(self.critic.state_dict())
+        self._optimizer_init_state = copy.deepcopy(self.optimizer.state_dict())
+
+    def reset(self):
+        self.critic.load_state_dict(self._critic_init_state)
+        self.optimizer.load_state_dict(self._optimizer_init_state)

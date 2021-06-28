@@ -12,50 +12,50 @@ CM = 1 / 2.54  # centimeters in inches
 
 
 CURVE_FORMAT = {
-    'sgd': {
+    'ewc_lambda100': {
         'color': [0, 178, 238],
         'style': '-',
-        'label': 'SGD',
+        'label': 'ewc_lambda100',
     },
-    'ewc': {
+    'ewc_lambda200': {
         'color': [204, 153, 255],
         'style': '-',
-        'label': 'EWC',
-    },
-    'si': {
-        'color': [139, 101, 8],
-        'style': '-',
-        'label': 'SI',
-    },
-    'ewc_lambda5': {
-        'color': [0, 100, 0],
-        'style': '-',
-        'label': 'EWC_lambda5',
-    },
-    'ewc_lambda50': {
-        'color': [160, 32, 240],
-        'style': '-',
-        'label': 'EWC_lambda50'
-    },
-    'ewc_lambda150': {
-        'color': [160, 32, 240],
-        'style': '-',
-        'label': 'EWC_lambda150'
+        'label': 'ewc_lambda200',
     },
     'ewc_lambda500': {
-        'color': [216, 30, 54],
+        'color': [139, 101, 8],
         'style': '-',
-        'label': 'EWC_lambda500'
+        'label': 'ewc_lambda500',
+    },
+    'ewc_lambda1000': {
+        'color': [0, 100, 0],
+        'style': '-',
+        'label': 'ewc_lambda1000',
+    },
+    'ewc_lambda2000': {
+        'color': [160, 32, 240],
+        'style': '-',
+        'label': 'ewc_lambda1000'
     },
     'ewc_lambda5000': {
+        'color': [160, 32, 240],
+        'style': '-',
+        'label': 'ewc_lambda5000'
+    },
+    'ewc_lambda8000': {
+        'color': [216, 30, 54],
+        'style': '-',
+        'label': 'EWC_lambda8000'
+    },
+    'ewc_lambda10000': {
         'color': [55, 126, 184],
         'style': '-',
-        'label': 'EWC_lambda5000'
+        'label': 'ewc_lambda10000'
     },
-    'ewc_lambda10': {
+    'ewc_lambda20000': {
         'color': [180, 180, 180],
         'style': '-',
-        'label': 'EWC_labmda10'
+        'label': 'ewc_lambda20000'
     },
     'si_c1': {
         'color': [204, 204, 0],
@@ -102,15 +102,15 @@ CURVE_FORMAT = {
         'style': '-',
         'label': 'AGEM_REF_GRAD_BATCH_SIZE1500'
     },
-    'agem_ref_grad_batch_size2500': {
-        'color': [0, 153, 153],
-        'style': '-',
-        'label': 'AGEM_REF_GRAD_BATCH_SIZE2500'
-    },
     'agem_ref_grad_batch_size2048': {
         'color': [64, 64, 64],
         'style': '-',
         'label': 'AGEM_REF_GRAD_BATCH_SIZE2048'
+    },
+    'agem_ref_grad_batch_size2500': {
+        'color': [0, 153, 153],
+        'style': '-',
+        'label': 'AGEM_REF_GRAD_BATCH_SIZE2500'
     },
     'agem_ref_grad_batch_size5000': {
         'color': [64, 64, 64],

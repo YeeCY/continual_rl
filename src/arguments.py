@@ -38,6 +38,7 @@ def parse_args():
 	parser.add_argument('--action_repeat', default=1, type=int)  # 1
 	parser.add_argument('--mode', default='train', type=str)
 	parser.add_argument('--add_onehot', default=False, type=str2bool)
+	parser.add_argument('--reset_agent', default=False, type=str2bool)
 
 	# locomotion tasks
 	parser.add_argument('--pixel_obs', default=False, action='store_true')  # (chongyi zheng)

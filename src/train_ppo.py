@@ -370,6 +370,9 @@ def main(args):
                 else:
                     agent.construct_memory(env, args.ppo_num_processes, compute_returns_kwargs)
 
+            if args.reset_agent:
+                agent.reset()
+
     print('Final evaluating:', args.work_dir)
     evaluate(env, eval_env, agent, video, args.num_eval_episodes, logger, total_steps)
 
