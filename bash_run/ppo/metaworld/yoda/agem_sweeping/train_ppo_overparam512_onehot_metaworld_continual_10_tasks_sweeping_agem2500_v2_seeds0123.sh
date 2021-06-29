@@ -14,7 +14,7 @@ export PYTHONPATH=$PROJECT_DIR
 declare -a seeds=(0 1 2 3)
 
 for seed in "${seeds[@]}"; do
-  export CUDA_VISIBLE_DEVICES=$seed
+  export CUDA_VISIBLE_DEVICES=0
   nohup \
   python $PROJECT_DIR/src/train_ppo.py \
     --env_names \
