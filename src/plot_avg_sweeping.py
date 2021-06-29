@@ -35,7 +35,7 @@ CURVE_FORMAT = {
     'ewc_lambda2000': {
         'color': [160, 32, 240],
         'style': '-',
-        'label': 'ewc_lambda1000'
+        'label': 'ewc_lambda2000'
     },
     'ewc_lambda5000': {
         'color': [160, 32, 240],
