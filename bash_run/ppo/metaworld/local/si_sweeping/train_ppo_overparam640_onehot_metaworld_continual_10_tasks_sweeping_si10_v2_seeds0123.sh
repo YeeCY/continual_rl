@@ -25,7 +25,7 @@ for seed in "${seeds[@]}"; do
       window-open-v2 \
     --env_type metaworld \
     --add_onehot True \
-    --algo ewc_ppo_mlp_v2 \
+    --algo si_ppo_mlp_v2 \
     --train_steps_per_task 500000 \
     --eval_freq 10 \
     --discount 0.99 \
@@ -34,10 +34,8 @@ for seed in "${seeds[@]}"; do
     --ppo_num_processes 1 \
     --ppo_use_clipped_critic_loss \
     --ppo_use_proper_time_limits \
-    --ppo_ewc_lambda 100 \
-    --ppo_ewc_estimate_fisher_epochs 10 \
-    --ppo_ewc_rollout_steps_per_process 1000 \
+    --ppo_si_c 10 \
     --seed $seed \
-    --work_dir $PROJECT_DIR/vec_logs/ppo_mlp_v2_overparam640_onehot_metaworld_10_tasks_sweeping_ewc/ewc_lambda100/$seed \
-  > $PROJECT_DIR/terminal_logs/ppo_mlp_v2_overparam640_onehot_metaworld_10_tasks_sweeping_ewc-ewc_lambda100-seed"$seed".log 2>&1 &
+    --work_dir $PROJECT_DIR/vec_logs/ppo_mlp_v2_overparam640_onehot_metaworld_10_tasks_sweeping_si/si_c10/$seed \
+  > $PROJECT_DIR/terminal_logs/ppo_mlp_v2_overparam640_onehot_metaworld_10_tasks_sweeping_si-si_c10-seed"$seed".log 2>&1 &
 done

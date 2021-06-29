@@ -1,7 +1,7 @@
 #!/bin/bash
 
 SCRIPT_DIR=$(dirname "$BASH_SOURCE")
-PROJECT_DIR=$(realpath "$SCRIPT_DIR/../../../..")
+PROJECT_DIR=$(realpath "$SCRIPT_DIR/../../../../..")
 
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/.mujoco/mujoco200/bin
 export PYTHONPATH=$PROJECT_DIR
@@ -34,10 +34,10 @@ for seed in "${seeds[@]}"; do
     --ppo_num_processes 1 \
     --ppo_use_clipped_critic_loss \
     --ppo_use_proper_time_limits \
-    --ppo_ewc_lambda 5000 \
+    --ppo_ewc_lambda 1000 \
     --ppo_ewc_estimate_fisher_epochs 10 \
     --ppo_ewc_rollout_steps_per_process 1000 \
     --seed $seed \
-    --work_dir $PROJECT_DIR/vec_logs/ppo_mlp_v2_overparam640_onehot_metaworld_10_tasks_sweeping_ewc/ewc_lambda5000/$seed \
-  > $PROJECT_DIR/terminal_logs/ppo_mlp_v2_overparam640_onehot_metaworld_10_tasks_sweeping_ewc-ewc_lambda5000-seed"$seed".log 2>&1 &
+    --work_dir $PROJECT_DIR/vec_logs/ppo_mlp_v2_overparam640_onehot_metaworld_10_tasks_sweeping_ewc/ewc_lambda1000/$seed \
+  > $PROJECT_DIR/terminal_logs/ppo_mlp_v2_overparam640_onehot_metaworld_10_tasks_sweeping_ewc-ewc_lambda1000-seed"$seed".log 2>&1 &
 done

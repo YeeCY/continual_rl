@@ -6,8 +6,8 @@ import os
 import os.path as osp
 
 
-WINDOW_LENGTH = 10
-SMOOTH_COEF = 0.20
+WINDOW_LENGTH = 20
+SMOOTH_COEF = 0.05
 CM = 1 / 2.54  # centimeters in inches
 
 
@@ -193,6 +193,8 @@ def plot(ax, data, task_names, algos, curve_format=CURVE_FORMAT):
 
         y_mean = np.mean(np.array(algo_data['y']), axis=0)
         y_std = np.std(np.array(algo_data['y']), axis=0)
+        y_mean = window_smooth(y_mean)
+        y_std = window_smooth(y_std)
 
         color = np.array(curve_format[algo]['color']) / 255.
         style = curve_format[algo]['style']
