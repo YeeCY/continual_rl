@@ -238,12 +238,12 @@ def main(args):
                         raise RuntimeError(f"Statistics '{stat}' doesn't exist in '{data_path}'!")
 
             plot(ax, data, algos)
+            ax.legend(framealpha=0.)
 
     fig_path = osp.abspath(osp.join(save_dir, exp_name + '.png'))
     # plt.title(exp_name, fontsize=16)
-    fig.suptitle(exp_name, fontsize=20).set_y(0.9875)
+    # fig.suptitle(exp_name, fontsize=20).set_y(0.9875)
     plt.tight_layout()
-    plt.legend(framealpha=0.)
     plt.savefig(fname=fig_path)
     print(f"Save figure: {fig_path}")
 
