@@ -72,50 +72,50 @@ CURVE_FORMAT = {
         'style': '-',
         'label': 'SI_c100'
     },
-    'agem_ref_grad_batch_size256': {
-        'color': [153, 76, 0],
+    'agem_ref_grad_batch_size250': {
+        'color': [0, 178, 238],
         'style': '-',
-        'label': 'AGEM_REF_GRAD_BATCH_SIZE256'
+        'label': 'agem_ref_grad_batch_size250',
     },
     'agem_ref_grad_batch_size500': {
-        'color': [64, 64, 64],
+        'color': [204, 153, 255],
         'style': '-',
-        'label': 'AGEM_REF_GRAD_BATCH_SIZE500'
-    },
-    'agem_ref_grad_batch_size512': {
-        'color': [64, 64, 64],
-        'style': '-',
-        'label': 'AGEM_REF_GRAD_BATCH_SIZE512'
+        'label': 'agem_ref_grad_batch_size500',
     },
     'agem_ref_grad_batch_size1000': {
-        'color': [0, 153, 153],
+        'color': [139, 101, 8],
         'style': '-',
-        'label': 'AGEM_REF_GRAD_BATCH_SIZE1000'
-    },
-    'agem_ref_grad_batch_size1024': {
-        'color': [0, 153, 153],
-        'style': '-',
-        'label': 'AGEM_REF_GRAD_BATCH_SIZE1024'
-    },
-    'agem_ref_grad_batch_size1500': {
-        'color': [0, 153, 153],
-        'style': '-',
-        'label': 'AGEM_REF_GRAD_BATCH_SIZE1500'
-    },
-    'agem_ref_grad_batch_size2048': {
-        'color': [64, 64, 64],
-        'style': '-',
-        'label': 'AGEM_REF_GRAD_BATCH_SIZE2048'
+        'label': 'agem_ref_grad_batch_size1000',
     },
     'agem_ref_grad_batch_size2500': {
-        'color': [0, 153, 153],
+        'color': [0, 100, 0],
         'style': '-',
-        'label': 'AGEM_REF_GRAD_BATCH_SIZE2500'
+        'label': 'agem_ref_grad_batch_size2500',
     },
     'agem_ref_grad_batch_size5000': {
-        'color': [64, 64, 64],
+        'color': [255, 128, 0],
         'style': '-',
-        'label': 'AGEM_REF_GRAD_BATCH_SIZE5000'
+        'label': 'agem_ref_grad_batch_size5000'
+    },
+    'agem_ref_grad_batch_size7500': {
+        'color': [160, 32, 240],
+        'style': '-',
+        'label': 'agem_ref_grad_batch_size7500'
+    },
+    'agem_ref_grad_batch_size10000': {
+        'color': [216, 30, 54],
+        'style': '-',
+        'label': 'agem_ref_grad_batch_size10000'
+    },
+    'agem_ref_grad_batch_size15000': {
+        'color': [55, 126, 184],
+        'style': '-',
+        'label': 'agem_ref_grad_batch_size15000'
+    },
+    'agem_ref_grad_batch_size20000': {
+        'color': [180, 180, 180],
+        'style': '-',
+        'label': 'agem_ref_grad_batch_size20000'
     },
 }
 
