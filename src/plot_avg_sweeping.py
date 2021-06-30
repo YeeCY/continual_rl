@@ -57,20 +57,50 @@ CURVE_FORMAT = {
         'style': '-',
         'label': 'ewc_lambda20000'
     },
-    'si_c1': {
-        'color': [204, 204, 0],
+    'si_c0.1': {
+        'color': [0, 178, 238],
         'style': '-',
-        'label': 'SI_c1'
+        'label': 'si_c0.1',
+    },
+    'si_c1': {
+        'color': [204, 153, 255],
+        'style': '-',
+        'label': 'si_c1',
+    },
+    'si_c5': {
+        'color': [139, 101, 8],
+        'style': '-',
+        'label': 'si_c5',
     },
     'si_c10': {
-        'color': [254, 153, 204],
+        'color': [0, 100, 0],
         'style': '-',
-        'label': 'SI_c10'
+        'label': 'si_c10',
     },
-    'si_c100': {
+    'si_c25': {
         'color': [255, 128, 0],
         'style': '-',
-        'label': 'SI_c100'
+        'label': 'si_c25'
+    },
+    'si_c50': {
+        'color': [160, 32, 240],
+        'style': '-',
+        'label': 'si_c50'
+    },
+    'si_c100': {
+        'color': [216, 30, 54],
+        'style': '-',
+        'label': 'si_c100'
+    },
+    'si_c200': {
+        'color': [55, 126, 184],
+        'style': '-',
+        'label': 'si_c200'
+    },
+    'si_c500': {
+        'color': [180, 180, 180],
+        'style': '-',
+        'label': 'si_c500'
     },
     'agem_ref_grad_batch_size250': {
         'color': [0, 178, 238],
