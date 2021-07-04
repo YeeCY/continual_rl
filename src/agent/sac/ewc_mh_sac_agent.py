@@ -12,7 +12,8 @@ class EwcMultiHeadSacMlpAgent(MultiHeadSacMlpAgent, EwcSacMlpAgent):
                  action_shape,
                  action_range,
                  device,
-                 hidden_dim=400,
+                 actor_hidden_dim=400,
+                 critic_hidden_dim=400,
                  discount=0.99,
                  init_temperature=0.01,
                  alpha_lr=1e-3,
@@ -30,15 +31,16 @@ class EwcMultiHeadSacMlpAgent(MultiHeadSacMlpAgent, EwcSacMlpAgent):
                  online_ewc=False,
                  online_ewc_gamma=1.0,
                  ):
-        MultiHeadSacMlpAgent.__init__(self, obs_shape, action_shape, action_range, device, hidden_dim, discount,
-                                      init_temperature, alpha_lr, actor_lr, actor_log_std_min, actor_log_std_max,
-                                      actor_update_freq, critic_lr, critic_tau, critic_target_update_freq, batch_size)
+        MultiHeadSacMlpAgent.__init__(self, obs_shape, action_shape, action_range, device, actor_hidden_dim,
+                                      critic_hidden_dim, discount, init_temperature, alpha_lr, actor_lr,
+                                      actor_log_std_min, actor_log_std_max, actor_update_freq, critic_lr, critic_tau,
+                                      critic_target_update_freq, batch_size)
 
-        EwcSacMlpAgent.__init__(self, obs_shape, action_shape, action_range, device, hidden_dim, discount,
-                                init_temperature, alpha_lr, actor_lr, actor_log_std_min, actor_log_std_max,
-                                actor_update_freq, critic_lr, critic_tau, critic_target_update_freq, batch_size,
-                                ewc_lambda, ewc_estimate_fisher_iters, ewc_estimate_fisher_batch_size, online_ewc,
-                                online_ewc_gamma)
+        EwcSacMlpAgent.__init__(self, obs_shape, action_shape, action_range, device, actor_hidden_dim,
+                                critic_hidden_dim, discount, init_temperature, alpha_lr, actor_lr, actor_log_std_min,
+                                actor_log_std_max, actor_update_freq, critic_lr, critic_tau,
+                                critic_target_update_freq, batch_size, ewc_lambda, ewc_estimate_fisher_iters,
+                                ewc_estimate_fisher_batch_size, online_ewc, online_ewc_gamma)
 
     def estimate_fisher(self, replay_buffer, **kwargs):
         fishers = {}

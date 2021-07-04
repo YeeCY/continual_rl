@@ -14,7 +14,8 @@ class MultiHeadSacMlpAgent(SacMlpAgent):
             action_shape,
             action_range,
             device,
-            hidden_dim=400,
+            actor_hidden_dim=400,
+            critic_hidden_dim=400,
             discount=0.99,
             init_temperature=0.01,
             alpha_lr=1e-3,
@@ -30,9 +31,9 @@ class MultiHeadSacMlpAgent(SacMlpAgent):
         assert isinstance(action_shape, list)
         assert isinstance(action_range, list)
         super().__init__(
-            obs_shape, action_shape, action_range, device, hidden_dim, discount, init_temperature, alpha_lr, actor_lr,
-            actor_log_std_min, actor_log_std_max, actor_update_freq, critic_lr, critic_tau, critic_target_update_freq,
-            batch_size)
+            obs_shape, action_shape, action_range, device, actor_hidden_dim, critic_hidden_dim, discount,
+            init_temperature, alpha_lr, actor_lr, actor_log_std_min, actor_log_std_max, actor_update_freq,
+            critic_lr, critic_tau, critic_target_update_freq, batch_size)
 
     def _setup_agent(self):
         if hasattr(self, 'actor') and hasattr(self, 'critic') \
@@ -40,16 +41,16 @@ class MultiHeadSacMlpAgent(SacMlpAgent):
             return
 
         self.actor = MultiHeadSacActorMlp(
-            self.obs_shape, self.action_shape, self.hidden_dim,
+            self.obs_shape, self.action_shape, self.actor_hidden_dim,
             self.actor_log_std_min, self.actor_log_std_max
         ).to(self.device)
 
         self.critic = MultiHeadSacCriticMlp(
-            self.obs_shape, self.action_shape, self.hidden_dim
+            self.obs_shape, self.action_shape, self.critic_hidden_dim
         ).to(self.device)
 
         self.critic_target = MultiHeadSacCriticMlp(
-            self.obs_shape, self.action_shape, self.hidden_dim
+            self.obs_shape, self.action_shape, self.critic_hidden_dim
         ).to(self.device)
 
         self.reset_target_critic()

@@ -90,7 +90,8 @@ def parse_args():
 	parser.add_argument('--sac_num_expl_steps_per_process', default=1000, type=int)
 	parser.add_argument('--sac_num_processes', default=1, type=int)
 	parser.add_argument('--sac_num_train_iters', default=1000, type=int)
-	parser.add_argument('--hidden_dim', default=400, type=int)  # 1024
+	parser.add_argument('--sac_actor_hidden_dim', default=400, type=int)  # 1024
+	parser.add_argument('--sac_critic_hidden_dim', default=256, type=int)
 	parser.add_argument('--init_temperature', default=1.0, type=float)  # 0.1
 	parser.add_argument('--alpha_lr', default=3e-4, type=float)  # (chongyi zheng): 1e-4, try 3e-4?
 	parser.add_argument('--grad_clip_norm', default=10.0, type=float)  # tuning this

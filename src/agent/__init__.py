@@ -89,7 +89,8 @@ def make_agent(obs_space, action_space, device, args):
                             float(action_space.high.max())]
 
         kwargs['action_range'] = action_range
-        kwargs['hidden_dim'] = args.hidden_dim
+        kwargs['actor_hidden_dim'] = args.sac_actor_hidden_dim
+        kwargs['critic_hidden_dim'] = args.sac_critic_hidden_dim
         kwargs['init_temperature'] = args.init_temperature
         kwargs['alpha_lr'] = args.alpha_lr
         kwargs['actor_lr'] = args.actor_lr

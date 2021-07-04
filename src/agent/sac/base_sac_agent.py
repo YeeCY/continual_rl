@@ -13,7 +13,8 @@ class SacMlpAgent:
             action_shape,
             action_range,
             device,
-            hidden_dim=400,
+            actor_hidden_dim=256,
+            critic_hidden_dim=256,
             discount=0.99,
             init_temperature=0.01,
             alpha_lr=1e-3,
@@ -30,7 +31,8 @@ class SacMlpAgent:
         self.action_shape = action_shape
         self.action_range = action_range
         self.device = device
-        self.hidden_dim = hidden_dim
+        self.actor_hidden_dim = actor_hidden_dim
+        self.critic_hidden_dim = critic_hidden_dim
         self.discount = discount
         self.init_temperature = init_temperature
         self.alpha_lr = alpha_lr
@@ -51,16 +53,16 @@ class SacMlpAgent:
 
     def _setup_agent(self):
         self.actor = SacActorMlp(
-            self.obs_shape, self.action_shape, self.hidden_dim,
+            self.obs_shape, self.action_shape, self.actor_hidden_dim,
             self.actor_log_std_min, self.actor_log_std_max
         ).to(self.device)
 
         self.critic = SacCriticMlp(
-            self.obs_shape, self.action_shape, self.hidden_dim
+            self.obs_shape, self.action_shape, self.critic_hidden_dim
         ).to(self.device)
 
         self.critic_target = SacCriticMlp(
-            self.obs_shape, self.action_shape, self.hidden_dim
+            self.obs_shape, self.action_shape, self.critic_hidden_dim
         ).to(self.device)
 
         self.reset_target_critic()

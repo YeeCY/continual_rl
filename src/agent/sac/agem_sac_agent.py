@@ -12,7 +12,8 @@ class AgemSacMlpAgent(SacMlpAgent):
                  action_shape,
                  action_range,
                  device,
-                 hidden_dim=400,
+                 actor_hidden_dim=400,
+                 critic_hidden_dim=400,
                  discount=0.99,
                  init_temperature=0.01,
                  alpha_lr=1e-3,
@@ -27,9 +28,9 @@ class AgemSacMlpAgent(SacMlpAgent):
                  agem_memory_budget=5000,
                  agem_ref_grad_batch_size=500,
                  ):
-        super().__init__(obs_shape, action_shape, action_range, device, hidden_dim, discount, init_temperature,
-                         alpha_lr, actor_lr, actor_log_std_min, actor_log_std_max, actor_update_freq, critic_lr,
-                         critic_tau, critic_target_update_freq, batch_size)
+        super().__init__(obs_shape, action_shape, action_range, device, actor_hidden_dim, critic_hidden_dim, discount,
+                         init_temperature, alpha_lr, actor_lr, actor_log_std_min, actor_log_std_max,
+                         actor_update_freq, critic_lr, critic_tau, critic_target_update_freq, batch_size)
 
         self.agem_memory_budget = agem_memory_budget
         self.agem_ref_grad_batch_size = agem_ref_grad_batch_size

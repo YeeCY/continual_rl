@@ -13,7 +13,8 @@ class SiSacMlpAgent(SacMlpAgent):
                  action_shape,
                  action_range,
                  device,
-                 hidden_dim=400,
+                 actor_hidden_dim=400,
+                 critic_hidden_dim=400,
                  discount=0.99,
                  init_temperature=0.01,
                  alpha_lr=1e-3,
@@ -28,9 +29,9 @@ class SiSacMlpAgent(SacMlpAgent):
                  si_c=1.0,
                  si_epsilon=0.1,
                  ):
-        super().__init__(obs_shape, action_shape, action_range, device, hidden_dim, discount, init_temperature,
-                         alpha_lr, actor_lr, actor_log_std_min, actor_log_std_max, actor_update_freq, critic_lr,
-                         critic_tau, critic_target_update_freq, batch_size)
+        super().__init__(obs_shape, action_shape, action_range, device, actor_hidden_dim, critic_hidden_dim,
+                         discount, init_temperature, alpha_lr, actor_lr, actor_log_std_min, actor_log_std_max,
+                         actor_update_freq, critic_lr, critic_tau, critic_target_update_freq, batch_size)
 
         self.si_c = si_c
         self.si_epsilon = si_epsilon
