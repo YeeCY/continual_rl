@@ -1,4 +1,5 @@
 import torch
+import numpy as np
 from collections.abc import Iterable
 
 import utils
@@ -25,7 +26,7 @@ class AgemSacMlpAgent(SacMlpAgent):
                  critic_tau=0.005,
                  critic_target_update_freq=2,
                  batch_size=128,
-                 agem_memory_budget=5000,
+                 agem_memory_budget=1000,
                  agem_ref_grad_batch_size=500,
                  ):
         super().__init__(obs_shape, action_shape, action_range, device, actor_hidden_dim, critic_hidden_dim, discount,
@@ -55,8 +56,13 @@ class AgemSacMlpAgent(SacMlpAgent):
         ref_actor_grad = []
         ref_alpha_grad = []
         for memory in self.agem_memories.values():
-            obs, action, reward, next_obs, not_done = memory['obses'], memory['actions'], memory['rewards'], \
-                                                      memory['next_obses'], memory['not_dones']
+            idxs = np.random.randint(
+                0, len(memory['obses']), size=self.agem_ref_grad_batch_size // self.agem_task_count
+            )
+
+            obs, action, reward, next_obs, not_done = \
+                memory['obses'][idxs], memory['actions'][idxs], memory['rewards'][idxs], \
+                memory['next_obses'][idxs], memory['not_dones'][idxs]
 
             critic_loss = self.compute_critic_loss(obs, action, reward, next_obs, not_done)
             self.critic_optimizer.zero_grad()  # clear current gradient
