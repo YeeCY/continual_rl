@@ -156,6 +156,7 @@ def main(args):
             allow_early_resets=True,
             normalize=False,
             multi_head=True if 'mh' in args.algo else False,
+            add_onehot=args.add_onehot,
         )
 
         eval_env = make_continual_vec_envs(
@@ -164,6 +165,7 @@ def main(args):
             allow_early_resets=True,
             normalize=False,
             multi_head=True if 'mh' in args.algo else False,
+            add_onehot=args.add_onehot,
         )
 
     # from PIL import Image
