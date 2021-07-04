@@ -29,19 +29,18 @@ for seed in "${seeds[@]}"; do
       handle-pull-side-v2 \
       window-open-v2 \
     --env_type metaworld \
-    --algo ewc_mh_sac_mlp_v2 \
+    --algo agem_mh_sac_mlp_v2 \
     --train_steps_per_task 500000 \
     --eval_freq 10 \
     --discount 0.99 \
-    --sac_actor_hidden_dim 400 \
+    --sac_actor_hidden_dim 512 \
     --sac_init_steps 1000 \
     --sac_num_expl_steps_per_process 1000 \
     --sac_num_processes 1 \
     --sac_num_train_iters 1000 \
-    --sac_ewc_lambda 100 \
-    --sac_ewc_estimate_fisher_iters 10 \
-    --sac_ewc_estimate_fisher_batch_size 1000 \
+    --sac_agem_memory_budget 500 \
+    --sac_agem_ref_grad_batch_size 250 \
     --seed $seed \
-    --work_dir $PROJECT_DIR/vec_logs/mh_sac_mlp_v2_overparam400_metaworld_10_tasks_sweeping_ewc/ewc_lambda100/$seed \
-    > $PROJECT_DIR/terminal_logs/mh_sac_mlp_v2_overparam400_metaworld_10_tasks_sweeping_ewc-ewc_lambda100-seed"$seed".log 2>&1 &
+    --work_dir $PROJECT_DIR/vec_logs/mh_sac_mlp_v2_overparam512_metaworld_10_tasks_sweeping_agem/agem_ref_grad_batch_size250/$seed \
+    > $PROJECT_DIR/terminal_logs/mh_sac_mlp_v2_overparam512_metaworld_10_tasks_sweeping_agem-agem_ref_grad_batch_size250-seed"$seed".log 2>&1 &
 done
