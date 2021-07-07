@@ -17,105 +17,140 @@ CURVE_FORMAT = {
         'style': '-',
         'label': 'SGD',
     },
-    'ewc': {
+    'ewc_lambda100': {
+        'color': [0, 178, 238],
+        'style': '-',
+        'label': 'ewc_lambda100',
+    },
+    'ewc_lambda200': {
         'color': [204, 153, 255],
         'style': '-',
-        'label': 'EWC',
-    },
-    'si': {
-        'color': [139, 101, 8],
-        'style': '-',
-        'label': 'SI',
-    },
-    'ewc_lambda5': {
-        'color': [0, 100, 0],
-        'style': '-',
-        'label': 'EWC_lambda5',
-    },
-    'ewc_lambda50': {
-        'color': [160, 32, 240],
-        'style': '-',
-        'label': 'EWC_lambda50'
-    },
-    'ewc_lambda150': {
-        'color': [160, 32, 240],
-        'style': '-',
-        'label': 'EWC_lambda150'
+        'label': 'ewc_lambda200',
     },
     'ewc_lambda500': {
-        'color': [216, 30, 54],
+        'color': [139, 101, 8],
         'style': '-',
-        'label': 'EWC_lambda500'
+        'label': 'ewc_lambda500',
     },
-    'ewc_lambda5000': {
-        'color': [55, 126, 184],
+    'ewc_lambda1000': {
+        'color': [0, 100, 0],
         'style': '-',
-        'label': 'EWC_lambda5000'
+        'label': 'ewc_lambda1000',
     },
-    'ewc_lambda10': {
-        'color': [180, 180, 180],
-        'style': '-',
-        'label': 'EWC_labmda10'
-    },
-    'si_c1': {
-        'color': [204, 204, 0],
-        'style': '-',
-        'label': 'SI_c1'
-    },
-    'si_c10': {
-        'color': [254, 153, 204],
-        'style': '-',
-        'label': 'SI_c10'
-    },
-    'si_c100': {
+    'ewc_lambda2000': {
         'color': [255, 128, 0],
         'style': '-',
-        'label': 'SI_c100'
+        'label': 'ewc_lambda2000'
     },
-    'agem_ref_grad_batch_size256': {
-        'color': [153, 76, 0],
+    'ewc_lambda5000': {
+        'color': [160, 32, 240],
         'style': '-',
-        'label': 'AGEM_REF_GRAD_BATCH_SIZE256'
+        'label': 'ewc_lambda5000'
+    },
+    'ewc_lambda8000': {
+        'color': [216, 30, 54],
+        'style': '-',
+        'label': 'EWC_lambda8000'
+    },
+    'ewc_lambda10000': {
+        'color': [55, 126, 184],
+        'style': '-',
+        'label': 'ewc_lambda10000'
+    },
+    'ewc_lambda20000': {
+        'color': [180, 180, 180],
+        'style': '-',
+        'label': 'ewc_lambda20000'
+    },
+    'si_c0.1': {
+        'color': [0, 178, 238],
+        'style': '-',
+        'label': 'si_c0.1',
+    },
+    'si_c1': {
+        'color': [204, 153, 255],
+        'style': '-',
+        'label': 'si_c1',
+    },
+    'si_c5': {
+        'color': [139, 101, 8],
+        'style': '-',
+        'label': 'si_c5',
+    },
+    'si_c10': {
+        'color': [0, 100, 0],
+        'style': '-',
+        'label': 'si_c10',
+    },
+    'si_c25': {
+        'color': [255, 128, 0],
+        'style': '-',
+        'label': 'si_c25'
+    },
+    'si_c50': {
+        'color': [160, 32, 240],
+        'style': '-',
+        'label': 'si_c50'
+    },
+    'si_c100': {
+        'color': [216, 30, 54],
+        'style': '-',
+        'label': 'si_c100'
+    },
+    'si_c200': {
+        'color': [55, 126, 184],
+        'style': '-',
+        'label': 'si_c200'
+    },
+    'si_c500': {
+        'color': [180, 180, 180],
+        'style': '-',
+        'label': 'si_c500'
+    },
+    'agem_ref_grad_batch_size250': {
+        'color': [0, 178, 238],
+        'style': '-',
+        'label': 'agem_ref_grad_batch_size250',
     },
     'agem_ref_grad_batch_size500': {
-        'color': [64, 64, 64],
+        'color': [204, 153, 255],
         'style': '-',
-        'label': 'AGEM_REF_GRAD_BATCH_SIZE500'
-    },
-    'agem_ref_grad_batch_size512': {
-        'color': [64, 64, 64],
-        'style': '-',
-        'label': 'AGEM_REF_GRAD_BATCH_SIZE512'
+        'label': 'agem_ref_grad_batch_size500',
     },
     'agem_ref_grad_batch_size1000': {
-        'color': [0, 153, 153],
+        'color': [139, 101, 8],
         'style': '-',
-        'label': 'AGEM_REF_GRAD_BATCH_SIZE1000'
-    },
-    'agem_ref_grad_batch_size1024': {
-        'color': [0, 153, 153],
-        'style': '-',
-        'label': 'AGEM_REF_GRAD_BATCH_SIZE1024'
-    },
-    'agem_ref_grad_batch_size1500': {
-        'color': [0, 153, 153],
-        'style': '-',
-        'label': 'AGEM_REF_GRAD_BATCH_SIZE1500'
+        'label': 'agem_ref_grad_batch_size1000',
     },
     'agem_ref_grad_batch_size2500': {
-        'color': [0, 153, 153],
+        'color': [0, 100, 0],
         'style': '-',
-        'label': 'AGEM_REF_GRAD_BATCH_SIZE2500'
-    },
-    'agem_ref_grad_batch_size2048': {
-        'color': [64, 64, 64],
-        'style': '-',
-        'label': 'AGEM_REF_GRAD_BATCH_SIZE2048'
+        'label': 'agem_ref_grad_batch_size2500',
     },
     'agem_ref_grad_batch_size5000': {
-        'color': [64, 64, 64],
+        'color': [255, 128, 0],
         'style': '-',
-        'label': 'AGEM_REF_GRAD_BATCH_SIZE5000'
+        'label': 'agem_ref_grad_batch_size5000'
+    },
+    'agem_ref_grad_batch_size7500': {
+        'color': [160, 32, 240],
+        'style': '-',
+        'label': 'agem_ref_grad_batch_size7500'
+    },
+    'agem_ref_grad_batch_size10000': {
+        'color': [216, 30, 54],
+        'style': '-',
+        'label': 'agem_ref_grad_batch_size10000'
+    },
+    'agem_ref_grad_batch_size15000': {
+        'color': [55, 126, 184],
+        'style': '-',
+        'label': 'agem_ref_grad_batch_size15000'
+    },
+    'agem_ref_grad_batch_size20000': {
+        'color': [180, 180, 180],
+        'style': '-',
+        'label': 'agem_ref_grad_batch_size20000'
     },
 }
 
