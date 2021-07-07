@@ -4,6 +4,7 @@ import numpy as np
 import argparse
 import os
 import os.path as osp
+import glob
 
 
 WINDOW_LENGTH = 10
@@ -37,10 +38,10 @@ CURVE_FORMAT = {
         'style': '-',
         'label': 'PPO_overparameterized'
     },
-    'ewc_lambda500': {
+    'sac_softlearning_single': {
         'color': [216, 30, 54],
         'style': '-',
-        'label': 'EWC_lambda500'
+        'label': 'SOFTLEARNING_SAC'
     },
     'ewc_lambda5000': {
         'color': [55, 126, 184],
@@ -187,6 +188,15 @@ def main(args):
                         data_path = osp.join(data_dir, exp_name, 'SAC-' + task_name, 's-' + str(seed), 'progress.csv')
                     elif exp_name == 'sac_garage_single':
                         data_path = osp.join(data_dir, exp_name, 'sac-' + task_name, 's-' + str(seed), 'progress.csv')
+                    elif exp_name == 'sac_softlearning_single':
+                        data_path = osp.join(data_dir, exp_name, task_name.replace('-v2', ''),
+                                             'v2', '*/*seed={}*'.format(str(seed)), 'progress.csv')
+                        paths = glob.glob(r'{}'.format(data_path))
+                        if len(paths) == 0:
+                            print(f"Data path not found: {data_path}!")
+                            continue
+                        else:
+                            data_path = paths[0]
                     else:
                         data_path = osp.join(data_dir, exp_name, 'sgd', task_name, str(seed), 'eval.csv')
                     data_path = os.path.abspath(data_path)
@@ -206,6 +216,10 @@ def main(args):
                     elif exp_name == 'sac_garage_single':
                         task_df = df[df['TotalEnvSteps'] <= max_timesteps]
                         data[exp_name].update(x=task_df['TotalEnvSteps'].values)
+                    elif exp_name == 'sac_softlearning_single':
+                        task_df = df[df['total_timestep'] <= max_timesteps]
+                        task_df = task_df.drop_duplicates(subset=['total_timestep'], keep='last')
+                        data[exp_name].update(x=task_df['total_timestep'].values)
                     else:
                         task_df = df[df['task_name'] == task_name]
                         task_df = task_df[task_df['step'] <= max_timesteps]
@@ -216,6 +230,8 @@ def main(args):
                             y = task_df['evaluation/Returns Mean'].values
                         elif exp_name == 'sac_garage_single':
                             y = task_df['Evaluation/AverageReturn'].values
+                        elif exp_name == 'sac_softlearning_single':
+                            y = task_df['evaluation/episode-reward-mean'].values
                         else:
                             y = task_df[stat].values
 
