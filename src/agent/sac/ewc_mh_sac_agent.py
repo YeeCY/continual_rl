@@ -45,19 +45,19 @@ class EwcMultiHeadSacMlpAgent(MultiHeadSacMlpAgent, EwcSacMlpAgent):
     def estimate_fisher(self, replay_buffer, **kwargs):
         fishers = {}
         for _ in range(self.ewc_estimate_fisher_iters):
-            with utils.eval_mode(self):
-                obs, action, reward, next_obs, not_done = replay_buffer.sample(
-                    self.ewc_estimate_fisher_batch_size)
+            # with utils.eval_mode(self): (chongyi zheng): is this bug?
+            obs, action, reward, next_obs, not_done = replay_buffer.sample(
+                self.ewc_estimate_fisher_batch_size)
 
-                critic_loss = self.compute_critic_loss(obs, action, reward, next_obs, not_done, **kwargs)
-                self.critic_optimizer.zero_grad()
-                critic_loss.backward()
+            critic_loss = self.compute_critic_loss(obs, action, reward, next_obs, not_done, **kwargs)
+            self.critic_optimizer.zero_grad()
+            critic_loss.backward()
 
-                _, actor_loss, alpha_loss = self.compute_actor_and_alpha_loss(obs, **kwargs)
-                self.actor_optimizer.zero_grad()
-                actor_loss.backward()
-                self.log_alpha_optimizer.zero_grad()
-                alpha_loss.backward()
+            _, actor_loss, alpha_loss = self.compute_actor_and_alpha_loss(obs, **kwargs)
+            self.actor_optimizer.zero_grad()
+            actor_loss.backward()
+            self.log_alpha_optimizer.zero_grad()
+            alpha_loss.backward()
 
             for name, param in chain(self.critic.named_common_parameters(),
                                      self.actor.named_common_parameters(),

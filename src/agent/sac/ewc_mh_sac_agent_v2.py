@@ -31,35 +31,35 @@ class EwcMultiHeadSacMlpAgentV2(MultiHeadSacMlpAgentV2, EwcSacMlpAgentV2):
                  online_ewc_gamma=1.0,
                  ):
         MultiHeadSacMlpAgentV2.__init__(self, obs_shape, action_shape, action_range, device, actor_hidden_dim,
-                                      critic_hidden_dim, discount, init_temperature, alpha_lr, actor_lr,
-                                      actor_log_std_min, actor_log_std_max, actor_update_freq, critic_lr, critic_tau,
-                                      critic_target_update_freq, batch_size)
+                                        critic_hidden_dim, discount, init_temperature, alpha_lr, actor_lr,
+                                        actor_log_std_min, actor_log_std_max, actor_update_freq, critic_lr, critic_tau,
+                                        critic_target_update_freq, batch_size)
 
         EwcSacMlpAgentV2.__init__(self, obs_shape, action_shape, action_range, device, actor_hidden_dim,
-                                critic_hidden_dim, discount, init_temperature, alpha_lr, actor_lr, actor_log_std_min,
-                                actor_log_std_max, actor_update_freq, critic_lr, critic_tau,
-                                critic_target_update_freq, batch_size, ewc_lambda, ewc_estimate_fisher_iters,
-                                ewc_estimate_fisher_batch_size, online_ewc, online_ewc_gamma)
+                                  critic_hidden_dim, discount, init_temperature, alpha_lr, actor_lr, actor_log_std_min,
+                                  actor_log_std_max, actor_update_freq, critic_lr, critic_tau,
+                                  critic_target_update_freq, batch_size, ewc_lambda, ewc_estimate_fisher_iters,
+                                  ewc_estimate_fisher_batch_size, online_ewc, online_ewc_gamma)
 
     def estimate_fisher(self, replay_buffer, **kwargs):
         fishers = {}
         for _ in range(self.ewc_estimate_fisher_iters):
-            with utils.eval_mode(self):
-                obs, action, reward, next_obs, not_done = replay_buffer.sample(
-                    self.ewc_estimate_fisher_batch_size)
+            # with utils.eval_mode(self): (chongyi zheng): is this bug?
+            obs, action, reward, next_obs, not_done = replay_buffer.sample(
+                self.ewc_estimate_fisher_batch_size)
 
-                # TODO (chongyi zheng): delete this block
-                # critic_loss = self.compute_critic_loss(obs, action, reward, next_obs, not_done, **kwargs)
-                # self.critic_optimizer.zero_grad()
-                # critic_loss.backward()
+            # TODO (chongyi zheng): delete this block
+            # critic_loss = self.compute_critic_loss(obs, action, reward, next_obs, not_done, **kwargs)
+            # self.critic_optimizer.zero_grad()
+            # critic_loss.backward()
 
-                _, actor_loss, _ = self.compute_actor_and_alpha_loss(
-                    obs, compute_alpha_loss=False, **kwargs
-                )
-                self.actor_optimizer.zero_grad()
-                actor_loss.backward()
-                # self.log_alpha_optimizer.zero_grad()
-                # alpha_loss.backward()
+            _, actor_loss, _ = self.compute_actor_and_alpha_loss(
+                obs, compute_alpha_loss=False, **kwargs
+            )
+            self.actor_optimizer.zero_grad()
+            actor_loss.backward()
+            # self.log_alpha_optimizer.zero_grad()
+            # alpha_loss.backward()
 
             for name, param in self.actor.named_common_parameters():
                 if param.requires_grad:
