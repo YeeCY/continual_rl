@@ -23,6 +23,11 @@ CURVE_FORMAT = {
         'style': '-',
         'label': 'SAC',
     },
+    'mh_sac_mlp_v2_metaworld_single': {
+        'color': [204, 204, 0],
+        'style': '-',
+        'label': 'SAC'
+    },
     'sac_rlkit_single': {
         'color': [139, 101, 8],
         'style': '-',
