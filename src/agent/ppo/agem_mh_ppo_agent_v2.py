@@ -1,5 +1,4 @@
 import torch
-from itertools import chain
 
 from agent.ppo import MultiHeadPpoMlpAgentV2
 from agent.ppo import AgemPpoMlpAgentV2
