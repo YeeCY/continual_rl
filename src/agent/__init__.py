@@ -2,7 +2,7 @@ from src.agent.dqn_agent import DqnCnnSSEnsembleAgent
 from src.agent.sac import EwcSacMlpAgent, SiSacMlpAgent, AgemSacMlpAgent, SacMlpAgent, \
     MultiHeadSacMlpAgent, EwcMultiHeadSacMlpAgent, SiMultiHeadSacMlpAgent, AgemMultiHeadSacMlpAgent
 from src.agent.sac import MultiHeadSacMlpAgentV2, EwcMultiHeadSacMlpAgentV2, SiMultiHeadSacMlpAgentV2, \
-    AgemMultiHeadSacMlpAgentV2
+    AgemMultiHeadSacMlpAgentV2, EwcV2MultiHeadSacMlpAgentV2
 from src.agent.ppo import PpoMlpAgent, EwcPpoMlpAgent, SiPpoMlpAgent, AgemPpoMlpAgent, \
     MultiHeadPpoMlpAgent, EwcMultiHeadPpoMlpAgent, SiMultiHeadPpoMlpAgent, AgemMultiHeadPpoMlpAgent
 from src.agent.ppo import EwcPpoMlpAgentV2, SiPpoMlpAgentV2, AgemPpoMlpAgentV2
@@ -18,12 +18,14 @@ ALGOS = [
     'sac_mlp_ss_ensem',
     'sac_mlp',
     'ewc_sac_mlp',
+    'ewc_v2_sac_agent_v2',
     'si_sac_mlp',
     'agem_sac_mlp',
     'mh_sac_mlp',
     'mh_sac_mlp_v2',
     'ewc_mh_sac_mlp',
     'ewc_mh_sac_mlp_v2',
+    'ewc_v2_mh_sac_mlp_v2',
     'si_mh_sac_mlp',
     'si_mh_sac_mlp_v2',
     'agem_mh_sac_mlp',
@@ -161,6 +163,13 @@ def make_agent(obs_space, action_space, device, args):
             kwargs['online_ewc'] = args.sac_online_ewc
             kwargs['online_ewc_gamma'] = args.sac_online_ewc_gamma
             agent = EwcMultiHeadSacMlpAgentV2(**kwargs)
+        elif args.algo == 'ewc_v2_mh_sac_mlp_v2':
+            kwargs['ewc_lambda'] = args.sac_ewc_lambda
+            kwargs['ewc_estimate_fisher_iters'] = args.sac_ewc_estimate_fisher_iters
+            kwargs['ewc_estimate_fisher_rollout_steps'] = args.sac_ewc_estimate_fisher_rollout_steps
+            kwargs['online_ewc'] = args.sac_online_ewc
+            kwargs['online_ewc_gamma'] = args.sac_online_ewc_gamma
+            agent = EwcV2MultiHeadSacMlpAgentV2(**kwargs)
         elif args.algo == 'si_mh_sac_mlp':
             kwargs['si_c'] = args.sac_si_c
             kwargs['si_epsilon'] = args.sac_si_epsilon

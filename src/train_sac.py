@@ -404,10 +404,16 @@ def main(args):
 
             if 'ewc' in args.algo:
                 print(f"Estimating EWC fisher: {infos[0]['task_name']}")
-                if 'mh' in args.algo:
-                    agent.estimate_fisher(replay_buffer, head_idx=task_id)
+                if 'ewc_v2' in args.algo:
+                    if 'mh' in args.algo:
+                        agent.estimate_fisher(env, head_idx=task_id)
+                    else:
+                        agent.estimate_fisher(env)
                 else:
-                    agent.estimate_fisher(replay_buffer)
+                    if 'mh' in args.algo:
+                        agent.estimate_fisher(replay_buffer, head_idx=task_id)
+                    else:
+                        agent.estimate_fisher(replay_buffer)
             elif 'si' in args.algo:
                 print(f"Updating SI omega: {infos[0]['task_name']}")
                 agent.update_omegas()
@@ -415,8 +421,7 @@ def main(args):
                 print(f"Constructing AGEM memory: {infos[0]['task_name']}")
                 agent.construct_memory(replay_buffer)
 
-            agent.reset_target_critic()
-            agent.reset_log_alpha()
+            agent.reset(reset_critic=args.reset_agent)
             replay_buffer.reset()
 
     print('Final evaluating:', args.work_dir)

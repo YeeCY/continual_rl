@@ -1,3 +1,4 @@
+import copy
 import numpy as np
 import torch
 
@@ -72,6 +73,9 @@ class MultiHeadSacMlpAgentV2(SacMlpAgent):
         self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), lr=self.critic_lr)
 
         self.log_alpha_optimizer = torch.optim.Adam([self.log_alpha], lr=self.alpha_lr)
+
+        # save initial parameters
+        self._critic_init_state = copy.deepcopy(self.critic.state_dict())
 
     def act(self, obs, sample=False, **kwargs):
         if not isinstance(obs, torch.Tensor):

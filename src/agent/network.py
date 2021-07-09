@@ -306,6 +306,23 @@ class SacActorMlp(nn.Module):
 
         return mu, pi, log_pi, log_std
 
+    def compute_log_probs(self, obs, action):
+        mu, log_std = self.trunk(obs).chunk(2, dim=-1)
+
+        # constrain log_std inside [log_std_min, log_std_max]
+        log_std = torch.tanh(log_std)
+        log_std = self.log_std_min + 0.5 * (
+                self.log_std_max - self.log_std_min
+        ) * (log_std + 1)
+
+        std = log_std.exp()
+        pi = (action - mu) / (std + 1e-6)
+        log_pi = gaussian_logprob(pi, log_std)
+
+        mu, _, log_pi = squash(mu, None, log_pi)
+
+        return log_pi
+
 
 class MultiHeadSacActorMlp(nn.Module):
     """torch.distributions implementation of an diagonal Gaussian policy with MLP"""
@@ -366,6 +383,24 @@ class MultiHeadSacActorMlp(nn.Module):
         mu, pi, log_pi = squash(mu, pi, log_pi)
 
         return mu, pi, log_pi, log_std
+
+    def compute_log_probs(self, obs, action, head_idx):
+        hidden = self.trunk(obs)
+        mu, log_std, = self.dist_heads[head_idx](hidden).chunk(2, dim=-1)
+
+        # constrain log_std inside [log_std_min, log_std_max]
+        log_std = torch.tanh(log_std)
+        log_std = self.log_std_min + 0.5 * (
+                self.log_std_max - self.log_std_min
+        ) * (log_std + 1)
+
+        std = log_std.exp()
+        pi = (action - mu) / (std + 1e-6)
+        log_pi = gaussian_logprob(pi, log_std)
+
+        mu, _, log_pi = squash(mu, None, log_pi)
+
+        return log_pi
 
 
 class SacCriticMlp(nn.Module):

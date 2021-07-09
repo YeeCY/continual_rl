@@ -1,3 +1,4 @@
+import copy
 import torch
 import numpy as np
 import torch.nn.functional as F
@@ -78,11 +79,21 @@ class SacMlpAgent:
 
         self.log_alpha_optimizer = torch.optim.Adam([self.log_alpha], lr=self.alpha_lr)
 
+        # save initial parameters
+        self._critic_init_state = copy.deepcopy(self.critic.state_dict())
+
     def train(self, training=True):
         self.training = training
         self.actor.train(training)
         self.critic.train(training)
         self.critic_target.train(training)
+
+    def reset(self, reset_critic=False):
+        if reset_critic:
+            self.critic.load_state_dict(self._critic_init_state)
+
+        self.reset_target_critic()
+        self.reset_log_alpha()
 
     def reset_target_critic(self):
         self.critic_target.load_state_dict(self.critic.state_dict())

@@ -107,6 +107,7 @@ def parse_args():
 	parser.add_argument('--sac_ewc_lambda', default=5000, type=float)
 	parser.add_argument('--sac_ewc_estimate_fisher_iters', default=50, type=int)
 	parser.add_argument('--sac_ewc_estimate_fisher_batch_size', default=1000, type=int)
+	parser.add_argument('--sac_ewc_estimate_fisher_rollout_steps', default=1000, type=int)
 	parser.add_argument('--sac_online_ewc', default=False, action='store_true')
 	parser.add_argument('--sac_online_ewc_gamma', default=1.0, type=float)
 
