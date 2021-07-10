@@ -66,8 +66,8 @@ class AgemV2SacMlpAgentV2(SacMlpAgent):
 
             # (chongyi zheng): use PPO style gradient projection loss for actor
             log_pis = self.actor.compute_log_probs(obses, actions)
-            ratio = torch.exp(log_pis - old_log_pis)  # importance sampling ratio
-            proj_actor_loss = ratio * qs
+            ratio = torch.exp(log_pis - old_log_pis.detach())  # importance sampling ratio
+            proj_actor_loss = (ratio * qs.detach()).mean()
 
             self.actor_optimizer.zero_grad()  # clear current gradient
             proj_actor_loss.backward()
