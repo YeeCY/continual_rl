@@ -24,7 +24,8 @@ for seed in "${seeds[@]}"; do
       handle-pull-side-v2 \
       window-open-v2 \
     --env_type metaworld \
-    --algo ewc_v2_mh_sac_mlp_v2 \
+    --algo agem_v2_mh_sac_mlp_v2 \
+    --reset_agent True \
     --train_steps_per_task 500000 \
     --eval_freq 10 \
     --discount 0.99 \
@@ -33,10 +34,9 @@ for seed in "${seeds[@]}"; do
     --sac_num_expl_steps_per_process 1000 \
     --sac_num_processes 1 \
     --sac_num_train_iters 1000 \
-    --sac_ewc_lambda 10000 \
-    --sac_ewc_estimate_fisher_iters 10 \
-    --sac_ewc_estimate_fisher_rollout_steps 1000 \
+    --sac_agem_memory_budget 9000 \
+    --sac_agem_ref_grad_batch_size 4500 \
     --seed $seed \
-    --work_dir $PROJECT_DIR/vec_logs/mh_sac_mlp_v2_overparam256_metaworld_10_tasks_improvement/ewc_lambda10000/$seed \
-    > $PROJECT_DIR/terminal_logs/mh_sac_mlp_v2_overparam256_metaworld_10_tasks_improvement-ewc_lambda10000-seed"$seed".log 2>&1 &
+    --work_dir $PROJECT_DIR/vec_logs/mh_sac_mlp_v2_overparam256_metaworld_10_tasks_improvement_reset_agent/agem_ref_grad_batch_size4500/$seed \
+    > $PROJECT_DIR/terminal_logs/mh_sac_mlp_v2_overparam256_metaworld_10_tasks_improvement_reset_agent-agem_ref_grad_batch_size4500-seed"$seed".log 2>&1 &
 done
