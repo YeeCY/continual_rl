@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from itertools import chain
 
 
@@ -395,12 +396,11 @@ class MultiHeadSacActorMlp(nn.Module):
         ) * (log_std + 1)
 
         std = log_std.exp()
-        pi = (action - mu) / (std + 1e-6)
-        log_pi = gaussian_logprob(pi, log_std)
-        # log_pi = torch.distributions.Independent(
-        #     torch.distributions.Normal(mu, std), 1).log_prob(action)
+        noise = (action - mu) / (std + 1e-6)
+        log_pi = gaussian_logprob(noise, log_std)
 
-        mu, _, log_pi = squash(mu, pi, log_pi)
+        # squash log_pi
+        log_pi -= torch.log(F.relu(1 - action.pow(2)) + 1e-6).sum(-1, keepdim=True)
 
         return log_pi
 

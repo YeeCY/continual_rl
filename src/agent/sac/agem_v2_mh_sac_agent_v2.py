@@ -55,11 +55,11 @@ class AgemV2MultiHeadSacMlpAgentV2(MultiHeadSacMlpAgentV2, AgemV2SacMlpAgentV2):
 
             # (chongyi zheng): use PPO style gradient projection loss for actor
             log_pis = self.actor.compute_log_probs(obses, actions, head_idx=task_id)
-            ratio = torch.exp(log_pis - old_log_pis)  # importance sampling ratio
-            proj_actor_loss = (ratio * qs).mean()
+            ratio = torch.exp(log_pis - old_log_pis.detach())  # importance sampling ratio
+            proj_actor_loss = (ratio * qs.detach()).mean()
 
             self.actor_optimizer.zero_grad()  # clear current gradient
-            proj_actor_loss.backward(retain_graph=True)
+            proj_actor_loss.backward()
 
             single_ref_actor_grad = []
             for param in self.actor.common_parameters():
