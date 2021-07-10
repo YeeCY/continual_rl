@@ -46,6 +46,7 @@ class EwcV2SacMlpAgentV2(SacMlpAgent):
         self.prev_task_fishers = {}
 
     def estimate_fisher(self, env, **kwargs):
+        # TODO (chongyi zheng): save trajectory for KL divergence
         fishers = {}
         obs = env.reset()
         for _ in range(self.ewc_estimate_fisher_iters):

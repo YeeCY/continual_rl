@@ -26,7 +26,7 @@ class AgemV2SacMlpAgentV2(SacMlpAgent):
                  critic_tau=0.005,
                  critic_target_update_freq=2,
                  batch_size=128,
-                 agem_memory_budget=5000,
+                 agem_memory_budget=4500,
                  agem_ref_grad_batch_size=500,
                  ):
         super().__init__(obs_shape, action_shape, action_range, device, actor_hidden_dim, critic_hidden_dim,
@@ -50,7 +50,6 @@ class AgemV2SacMlpAgentV2(SacMlpAgent):
             mem['qs'] = mem['qs'][:size]
 
     def _compute_ref_grad(self):
-        # (chongyi zheng): We compute reference gradients for actor only
         if not self.agem_memories:
             return None
 
@@ -60,27 +59,18 @@ class AgemV2SacMlpAgentV2(SacMlpAgent):
                 0, len(memory['obses']), size=self.agem_ref_grad_batch_size // self.agem_task_count
             )
 
-            obs, action, reward, next_obs, not_done = \
+            obses, actions, rewards, next_obses, not_dones, old_log_pis, qs = \
                 memory['obses'][idxs], memory['actions'][idxs], memory['rewards'][idxs], \
-                memory['next_obses'][idxs], memory['not_dones'][idxs]
+                memory['next_obses'][idxs], memory['not_dones'][idxs], memory['log_pis'], \
+                memory['qs']
 
-            # TODO (chongyi zheng): delete this block
-            # critic_loss = self.compute_critic_loss(obs, action, reward, next_obs, not_done)
-            # self.critic_optimizer.zero_grad()  # clear current gradient
-            # critic_loss.backward()
+            # (chongyi zheng): use PPO style gradient projection loss for actor
+            log_pis = self.actor.compute_log_probs(obses, actions)
+            ratio = torch.exp(log_pis - old_log_pis)  # importance sampling ratio
+            proj_actor_loss = ratio * qs
 
-            # single_ref_critic_grad = []
-            # for param in self.critic.parameters():
-            #     if param.requires_grad:
-            #         single_ref_critic_grad.append(param.grad.detach().clone().flatten())
-            # single_ref_critic_grad = torch.cat(single_ref_critic_grad)
-            # self.critic_optimizer.zero_grad()
-
-            # TODO (chongyi zheng): use PPO style gradient projection loss for actor
-            _, actor_loss, _ = self.compute_actor_and_alpha_loss(
-                obs, compute_alpha_loss=False)
             self.actor_optimizer.zero_grad()  # clear current gradient
-            actor_loss.backward()
+            proj_actor_loss.backward()
 
             single_ref_actor_grad = []
             for param in self.actor.parameters():
@@ -89,26 +79,8 @@ class AgemV2SacMlpAgentV2(SacMlpAgent):
             single_ref_actor_grad = torch.cat(single_ref_actor_grad)
             self.actor_optimizer.zero_grad()
 
-            # TODO (chongyi zheng): delete this block
-            # if compute_alpha_ref_grad:
-            #     self.log_alpha_optimizer.zero_grad()  # clear current gradient
-            #     alpha_loss.backward()
-            #     single_ref_alpha_grad = self.log_alpha.grad.detach().clone()
-            #     self.log_alpha_optimizer.zero_grad()
-            # else:
-            #     single_ref_alpha_grad = None
-
-            # ref_critic_grad.append(single_ref_critic_grad)
             ref_actor_grad.append(single_ref_actor_grad)
-            # if single_ref_alpha_grad is not None:
-            #     ref_alpha_grad.append(single_ref_alpha_grad)
-            # else:
-            #     ref_alpha_grad = None
-
-        # ref_critic_grad = torch.stack(ref_critic_grad).mean(dim=0)
         ref_actor_grad = torch.stack(ref_actor_grad).mean(dim=0)
-        # if ref_alpha_grad is not None:
-        #     ref_alpha_grad = torch.stack(ref_alpha_grad).mean(dim=0)
 
         return ref_actor_grad
 
@@ -141,17 +113,6 @@ class AgemV2SacMlpAgentV2(SacMlpAgent):
         memory_size_per_task = self.agem_memory_budget // (self.agem_task_count + 1)
         self._adjust_memory_size(memory_size_per_task)
 
-        # assert memory_size_per_task <= len(replay_buffer)
-        # random sample transitions
-        # obses, actions, rewards, next_obses, not_dones = replay_buffer.sample(memory_size_per_task)
-        # self.agem_memories[self.agem_task_count] = {
-        #     'obses': obses,
-        #     'actions': actions,
-        #     'rewards': rewards,
-        #     'next_obses': next_obses,
-        #     'not_dones': not_dones,
-        # }
-
         obs = env.reset()
         self.agem_memories[self.agem_task_count] = {
             'obses': [],
@@ -164,27 +125,11 @@ class AgemV2SacMlpAgentV2(SacMlpAgent):
         }
         for _ in range(memory_size_per_task):
             with utils.eval_mode(self):
-                # TODO (chongyi zheng): delete this reference block
-                # def compute_actor_and_alpha_loss(self, obs, compute_alpha_loss=True, **kwargs):
-                #     _, pi, log_pi, log_std = self.actor(obs, **kwargs)
-                #     actor_Q1, actor_Q2 = self.critic(obs, pi, **kwargs)
-                #
-                #     actor_Q = torch.min(actor_Q1, actor_Q2)
-                #     actor_loss = (self.alpha.detach() * log_pi - actor_Q).mean()
-                #
-                #     alpha_loss = None
-                #     if compute_alpha_loss:
-                #         self.log_alpha_optimizer.zero_grad()
-                #         alpha_loss = (self.alpha * (-log_pi - self.target_entropy).detach()).mean()
-                #
-                #     return log_pi, actor_loss, alpha_loss
-
                 # compute log_pi and Q for later gradient projection
                 _, action, log_pi, _ = self.actor(
                     torch.Tensor(obs).to(self.device), compute_pi=True, compute_log_pi=True, **kwargs)
                 actor_Q1, actor_Q2 = self.critic(obs, action, **kwargs)
-                actor_Q = torch.min(actor_Q1, actor_Q2)
-                # actor_loss = (self.alpha.detach() * log_pi - actor_Q).mean()
+                actor_Q = torch.min(actor_Q1, actor_Q2) - self.alpha.detach() * log_pi
 
                 action = utils.to_np(action.clamp(*self.action_range))
 

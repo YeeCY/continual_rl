@@ -7,6 +7,7 @@ from agent.sac.si_sac_agent_v2 import SiSacMlpAgentV2
 from agent.sac.agem_sac_agent import AgemSacMlpAgent
 from agent.sac.agem_sac_agent_v2 import AgemSacMlpAgentV2
 from agent.sac.agem_v2_sac_agent_v2 import AgemV2SacMlpAgentV2
+from agent.sac.agem_v2_sac_agent_v2 import AgemV2SacMlpAgentV2
 from agent.sac.mh_sac_agent import MultiHeadSacMlpAgent
 from agent.sac.mh_sac_agent_v2 import MultiHeadSacMlpAgentV2
 from agent.sac.ewc_mh_sac_agent import EwcMultiHeadSacMlpAgent
@@ -16,3 +17,4 @@ from agent.sac.si_mh_sac_agent import SiMultiHeadSacMlpAgent
 from agent.sac.si_mh_sac_agent_v2 import SiMultiHeadSacMlpAgentV2
 from agent.sac.agem_mh_sac_agent import AgemMultiHeadSacMlpAgent
 from agent.sac.agem_mh_sac_agent_v2 import AgemMultiHeadSacMlpAgentV2
+from agent.sac.agem_v2_mh_sac_agent_v2 import AgemV2MultiHeadSacMlpAgentV2

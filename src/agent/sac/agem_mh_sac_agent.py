@@ -24,7 +24,7 @@ class AgemMultiHeadSacMlpAgent(MultiHeadSacMlpAgent, AgemSacMlpAgent):
                  critic_tau=0.005,
                  critic_target_update_freq=2,
                  batch_size=128,
-                 agem_memory_budget=5000,
+                 agem_memory_budget=4500,
                  agem_ref_grad_batch_size=500,
                  ):
         MultiHeadSacMlpAgent.__init__(self, obs_shape, action_shape, action_range, device, actor_hidden_dim,
