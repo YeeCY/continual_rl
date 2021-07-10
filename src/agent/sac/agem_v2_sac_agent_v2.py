@@ -127,48 +127,47 @@ class AgemV2SacMlpAgentV2(SacMlpAgent):
             with utils.eval_mode(self):
                 # compute log_pi and Q for later gradient projection
                 _, action, log_pi, _ = self.actor(
-                    torch.Tensor(obs).to(self.device), compute_pi=True, compute_log_pi=True, **kwargs)
-                actor_Q1, actor_Q2 = self.critic(obs, action, **kwargs)
+                    torch.as_tensor(obs, device=self.device),
+                    compute_pi=True, compute_log_pi=True, **kwargs)
+                actor_Q1, actor_Q2 = self.critic(
+                    torch.as_tensor(obs, device=self.device), action, **kwargs)
                 actor_Q = torch.min(actor_Q1, actor_Q2) - self.alpha.detach() * log_pi
 
-                action = utils.to_np(action.clamp(*self.action_range))
+                if 'head_idx' in kwargs:
+                    action = utils.to_np(
+                        action.clamp(*self.action_range[kwargs['head_idx']]))
+                else:
+                    action = utils.to_np(action.clamp(*self.action_range))
 
             next_obs, reward, done, _ = env.step(action)
 
-            self.agem_memories[self.agem_task_count]['obs'].append(obs)
-            self.agem_memories[self.agem_task_count]['action'].append(action)
-            self.agem_memories[self.agem_task_count]['next_obs'].append(next_obs)
-            self.agem_memories[self.agem_task_count]['done'].append(done)
-            self.agem_memories[self.agem_task_count]['log_pis'].append(log_pi.clone())
-            self.agem_memories[self.agem_task_count]['qs'].append(actor_Q.clone())
+            self.agem_memories[self.agem_task_count]['obses'].append(obs)
+            self.agem_memories[self.agem_task_count]['actions'].append(action)
+            self.agem_memories[self.agem_task_count]['rewards'].append(reward)
+            self.agem_memories[self.agem_task_count]['next_obses'].append(next_obs)
+            not_done = np.array([not done_ for done_ in done], dtype=np.float32)
+            self.agem_memories[self.agem_task_count]['not_dones'].append(not_done)
+            self.agem_memories[self.agem_task_count]['log_pis'].append(log_pi)
+            self.agem_memories[self.agem_task_count]['qs'].append(actor_Q)
 
             obs = next_obs
 
-        self.agem_memories[self.agem_task_count]['obs'] = torch.as_tensor(
-            self.agem_memories[self.agem_task_count]['obs'], device=self.device)
-        self.agem_memories[self.agem_task_count]['action'] = torch.as_tensor(
-            self.agem_memories[self.agem_task_count]['action'], device=self.device)
-        self.agem_memories[self.agem_task_count]['next_obs'] = torch.as_tensor(
-            self.agem_memories[self.agem_task_count]['next_obs'], device=self.device)
-        self.agem_memories[self.agem_task_count]['done'] = torch.as_tensor(
-            self.agem_memories[self.agem_task_count]['done'], device=self.device)
-        self.agem_memories[self.agem_task_count]['log_pis'] = torch.as_tensor(
-            self.agem_memories[self.agem_task_count]['log_pis'], device=self.device)
-        self.agem_memories[self.agem_task_count]['qs'] = torch.as_tensor(
-            self.agem_memories[self.agem_task_count]['qs'], device=self.device)
+        self.agem_memories[self.agem_task_count]['obses'] = torch.as_tensor(
+            self.agem_memories[self.agem_task_count]['obses'], device=self.device)
+        self.agem_memories[self.agem_task_count]['actions'] = torch.as_tensor(
+            self.agem_memories[self.agem_task_count]['actions'], device=self.device)
+        self.agem_memories[self.agem_task_count]['rewards'] = torch.as_tensor(
+            self.agem_memories[self.agem_task_count]['rewards'], device=self.device).unsqueeze(-1)
+        self.agem_memories[self.agem_task_count]['next_obses'] = torch.as_tensor(
+            self.agem_memories[self.agem_task_count]['next_obses'], device=self.device)
+        self.agem_memories[self.agem_task_count]['not_dones'] = torch.as_tensor(
+            self.agem_memories[self.agem_task_count]['not_dones'], device=self.device).unsqueeze(-1)
+        self.agem_memories[self.agem_task_count]['log_pis'] = torch.cat(
+            self.agem_memories[self.agem_task_count]['log_pis']).unsqueeze(-1)
+        self.agem_memories[self.agem_task_count]['qs'] = torch.cat(
+            self.agem_memories[self.agem_task_count]['qs']).unsqueeze(-1)
 
         self.agem_task_count += 1
-
-    # TODO (chongyi zheng): delete this block
-    # def update_critic(self, critic_loss, logger, step, ref_critic_grad=None):
-    #     # Optimize the critic
-    #     logger.log('train_critic/loss', critic_loss, step)
-    #     self.critic_optimizer.zero_grad()
-    #     critic_loss.backward()
-    #
-    #     self._project_grad(self.critic.parameters(), ref_critic_grad)
-    #
-    #     self.critic_optimizer.step()
 
     def update_actor_and_alpha(self, log_pi, actor_loss, logger, step, alpha_loss=None, ref_actor_grad=None):
         logger.log('train_actor/loss', actor_loss, step)

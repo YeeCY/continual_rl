@@ -42,6 +42,7 @@ class EwcMultiHeadSacMlpAgentV2(MultiHeadSacMlpAgentV2, EwcSacMlpAgentV2):
                                   ewc_estimate_fisher_batch_size, online_ewc, online_ewc_gamma)
 
     def estimate_fisher(self, replay_buffer, **kwargs):
+        # TODO (chongyi zheng): save trajectory for KL divergence
         fishers = {}
         for _ in range(self.ewc_estimate_fisher_iters):
             # with utils.eval_mode(self): (chongyi zheng): is this bug?

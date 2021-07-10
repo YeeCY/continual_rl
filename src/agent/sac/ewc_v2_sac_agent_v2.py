@@ -1,4 +1,5 @@
 import torch
+from torch.distributions import Normal, Independent
 from collections.abc import Iterable
 
 import utils
@@ -44,33 +45,75 @@ class EwcV2SacMlpAgentV2(SacMlpAgent):
         self.ewc_task_count = 0
         self.prev_task_params = {}
         self.prev_task_fishers = {}
+        self.task_rollouts = {}
+
+    def _compute_ewc_loss(self, named_parameters):
+        assert isinstance(named_parameters, Iterable), "'named_parameters' must be a iterator"
+
+        ewc_losses = []
+        if self.ewc_task_count >= 1:
+            if self.online_ewc:
+                for name, param in named_parameters:
+                    if param.grad is not None:
+                        name = name + '_prev_task'
+                        mean = self.prev_task_params[name]
+                        # apply decay-term to the running sum of the Fisher Information matrices
+                        fisher = self.online_ewc_gamma * self.prev_task_fishers[name]
+                        ewc_loss = torch.sum(fisher * (param - mean) ** 2)
+                        ewc_losses.append(ewc_loss)
+            else:
+                for task in range(self.ewc_task_count):
+                    # compute ewc loss for each parameter
+                    for name, param in named_parameters:
+                        if param.grad is not None:
+                            name = name + f'_prev_task{task}'
+                            mean = self.prev_task_params[name]
+                            fisher = self.prev_task_fishers[name]
+                            ewc_loss = torch.sum(fisher * (param - mean) ** 2)
+                            ewc_losses.append(ewc_loss)
+            return torch.sum(torch.stack(ewc_losses)) / 2.0
+        else:
+            return torch.tensor(0.0, device=self.device)
 
     def estimate_fisher(self, env, **kwargs):
         # TODO (chongyi zheng): save trajectory for KL divergence
+        self.task_rollouts[self.ewc_task_count] = []
         fishers = {}
         obs = env.reset()
         for _ in range(self.ewc_estimate_fisher_iters):
-            rollouts = {
+            rollout = {
                 'obs': [],
                 'action': [],
                 'next_obs': [],
                 'done': [],
+                'mu': [],
+                'log_std': [],
             }
             for _ in range(self.ewc_estimate_fisher_rollout_steps):
                 with utils.eval_mode(self):
-                    action = self.act(obs, sample=True, **kwargs)
+                    # action = self.act(obs, sample=True, **kwargs)
+                    # compute log_pi and Q for later gradient projection
+                    mu, action, log_pi, log_std = self.actor(
+                        torch.as_tensor(obs, device=self.device),
+                        compute_pi=True, compute_log_pi=True, **kwargs)
+
+                    action = utils.to_np(action.clamp(*self.action_range))
 
                 next_obs, reward, done, _ = env.step(action)
 
-                rollouts['obs'].append(obs)
-                rollouts['action'].append(action)
-                rollouts['next_obs'].append(next_obs)
-                rollouts['done'].append(done)
+                rollout['obs'].append(obs)
+                rollout['action'].append(action)
+                rollout['next_obs'].append(next_obs)
+                rollout['done'].append(done)
+                rollout['mu'].append(mu)
+                rollout['log_std'].append(log_std)
 
                 obs = next_obs
 
+            self.task_rollouts[self.ewc_task_count].append(rollout)
+
             _, actor_loss, _ = self.compute_actor_and_alpha_loss(
-                torch.as_tensor(rollouts['obs'], device=self.device),
+                torch.as_tensor(rollout['obs'], device=self.device),
                 compute_alpha_loss=False, **kwargs
             )
             self.actor_optimizer.zero_grad()
@@ -103,33 +146,25 @@ class EwcV2SacMlpAgentV2(SacMlpAgent):
 
         self.ewc_task_count += 1
 
-    def _compute_ewc_loss(self, named_parameters):
-        assert isinstance(named_parameters, Iterable), "'named_parameters' must be a iterator"
-
-        ewc_losses = []
-        if self.ewc_task_count >= 1:
-            if self.online_ewc:
-                for name, param in named_parameters:
-                    if param.grad is not None:
-                        name = name + '_prev_task'
-                        mean = self.prev_task_params[name]
-                        # apply decay-term to the running sum of the Fisher Information matrices
-                        fisher = self.online_ewc_gamma * self.prev_task_fishers[name]
-                        ewc_loss = torch.sum(fisher * (param - mean) ** 2)
-                        ewc_losses.append(ewc_loss)
-            else:
-                for task in range(self.ewc_task_count):
-                    # compute ewc loss for each parameter
-                    for name, param in named_parameters:
-                        if param.grad is not None:
-                            name = name + f'_prev_task{task}'
-                            mean = self.prev_task_params[name]
-                            fisher = self.prev_task_fishers[name]
-                            ewc_loss = torch.sum(fisher * (param - mean) ** 2)
-                            ewc_losses.append(ewc_loss)
-            return torch.sum(torch.stack(ewc_losses)) / 2.0
+    def kl_with_optimal_actor(self, task_id):
+        if task_id >= self.ewc_task_count:
+            return -1.0
         else:
-            return torch.tensor(0.0, device=self.device)
+            rollouts = self.task_rollouts[task_id]
+            kls = []
+            for rollout in rollouts:
+                with utils.eval_mode(self):
+                    mu, _, _, log_std = self.actor(
+                        torch.as_tensor(rollout['obs'], device=self.device),
+                        compute_pi=False, compute_log_pi=False)
+
+                optimal_dist = Independent(Normal(
+                    torch.cat(rollout['mu']), torch.cat(rollout['log_std']).exp()), 1)
+                dist = Independent(Normal(mu, log_std.exp()), 1)
+                kl = torch.distributions.kl_divergence(optimal_dist, dist)
+                kls.append(kl)
+
+            return torch.mean(torch.cat(kls))
 
     def update(self, replay_buffer, logger, step, **kwargs):
         obs, action, reward, next_obs, not_done = replay_buffer.sample(self.batch_size)

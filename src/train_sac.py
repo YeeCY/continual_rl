@@ -59,6 +59,10 @@ def evaluate(train_env, eval_env, agent, video, num_episodes, logger, step):
                             episode_successes.append(info.get('success', False))
                             episode_rewards.append(info['episode']['r'])
 
+            if 'ewc_v2' in args.algo:
+                kl_div = agent.kl_with_optimal_actor(task_id)
+                logger.log('eval/kl_divergence', kl_div, step)
+
             # for episode in range(num_episodes):
             #     episode_reward = 0
             #     obs_buf = []
@@ -94,7 +98,7 @@ def evaluate(train_env, eval_env, agent, video, num_episodes, logger, step):
             # }
             if len(episode_successes) > 0:
                 logger.log('eval/success_rate', np.mean(episode_successes), step)
-            logger.log('eval/episode_reward', np.mean(episode_rewards), step, sw_prefix=task_name + '_')
+            logger.log('eval/episode_reward', np.mean(episode_rewards), step)
             log_info = {
                 'eval/task_name': task_name
             }
@@ -419,7 +423,13 @@ def main(args):
                 agent.update_omegas()
             elif 'agem' in args.algo:
                 print(f"Constructing AGEM memory: {infos[0]['task_name']}")
-                agent.construct_memory(replay_buffer)
+                if 'agem_v2' in args.algo:
+                    if 'mh' in args.algo:
+                        agent.construct_memory(env, head_idx=task_id)
+                    else:
+                        agent.construct_memory(env)
+                else:
+                    agent.construct_memory(replay_buffer)
 
             agent.reset(reset_critic=args.reset_agent)
             replay_buffer.reset()

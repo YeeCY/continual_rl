@@ -50,16 +50,16 @@ class AgemV2MultiHeadSacMlpAgentV2(MultiHeadSacMlpAgentV2, AgemV2SacMlpAgentV2):
 
             obses, actions, rewards, next_obses, not_dones, old_log_pis, qs = \
                 memory['obses'][idxs], memory['actions'][idxs], memory['rewards'][idxs], \
-                memory['next_obses'][idxs], memory['not_dones'][idxs], memory['log_pis'], \
-                memory['qs']
+                memory['next_obses'][idxs], memory['not_dones'][idxs], memory['log_pis'][idxs], \
+                memory['qs'][idxs]
 
             # (chongyi zheng): use PPO style gradient projection loss for actor
             log_pis = self.actor.compute_log_probs(obses, actions, head_idx=task_id)
             ratio = torch.exp(log_pis - old_log_pis)  # importance sampling ratio
-            proj_actor_loss = ratio * qs
+            proj_actor_loss = (ratio * qs).mean()
 
             self.actor_optimizer.zero_grad()  # clear current gradient
-            proj_actor_loss.backward()
+            proj_actor_loss.backward(retain_graph=True)
 
             single_ref_actor_grad = []
             for param in self.actor.common_parameters():

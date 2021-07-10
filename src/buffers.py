@@ -88,7 +88,8 @@ class ReplayBuffer:
             np.copyto(self.obses[(self.idx + 1) % self.capacity], next_obs)
         else:
             np.copyto(self.next_obses[self.idx], next_obs)
-        np.copyto(self.not_dones[self.idx], not done)
+        not_done = [not done_ for done_ in done]
+        np.copyto(self.not_dones[self.idx], not_done)
 
         if self.handle_timeout_termination:
             self.timeouts[self.idx] = np.array([info.get("TimeLimit.truncated", False) for info in infos])

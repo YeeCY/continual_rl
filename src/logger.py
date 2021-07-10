@@ -27,7 +27,9 @@ FORMAT_CONFIG = {
         ],
         'eval': [
             ('task_name', 'task_name', 'str'),
-            ('step', 'step', 'int'), ('episode_reward', 'return', 'float'),
+            ('step', 'step', 'int'),
+            ('episode_reward', 'return', 'float'),
+            ('kl_divergence', 'kl_div', 'float'),
             # ('episode_ss_pred_var', 'ss_pred_var', 'float'),
             ('success_rate', 'success_rate', 'float'),
         ]

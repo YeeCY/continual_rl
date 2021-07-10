@@ -2,7 +2,7 @@ from src.agent.dqn_agent import DqnCnnSSEnsembleAgent
 from src.agent.sac import EwcSacMlpAgent, SiSacMlpAgent, AgemSacMlpAgent, SacMlpAgent, \
     MultiHeadSacMlpAgent, EwcMultiHeadSacMlpAgent, SiMultiHeadSacMlpAgent, AgemMultiHeadSacMlpAgent
 from src.agent.sac import MultiHeadSacMlpAgentV2, EwcMultiHeadSacMlpAgentV2, SiMultiHeadSacMlpAgentV2, \
-    AgemMultiHeadSacMlpAgentV2, EwcV2MultiHeadSacMlpAgentV2
+    AgemMultiHeadSacMlpAgentV2, EwcV2MultiHeadSacMlpAgentV2, AgemV2MultiHeadSacMlpAgentV2
 from src.agent.ppo import PpoMlpAgent, EwcPpoMlpAgent, SiPpoMlpAgent, AgemPpoMlpAgent, \
     MultiHeadPpoMlpAgent, EwcMultiHeadPpoMlpAgent, SiMultiHeadPpoMlpAgent, AgemMultiHeadPpoMlpAgent
 from src.agent.ppo import EwcPpoMlpAgentV2, SiPpoMlpAgentV2, AgemPpoMlpAgentV2
@@ -18,7 +18,6 @@ ALGOS = [
     'sac_mlp_ss_ensem',
     'sac_mlp',
     'ewc_sac_mlp',
-    'ewc_v2_sac_agent_v2',
     'si_sac_mlp',
     'agem_sac_mlp',
     'mh_sac_mlp',
@@ -30,6 +29,7 @@ ALGOS = [
     'si_mh_sac_mlp_v2',
     'agem_mh_sac_mlp',
     'agem_mh_sac_mlp_v2',
+    'agem_v2_mh_sac_mlp_v2',
     'ppo_mlp',
     'ewc_ppo_mlp',
     'ewc_ppo_mlp_v2',
@@ -186,6 +186,10 @@ def make_agent(obs_space, action_space, device, args):
             kwargs['agem_memory_budget'] = args.sac_agem_memory_budget
             kwargs['agem_ref_grad_batch_size'] = args.sac_agem_ref_grad_batch_size
             agent = AgemMultiHeadSacMlpAgentV2(**kwargs)
+        elif args.algo == 'agem_v2_mh_sac_mlp_v2':
+            kwargs['agem_memory_budget'] = args.sac_agem_memory_budget
+            kwargs['agem_ref_grad_batch_size'] = args.sac_agem_ref_grad_batch_size
+            agent = AgemV2MultiHeadSacMlpAgentV2(**kwargs)
     elif 'ppo' in args.algo:
         kwargs['hidden_dim'] = args.ppo_hidden_dim
         kwargs['clip_param'] = args.ppo_clip_param

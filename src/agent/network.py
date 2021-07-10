@@ -360,7 +360,7 @@ class MultiHeadSacActorMlp(nn.Module):
 
     def forward(self, obs, head_idx, compute_pi=True, compute_log_pi=True):
         hidden = self.trunk(obs)
-        mu, log_std, = self.dist_heads[head_idx](hidden).chunk(2, dim=-1)
+        mu, log_std = self.dist_heads[head_idx](hidden).chunk(2, dim=-1)
 
         # constrain log_std inside [log_std_min, log_std_max]
         log_std = torch.tanh(log_std)
@@ -386,7 +386,7 @@ class MultiHeadSacActorMlp(nn.Module):
 
     def compute_log_probs(self, obs, action, head_idx):
         hidden = self.trunk(obs)
-        mu, log_std, = self.dist_heads[head_idx](hidden).chunk(2, dim=-1)
+        mu, log_std = self.dist_heads[head_idx](hidden).chunk(2, dim=-1)
 
         # constrain log_std inside [log_std_min, log_std_max]
         log_std = torch.tanh(log_std)
@@ -397,8 +397,10 @@ class MultiHeadSacActorMlp(nn.Module):
         std = log_std.exp()
         pi = (action - mu) / (std + 1e-6)
         log_pi = gaussian_logprob(pi, log_std)
+        # log_pi = torch.distributions.Independent(
+        #     torch.distributions.Normal(mu, std), 1).log_prob(action)
 
-        mu, _, log_pi = squash(mu, None, log_pi)
+        mu, _, log_pi = squash(mu, pi, log_pi)
 
         return log_pi
 
