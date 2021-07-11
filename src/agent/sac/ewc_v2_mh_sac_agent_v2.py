@@ -1,4 +1,5 @@
 import torch
+from torch.distributions import Normal, Independent
 
 import utils
 from agent.sac import MultiHeadSacMlpAgentV2, EwcV2SacMlpAgentV2
@@ -125,9 +126,9 @@ class EwcV2MultiHeadSacMlpAgentV2(MultiHeadSacMlpAgentV2, EwcV2SacMlpAgentV2):
                         torch.as_tensor(rollout['obs'], device=self.device),
                         compute_pi=False, compute_log_pi=False, head_idx=task_id)
 
-                optimal_dist = torch.distributions.Normal(
-                    torch.cat(rollout['mu']), torch.cat(rollout['log_std']).exp())
-                dist = torch.distributions.Normal(mu, log_std.exp())
+                optimal_dist = Independent(Normal(
+                    torch.cat(rollout['mu']), torch.cat(rollout['log_std']).exp()), 1)
+                dist = Independent(Normal(mu, log_std.exp()), 1)
                 kl = torch.distributions.kl_divergence(optimal_dist, dist)
                 kls.append(kl)
 
