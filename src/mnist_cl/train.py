@@ -20,7 +20,7 @@ def train_cl(model, train_datasets, replay_mode="none", scenario="class", classe
     device = model.device()
 
     # Initiate possible sources for replay (no replay for 1st task)
-    exact = False
+    # exact = False
     # previous_model = None
 
     # Register starting param-values (needed for "intelligent synapses").
@@ -53,9 +53,9 @@ def train_cl(model, train_datasets, replay_mode="none", scenario="class", classe
 
         # Initialize # iters left on current data-loader(s)
         iters_left = iters_left_previous = 1
-        if scenario == "task":
-            iters_left_previous = [1] * (task - 1)
-            data_loader_previous = [None] * (task - 1)
+        # if scenario == "task":
+        #     iters_left_previous = [1] * (task - 1)
+        #     data_loader_previous = [None] * (task - 1)
 
         # Define tqdm progress bar(s)
         progress = tqdm.tqdm(range(1, iters + 1))
@@ -95,7 +95,7 @@ def train_cl(model, train_datasets, replay_mode="none", scenario="class", classe
 
             #####-----CURRENT BATCH-----#####
             x, y = next(data_loader)                                    #--> sample training data of current task
-            y = y - classes_per_task*(task-1) if scenario == "task" else y  #--> ITL: adjust y-targets to 'active range'
+            y = y - classes_per_task * (task - 1) if scenario == "task" else y  #--> ITL: adjust y-targets to 'active range'
             x, y = x.to(device), y.to(device)                           #--> transfer them to correct device
 
             #####-----REPLAYED BATCH-----#####

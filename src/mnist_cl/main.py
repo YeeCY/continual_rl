@@ -9,6 +9,7 @@ from src.mnist_cl.train import train_cl
 from src.mnist_cl.ewc_classifier import EwcClassifier
 from src.mnist_cl.si_classifier import SiClassifier
 from src.mnist_cl.agem_classifier import AgemClassifier
+from src.mnist_cl.cmaml_classifier import CmamlClassfier
 from src.mnist_cl import callbacks as cb
 from src.mnist_cl.param_stamp import get_param_stamp
 
@@ -40,6 +41,10 @@ def main(args):
             c=args.si_c, epsilon=args.si_epsilon, device=device)
     elif args.agem:
         model = AgemClassifier(
+            config['size'], config['channels'], config['classes'], hidden_units=args.hidden_units,
+            memory_budget=args.budget, device=device)
+    elif args.cmaml:
+        model = CmamlClassfier(
             config['size'], config['channels'], config['classes'], hidden_units=args.hidden_units,
             memory_budget=args.budget, device=device)
     else:
@@ -80,7 +85,8 @@ def main(args):
 
     precs = [evaluate.validate(
         model, test_datasets[i], verbose=False, test_size=None, task=i + 1, with_exemplars=False,
-        allowed_classes=list(range(classes_per_task*i, classes_per_task*(i+1))) if args.scenario == "task" else None
+        allowed_classes=list(range(classes_per_task * i, classes_per_task * (i + 1)))
+        if args.scenario == "task" else None
     ) for i in range(args.num_tasks)]
     average_precs = sum(precs) / args.num_tasks
     # -print on screen

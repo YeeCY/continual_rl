@@ -35,7 +35,7 @@ def get_dataset(name, type='train', download=True, capacity=None, permutation=No
     ])
 
     # load data-set
-    dataset = dataset_class('{dir}/{name}'.format(dir=dir, name=data_name), train=False if type=='test' else True,
+    dataset = dataset_class('{dir}/{name}'.format(dir=dir, name=data_name), train=False if type == 'test' else True,
                             download=download, transform=dataset_transform, target_transform=target_transform)
 
     # print information about dataset on the screen
@@ -195,7 +195,7 @@ def get_multitask_experiment(name, scenario, num_tasks, data_dir="./datasets", v
         test_datasets = []
         for task_id, perm in enumerate(permutations):
             target_transform = transforms.Lambda(
-                lambda y, x=task_id: y + x*classes_per_task
+                lambda y, x=task_id: y + x * classes_per_task
             ) if scenario in ('task', 'class') else None
             train_datasets.append(TransformedDataset(
                 train_dataset, transform=transforms.Lambda(lambda x, p=perm: _permutate_image_pixels(x, p)),

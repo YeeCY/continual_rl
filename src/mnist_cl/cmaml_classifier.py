@@ -6,10 +6,9 @@ from torch import optim
 from src.mnist_cl import utils
 
 
-class EwcClassifier(nn.Module):
+class CmamlClassfier(nn.Module):
     def __init__(self, image_size, image_channels, classes, hidden_units=400, lr=0.001,
-                 lam=5000, fisher_sample_size=None,
-                 online=False, gamma=1.0, device=None):
+                 memory_budget=2000, device=None):
 
         super().__init__()
         self.image_size = image_size
@@ -132,7 +131,7 @@ class EwcClassifier(nn.Module):
         y_hat = self(x)
         # -if needed, remove predictions for classes not in current task
         if active_classes is not None:
-            class_entries = active_classes[-1] if type(active_classes[0]) == list else active_classes
+            class_entries = active_classes[-1] if type(active_classes[0])==list else active_classes
             y_hat = y_hat[:, class_entries]
 
         # Calculate prediction loss
@@ -158,4 +157,3 @@ class EwcClassifier(nn.Module):
             'ewc_loss': ewc_loss.item(),
             'precision': precision if precision is not None else 0.,
         }
-
