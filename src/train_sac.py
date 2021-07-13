@@ -235,7 +235,7 @@ def main(args):
             device=device,
             optimize_memory_usage=True,
         )
-    elif args.env_type == 'metaworld':
+    else:
         replay_buffer = buffers.ReplayBuffer(
             obs_space=env.observation_space,
             action_space=env.action_space,
