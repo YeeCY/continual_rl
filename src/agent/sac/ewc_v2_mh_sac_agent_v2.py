@@ -61,7 +61,7 @@ class EwcV2MultiHeadSacMlpAgentV2(MultiHeadSacMlpAgentV2, EwcV2SacMlpAgentV2):
                     # action = self.act(obs, sample=True, **kwargs)
                     # compute log_pi and Q for later gradient projection
                     mu, action, log_pi, log_std = self.actor(
-                        torch.as_tensor(obs, device=self.device),
+                        torch.Tensor(obs).to(self.device),
                         compute_pi=True, compute_log_pi=True, **kwargs)
 
                     assert 'head_idx' in kwargs
@@ -82,7 +82,7 @@ class EwcV2MultiHeadSacMlpAgentV2(MultiHeadSacMlpAgentV2, EwcV2SacMlpAgentV2):
             self.task_rollouts[self.ewc_task_count].append(rollout)
 
             _, actor_loss, _ = self.compute_actor_and_alpha_loss(
-                torch.as_tensor(rollout['obs'], device=self.device),
+                torch.Tensor(rollout['obs']).to(self.device),
                 compute_alpha_loss=False, **kwargs
             )
             self.actor_optimizer.zero_grad()
@@ -123,7 +123,7 @@ class EwcV2MultiHeadSacMlpAgentV2(MultiHeadSacMlpAgentV2, EwcV2SacMlpAgentV2):
             for rollout in self.task_rollouts[task_id]:
                 with utils.eval_mode(self):
                     mu, _, _, log_std = self.actor(
-                        torch.as_tensor(rollout['obs'], device=self.device),
+                        torch.Tensor(rollout['obs']).to(self.device),
                         compute_pi=False, compute_log_pi=False, head_idx=task_id)
 
                 optimal_dist = Independent(Normal(
