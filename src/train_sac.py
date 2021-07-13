@@ -41,7 +41,7 @@ def evaluate(train_env, eval_env, agent, video, num_episodes, logger, step):
             while len(episode_rewards) < num_episodes:
                 with utils.eval_mode(agent):
                     with utils.eval_mode(agent):
-                        if 'mh' in args.algo:
+                        if any(x in args.algo for x in ['mh', 'mi', 'individual']):
                             action = agent.act(obs, sample=False, head_idx=task_id)
                         else:
                             action = agent.act(obs, sample=False)
@@ -159,7 +159,7 @@ def main(args):
             args.discount, train_env_log_dir,
             allow_early_resets=True,
             normalize=False,
-            multi_head=True if 'mh' in args.algo else False,
+            multi_head=True if any(x in args.algo for x in ['mh', 'mi', 'individual']) else False,
             add_onehot=args.add_onehot,
         )
 
@@ -168,7 +168,7 @@ def main(args):
             None, eval_env_log_dir,
             allow_early_resets=True,
             normalize=False,
-            multi_head=True if 'mh' in args.algo else False,
+            multi_head=True if any(x in args.algo for x in ['mh', 'mi', 'individual']) else False,
             add_onehot=args.add_onehot,
         )
 
@@ -244,7 +244,9 @@ def main(args):
 
     agent = make_agent(
         obs_space=env.observation_space,
-        action_space=env.all_action_spaces if 'mh' in args.algo else env.action_space,
+        action_space=env.all_action_spaces
+        if any(x in args.algo for x in ['mh', 'mi', 'individual'])
+        else env.action_space,
         device=device,
         args=args
     )
@@ -305,7 +307,7 @@ def main(args):
                                            for _ in range(env.unwrapped.num_envs)])
                     else:
                         with utils.eval_mode(agent):
-                            if 'mh' in args.algo:
+                            if any(x in args.algo for x in ['mh', 'mi', 'individual']):
                                 action = agent.act(obs, sample=True, head_idx=task_id)
                             else:
                                 action = agent.act(obs, sample=True)
@@ -330,7 +332,7 @@ def main(args):
 
                 if task_steps >= args.sac_init_steps:
                     for _ in range(args.sac_num_train_iters):
-                        if 'mh' in args.algo:
+                        if any(x in args.algo for x in ['mh', 'mi', 'individual']):
                             agent.update(replay_buffer, logger, total_steps, head_idx=task_id)
                         else:
                             agent.update(replay_buffer, logger, total_steps)
@@ -409,12 +411,12 @@ def main(args):
             if 'ewc' in args.algo:
                 print(f"Estimating EWC fisher: {infos[0]['task_name']}")
                 if 'ewc_v2' in args.algo:
-                    if 'mh' in args.algo:
+                    if any(x in args.algo for x in ['mh', 'mi', 'individual']):
                         agent.estimate_fisher(env, head_idx=task_id)
                     else:
                         agent.estimate_fisher(env)
                 else:
-                    if 'mh' in args.algo:
+                    if any(x in args.algo for x in ['mh', 'mi', 'individual']):
                         agent.estimate_fisher(replay_buffer, head_idx=task_id)
                     else:
                         agent.estimate_fisher(replay_buffer)
@@ -424,7 +426,7 @@ def main(args):
             elif 'agem' in args.algo:
                 print(f"Constructing AGEM memory: {infos[0]['task_name']}")
                 if 'agem_v2' in args.algo:
-                    if 'mh' in args.algo:
+                    if any(x in args.algo for x in ['mh', 'mi', 'individual']):
                         agent.construct_memory(env, head_idx=task_id)
                     else:
                         agent.construct_memory(env)
