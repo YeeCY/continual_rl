@@ -119,8 +119,8 @@ def main(args):
             multi_head=True if 'mh' in args.algo else False,
         )
         eval_env = make_continual_vec_envs(
-            args.env_names, args.seed + args.ppo_num_processes,
-            args.ppo_num_processes, None, eval_env_log_dir,
+            args.env_names, args.seed, args.ppo_num_processes,
+            None, eval_env_log_dir,
             allow_early_resets=True,
             multi_head=True if 'mh' in args.algo else False,
         )

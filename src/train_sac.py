@@ -133,24 +133,26 @@ def main(args):
         #     frame_stack=args.frame_stack
         # )
         pass
+    elif args.env_type == 'mujoco':
+        train_env_log_dir = utils.make_dir(os.path.join(args.work_dir, 'train_env'))
+        eval_env_log_dir = utils.make_dir(os.path.join(args.work_dir, 'eval_env'))
+        env = make_continual_vec_envs(
+            args.env_names, args.seed, args.sac_num_processes,
+            args.discount, train_env_log_dir,
+            allow_early_resets=True,
+            normalize=False,
+            multi_head=True if any(x in args.algo for x in ['mh', 'mi', 'individual']) else False,
+            add_onehot=args.add_onehot,
+        )
+        eval_env = make_continual_vec_envs(
+            args.env_names, args.seed, args.sac_num_processes,
+            None, eval_env_log_dir,
+            allow_early_resets=True,
+            normalize=False,
+            multi_head=True if any(x in args.algo for x in ['mh', 'mi', 'individual']) else False,
+            add_onehot=args.add_onehot,
+        )
     elif args.env_type == 'metaworld':
-        # environment = make_single_metaworld_env(
-        #     env_name=args.env_name,
-        #     seed=args.seed
-        # )
-        # eval_env = make_single_metaworld_env(
-        #     env_name=args.env_name,
-        #     seed=args.seed
-        # )
-        # env = make_continual_metaworld_env(
-        #     env_names=args.env_names,
-        #     seed=args.seed
-        # )
-        # # eval_env = copy.deepcopy(env)
-        # eval_env = make_continual_metaworld_env(
-        #     env_names=args.env_names,
-        #     seed=args.seed
-        # )
         train_env_log_dir = utils.make_dir(os.path.join(args.work_dir, 'train_env'))
         eval_env_log_dir = utils.make_dir(os.path.join(args.work_dir, 'eval_env'))
 
