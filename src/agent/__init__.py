@@ -2,7 +2,9 @@ from src.agent.dqn_agent import DqnCnnSSEnsembleAgent
 from src.agent.sac import EwcSacMlpAgent, SiSacMlpAgent, AgemSacMlpAgent, SacMlpAgent, \
     MultiHeadSacMlpAgent, EwcMultiHeadSacMlpAgent, SiMultiHeadSacMlpAgent, AgemMultiHeadSacMlpAgent
 from src.agent.sac import MultiHeadSacMlpAgentV2, EwcMultiHeadSacMlpAgentV2, SiMultiHeadSacMlpAgentV2, \
-    AgemMultiHeadSacMlpAgentV2, EwcV2MultiHeadSacMlpAgentV2, AgemV2MultiHeadSacMlpAgentV2
+    AgemMultiHeadSacMlpAgentV2, EwcV2MultiHeadSacMlpAgentV2, AgemV2MultiHeadSacMlpAgentV2, \
+    IndividualSacMlpAgentV2, EwcV2MultiInputSacMlpAgentV2, AgemV2MultiInputSacMlpAgentV2, \
+    SiMultiInputSacMlpAgentV2
 from src.agent.ppo import PpoMlpAgent, EwcPpoMlpAgent, SiPpoMlpAgent, AgemPpoMlpAgent, \
     MultiHeadPpoMlpAgent, EwcMultiHeadPpoMlpAgent, SiMultiHeadPpoMlpAgent, AgemMultiHeadPpoMlpAgent
 from src.agent.ppo import EwcPpoMlpAgentV2, SiPpoMlpAgentV2, AgemPpoMlpAgentV2
@@ -22,14 +24,18 @@ ALGOS = [
     'agem_sac_mlp',
     'mh_sac_mlp',
     'mh_sac_mlp_v2',
+    'individual_sac_mlp_v2',
     'ewc_mh_sac_mlp',
     'ewc_mh_sac_mlp_v2',
     'ewc_v2_mh_sac_mlp_v2',
+    'ewc_v2_mi_sac_mlp_v2',
     'si_mh_sac_mlp',
     'si_mh_sac_mlp_v2',
+    'si_mi_sac_mlp_v2',
     'agem_mh_sac_mlp',
     'agem_mh_sac_mlp_v2',
     'agem_v2_mh_sac_mlp_v2',
+    'agem_v2_mi_sac_mlp_v2',
     'ppo_mlp',
     'ewc_ppo_mlp',
     'ewc_ppo_mlp_v2',
@@ -149,6 +155,8 @@ def make_agent(obs_space, action_space, device, args):
             agent = MultiHeadSacMlpAgent(**kwargs)
         elif args.algo == 'mh_sac_mlp_v2':
             agent = MultiHeadSacMlpAgentV2(**kwargs)
+        elif args.algo == 'individual_sac_mlp_v2':
+            agent = IndividualSacMlpAgentV2(**kwargs)
         elif args.algo == 'ewc_mh_sac_mlp':
             kwargs['ewc_lambda'] = args.sac_ewc_lambda
             kwargs['ewc_estimate_fisher_iters'] = args.sac_ewc_estimate_fisher_iters
@@ -170,6 +178,13 @@ def make_agent(obs_space, action_space, device, args):
             kwargs['online_ewc'] = args.sac_online_ewc
             kwargs['online_ewc_gamma'] = args.sac_online_ewc_gamma
             agent = EwcV2MultiHeadSacMlpAgentV2(**kwargs)
+        elif args.algo == 'ewc_v2_mi_sac_mlp_v2':
+            kwargs['ewc_lambda'] = args.sac_ewc_lambda
+            kwargs['ewc_estimate_fisher_iters'] = args.sac_ewc_estimate_fisher_iters
+            kwargs['ewc_estimate_fisher_rollout_steps'] = args.sac_ewc_estimate_fisher_rollout_steps
+            kwargs['online_ewc'] = args.sac_online_ewc
+            kwargs['online_ewc_gamma'] = args.sac_online_ewc_gamma
+            agent = EwcV2MultiInputSacMlpAgentV2(**kwargs)
         elif args.algo == 'si_mh_sac_mlp':
             kwargs['si_c'] = args.sac_si_c
             kwargs['si_epsilon'] = args.sac_si_epsilon
@@ -178,6 +193,10 @@ def make_agent(obs_space, action_space, device, args):
             kwargs['si_c'] = args.sac_si_c
             kwargs['si_epsilon'] = args.sac_si_epsilon
             agent = SiMultiHeadSacMlpAgentV2(**kwargs)
+        elif args.algo == 'si_mi_sac_mlp_v2':
+            kwargs['si_c'] = args.sac_si_c
+            kwargs['si_epsilon'] = args.sac_si_epsilon
+            agent = SiMultiInputSacMlpAgentV2(**kwargs)
         elif args.algo == 'agem_mh_sac_mlp':
             kwargs['agem_memory_budget'] = args.sac_agem_memory_budget
             kwargs['agem_ref_grad_batch_size'] = args.sac_agem_ref_grad_batch_size
@@ -190,6 +209,10 @@ def make_agent(obs_space, action_space, device, args):
             kwargs['agem_memory_budget'] = args.sac_agem_memory_budget
             kwargs['agem_ref_grad_batch_size'] = args.sac_agem_ref_grad_batch_size
             agent = AgemV2MultiHeadSacMlpAgentV2(**kwargs)
+        elif args.algo == 'agem_v2_mi_sac_mlp_v2':
+            kwargs['agem_memory_budget'] = args.sac_agem_memory_budget
+            kwargs['agem_ref_grad_batch_size'] = args.sac_agem_ref_grad_batch_size
+            agent = AgemV2MultiInputSacMlpAgentV2(**kwargs)
     elif 'ppo' in args.algo:
         kwargs['hidden_dim'] = args.ppo_hidden_dim
         kwargs['clip_param'] = args.ppo_clip_param

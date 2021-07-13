@@ -10,11 +10,16 @@ from agent.sac.agem_v2_sac_agent_v2 import AgemV2SacMlpAgentV2
 from agent.sac.agem_v2_sac_agent_v2 import AgemV2SacMlpAgentV2
 from agent.sac.mh_sac_agent import MultiHeadSacMlpAgent
 from agent.sac.mh_sac_agent_v2 import MultiHeadSacMlpAgentV2
+from agent.sac.individual_sac_agent_v2 import IndividualSacMlpAgentV2
+from agent.sac.mi_sac_agent_v2 import MultiInputSacMlpAgentV2
 from agent.sac.ewc_mh_sac_agent import EwcMultiHeadSacMlpAgent
 from agent.sac.ewc_mh_sac_agent_v2 import EwcMultiHeadSacMlpAgentV2
 from agent.sac.ewc_v2_mh_sac_agent_v2 import EwcV2MultiHeadSacMlpAgentV2
+from agent.sac.ewc_v2_mi_sac_agent_v2 import EwcV2MultiInputSacMlpAgentV2
 from agent.sac.si_mh_sac_agent import SiMultiHeadSacMlpAgent
 from agent.sac.si_mh_sac_agent_v2 import SiMultiHeadSacMlpAgentV2
+from agent.sac.si_mi_sac_agent_v2 import SiMultiInputSacMlpAgentV2
 from agent.sac.agem_mh_sac_agent import AgemMultiHeadSacMlpAgent
 from agent.sac.agem_mh_sac_agent_v2 import AgemMultiHeadSacMlpAgentV2
 from agent.sac.agem_v2_mh_sac_agent_v2 import AgemV2MultiHeadSacMlpAgentV2
+from agent.sac.agem_v2_mi_sac_agent_v2 import AgemV2MultiInputSacMlpAgentV2
