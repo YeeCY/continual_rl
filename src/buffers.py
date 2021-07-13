@@ -37,19 +37,17 @@ class ReplayBuffer:
         # the proprioceptive obs is stored as float32, pixels obs as uint8
         obs_shape = obs_space.shape
         action_shape = action_space.shape
-        obs_type = obs_space.dtype
-        action_type = action_space.dtype
 
-        self.obses = np.empty((capacity, n_envs, *obs_shape), dtype=obs_type)
+        self.obses = np.empty((capacity, n_envs, *obs_shape), dtype=np.float32)
         if self.optimize_memory_usage:
             # `observations` contains also the next observation
             self.next_obses = None
         else:
-            self.next_obses = np.empty((capacity, n_envs, *obs_shape), dtype=obs_type)
+            self.next_obses = np.empty((capacity, n_envs, *obs_shape), dtype=np.float32)
         if isinstance(action_space, gym.spaces.Discrete):
-            self.actions = np.empty((capacity, n_envs, 1), dtype=action_type)
+            self.actions = np.empty((capacity, n_envs, 1), dtype=np.int32)
         elif isinstance(action_space, gym.spaces.Box):
-            self.actions = np.empty((capacity, n_envs, *action_shape), dtype=action_type)
+            self.actions = np.empty((capacity, n_envs, *action_shape), dtype=np.float32)
         else:
             raise TypeError(f"Unknown action space type: {type(action_space)}")
         self.rewards = np.empty((capacity, n_envs, 1), dtype=np.float32)
