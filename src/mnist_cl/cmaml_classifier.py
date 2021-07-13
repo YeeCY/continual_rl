@@ -50,6 +50,7 @@ class CmamlClassfier(nn.Module):
         return self.trunk(x)
 
     def inner_update(self, x, y, task):
+        pass
 
     def train_a_batch(self, x, y, active_classes=None):
         # Set model to training-mode
