@@ -127,10 +127,10 @@ class AgemV2SacMlpAgentV2(SacMlpAgent):
             with utils.eval_mode(self):
                 # compute log_pi and Q for later gradient projection
                 _, action, log_pi, _ = self.actor(
-                    torch.as_tensor(obs, device=self.device),
+                    torch.Tensor(obs).to(device=self.device),
                     compute_pi=True, compute_log_pi=True, **kwargs)
                 actor_Q1, actor_Q2 = self.critic(
-                    torch.as_tensor(obs, device=self.device), action, **kwargs)
+                    torch.Tensor(obs).to(device=self.device), action, **kwargs)
                 actor_Q = torch.min(actor_Q1, actor_Q2) - self.alpha.detach() * log_pi
 
                 if 'head_idx' in kwargs:
@@ -152,16 +152,16 @@ class AgemV2SacMlpAgentV2(SacMlpAgent):
 
             obs = next_obs
 
-        self.agem_memories[self.agem_task_count]['obses'] = torch.as_tensor(
-            self.agem_memories[self.agem_task_count]['obses'], device=self.device)
-        self.agem_memories[self.agem_task_count]['actions'] = torch.as_tensor(
-            self.agem_memories[self.agem_task_count]['actions'], device=self.device)
-        self.agem_memories[self.agem_task_count]['rewards'] = torch.as_tensor(
-            self.agem_memories[self.agem_task_count]['rewards'], device=self.device).unsqueeze(-1)
-        self.agem_memories[self.agem_task_count]['next_obses'] = torch.as_tensor(
-            self.agem_memories[self.agem_task_count]['next_obses'], device=self.device)
-        self.agem_memories[self.agem_task_count]['not_dones'] = torch.as_tensor(
-            self.agem_memories[self.agem_task_count]['not_dones'], device=self.device).unsqueeze(-1)
+        self.agem_memories[self.agem_task_count]['obses'] = torch.Tensor(
+            self.agem_memories[self.agem_task_count]['obses']).to(device=self.device)
+        self.agem_memories[self.agem_task_count]['actions'] = torch.Tensor(
+            self.agem_memories[self.agem_task_count]['actions']).to(device=self.device)
+        self.agem_memories[self.agem_task_count]['rewards'] = torch.Tensor(
+            self.agem_memories[self.agem_task_count]['rewards']).to(device=self.device).unsqueeze(-1)
+        self.agem_memories[self.agem_task_count]['next_obses'] = torch.Tensor(
+            self.agem_memories[self.agem_task_count]['next_obses']).to(device=self.device)
+        self.agem_memories[self.agem_task_count]['not_dones'] = torch.Tensor(
+            self.agem_memories[self.agem_task_count]['not_dones']).to(device=self.device).unsqueeze(-1)
         self.agem_memories[self.agem_task_count]['log_pis'] = torch.cat(
             self.agem_memories[self.agem_task_count]['log_pis']).unsqueeze(-1)
         self.agem_memories[self.agem_task_count]['qs'] = torch.cat(

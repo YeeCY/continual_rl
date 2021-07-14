@@ -29,7 +29,7 @@ for seed in "${seeds[@]}"; do
       Swimmer-v3 \
       Humanoid-v3 \
     --env_type mujoco \
-    --algo agem_v2_mh_sac_mlp_v2 \
+    --algo si_mh_sac_mlp_v2 \
     --train_steps_per_task 1000000 \
     --eval_freq 10 \
     --discount 0.99 \
