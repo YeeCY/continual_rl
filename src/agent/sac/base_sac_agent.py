@@ -147,7 +147,6 @@ class SacMlpAgent:
 
         alpha_loss = None
         if compute_alpha_loss:
-            self.log_alpha_optimizer.zero_grad()
             alpha_loss = (self.alpha * (-log_pi - self.target_entropy).detach()).mean()
 
         return log_pi, actor_loss, alpha_loss
