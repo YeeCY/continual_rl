@@ -4,7 +4,7 @@ from src.agent.sac import EwcSacMlpAgent, SiSacMlpAgent, AgemSacMlpAgent, SacMlp
 from src.agent.sac import MultiHeadSacMlpAgentV2, EwcMultiHeadSacMlpAgentV2, SiMultiHeadSacMlpAgentV2, \
     AgemMultiHeadSacMlpAgentV2, EwcV2MultiHeadSacMlpAgentV2, AgemV2MultiHeadSacMlpAgentV2, \
     IndividualSacMlpAgentV2, EwcV2MultiInputSacMlpAgentV2, AgemV2MultiInputSacMlpAgentV2, \
-    SiMultiInputSacMlpAgentV2
+    SiMultiInputSacMlpAgentV2, MultiInputSacMlpAgentV2
 from src.agent.ppo import PpoMlpAgent, EwcPpoMlpAgent, SiPpoMlpAgent, AgemPpoMlpAgent, \
     MultiHeadPpoMlpAgent, EwcMultiHeadPpoMlpAgent, SiMultiHeadPpoMlpAgent, AgemMultiHeadPpoMlpAgent
 from src.agent.ppo import EwcPpoMlpAgentV2, SiPpoMlpAgentV2, AgemPpoMlpAgentV2
@@ -24,6 +24,7 @@ ALGOS = [
     'agem_sac_mlp',
     'mh_sac_mlp',
     'mh_sac_mlp_v2',
+    'mi_sac_mlp_v2',
     'individual_sac_mlp_v2',
     'ewc_mh_sac_mlp',
     'ewc_mh_sac_mlp_v2',
@@ -155,6 +156,8 @@ def make_agent(obs_space, action_space, device, args):
             agent = MultiHeadSacMlpAgent(**kwargs)
         elif args.algo == 'mh_sac_mlp_v2':
             agent = MultiHeadSacMlpAgentV2(**kwargs)
+        elif args.algo == 'mi_sac_mlp_v2':
+            agent = MultiInputSacMlpAgentV2(**kwargs)
         elif args.algo == 'individual_sac_mlp_v2':
             agent = IndividualSacMlpAgentV2(**kwargs)
         elif args.algo == 'ewc_mh_sac_mlp':
