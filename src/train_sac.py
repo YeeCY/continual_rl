@@ -436,7 +436,17 @@ def main(args):
                     agent.construct_memory(replay_buffer)
 
             agent.reset(reset_critic=args.reset_agent)
-            replay_buffer.reset()
+            # replay_buffer.reset()
+
+            # reset replay buffer
+            del replay_buffer
+            replay_buffer = buffers.ReplayBuffer(
+                obs_space=env.observation_space,
+                action_space=env.action_space,
+                capacity=args.replay_buffer_capacity,
+                device=device,
+                optimize_memory_usage=True,
+            )
 
     print('Final evaluating:', args.work_dir)
     evaluate(env, eval_env, agent, video, args.num_eval_episodes, logger, total_steps)
