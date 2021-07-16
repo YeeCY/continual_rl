@@ -8,6 +8,7 @@ from src.mnist_cl import utils
 from src.mnist_cl.ewc_classifier import EwcClassifier
 from src.mnist_cl.si_classifier import SiClassifier
 from src.mnist_cl.agem_classifier import AgemClassifier
+from src.mnist_cl.cmaml_classifier import CmamlClassfier
 
 
 def train_cl(model, train_datasets, replay_mode="none", scenario="class", classes_per_task=None, iters=2000,
@@ -127,6 +128,8 @@ def train_cl(model, train_datasets, replay_mode="none", scenario="class", classe
                 elif isinstance(model, SiClassifier):
                     loss_dict = model.train_a_batch(x, y, active_classes=active_classes)
                 elif isinstance(model, AgemClassifier):
+                    loss_dict = model.train_a_batch(x, y, active_classes=active_classes)
+                elif isinstance(model, CmamlClassfier):
                     loss_dict = model.train_a_batch(x, y, active_classes=active_classes)
                 else:
                     raise RuntimeError(f"Unknown model type: {type(model)}")

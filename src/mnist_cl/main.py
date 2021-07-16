@@ -42,11 +42,12 @@ def main(args):
     elif args.agem:
         model = AgemClassifier(
             config['size'], config['channels'], config['classes'], hidden_units=args.hidden_units,
-            memory_budget=args.budget, device=device)
+            memory_budget=args.agem_memory_budget, device=device)
     elif args.cmaml:
         model = CmamlClassfier(
             config['size'], config['channels'], config['classes'], hidden_units=args.hidden_units,
-            memory_budget=args.budget, device=device)
+            fast_lr=args.cmaml_fast_lr, meta_lr=args.cmaml_meta_lr, memory_budget=args.cmaml_memory_budget,
+            grad_clip_norm=args.cmaml_grad_clip_norm, first_order=args.cmaml_first_order, device=device)
     else:
         raise RuntimeError("Unknown algorithm")
 
@@ -89,6 +90,7 @@ def main(args):
         if args.scenario == "task" else None
     ) for i in range(args.num_tasks)]
     average_precs = sum(precs) / args.num_tasks
+
     # -print on screen
     print("\n Precision on test-set")
     for i in range(args.num_tasks):
@@ -102,6 +104,16 @@ def main(args):
 
 
 if __name__ == "__main__":
+    def str2bool(v):
+        if isinstance(v, bool):
+            return v
+        if v.lower() in ('yes', 'true', 't', 'y', '1'):
+            return True
+        elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+            return False
+        else:
+            raise argparse.ArgumentTypeError('Boolean value expected.')
+
     parser = argparse.ArgumentParser()
 
     # common
@@ -112,7 +124,7 @@ if __name__ == "__main__":
     parser.add_argument('--result_dir', type=str, default='./results', help="default: %(default)s")
     parser.add_argument('--seed', type=int, default=0, help='random seed (for each random-module used)')
 
-    parser.add_argument('--iters', type=int, default=2000, help="# batches to optimize solver")  # splitMNIST = 2000, permMNIST = 5000
+    parser.add_argument('--iters', type=int, default=500, help="# batches to optimize solver")  # splitMNIST = 2000, permMNIST = 5000
     parser.add_argument('--lr', type=float, default=0.001, help="learning rate")  # splitMNIST = 0.001, permMNIST = 0.0001
     parser.add_argument('--batch_size', type=int, default=128, help="batch size")
     parser.add_argument('--hidden_units', type=int, default=400, help="fully connected layer hidden units")  # splitMNIST = 400, permMNIST = 1000
@@ -121,23 +133,30 @@ if __name__ == "__main__":
     # exemplars
     replay_choices = ['none', 'exemplars']
     parser.add_argument('--replay', type=str, default='none', choices=replay_choices)
-    parser.add_argument('--budget', type=int, default=1000, dest="budget", help="how many samples can be stored?")
 
     # ewc
-    parser.add_argument('--ewc', action='store_true', help="use 'EWC' (Kirkpatrick et al, 2017)")
-    parser.add_argument('--ewc_lambda', type=float, default=500, help="--> EWC: regularisation strength")
-    parser.add_argument('--ewc_fisher_sample_size', type=int,
-                        help="--> EWC: sample size estimating Fisher Information")
-    parser.add_argument('--ewc_online', action='store_true', default=False, help="--> EWC: perform 'online EWC'")
-    parser.add_argument('--ewc_gamma', type=float, default=1.0, help="--> EWC: forgetting coefficient (for 'online EWC')")
+    parser.add_argument('--ewc', type=str2bool, default=False)
+    parser.add_argument('--ewc_lambda', type=float, default=500)
+    parser.add_argument('--ewc_fisher_sample_size', type=int)
+    parser.add_argument('--ewc_online', type=str2bool, default=False)
+    parser.add_argument('--ewc_gamma', type=float, default=1.0)
 
     # si
-    parser.add_argument('--si', action='store_true', help="use 'Synaptic Intelligence' (Zenke, Poole et al, 2017)")
-    parser.add_argument('--si_c', type=float, default=1.0, help="--> SI: regularisation strength")
-    parser.add_argument('--si_epsilon', type=float, default=0.1, help="--> SI: dampening parameter")
+    parser.add_argument('--si', type=str2bool, default=False)
+    parser.add_argument('--si_c', type=float, default=1.0)
+    parser.add_argument('--si_epsilon', type=float, default=0.1)
 
     # agem
-    parser.add_argument('--agem', action='store_true', help="use gradient of replay as inequality constraint")
+    parser.add_argument('--agem', type=str2bool, default=False)
+    parser.add_argument('--agem_memory_budget', type=int, default=1000)
+
+    # cmaml
+    parser.add_argument('--cmaml', type=str2bool, default=False)
+    parser.add_argument('--cmaml_fast_lr', type=float, default=0.0003)
+    parser.add_argument('--cmaml_meta_lr', type=float, default=0.001)
+    parser.add_argument('--cmaml_memory_budget', type=int, default=1000)
+    parser.add_argument('--cmaml_grad_clip_norm', type=float, default=2.0)
+    parser.add_argument('--cmaml_first_order', type=str2bool, default=True)
 
     args = parser.parse_args()
 

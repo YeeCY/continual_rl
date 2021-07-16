@@ -63,6 +63,8 @@ def get_param_stamp(args, verbose=True, replay=False, replay_model_name=None):
         model_stamp = 'si'
     elif args.agem:
         model_stamp = 'agem'
+    elif args.cmaml:
+        model_stamp = 'cmaml'
     else:
         raise RuntimeError("Unknown algorithm")
     if verbose:
