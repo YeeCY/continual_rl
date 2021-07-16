@@ -211,38 +211,38 @@ def main(args):
     # assert torch.cuda.is_available(), 'must have cuda enabled'
     device = torch.device(args.device)
 
-    if args.env_type == 'atari':
-        # replay_buffer = buffers.FrameStackReplayBuffer(
-        #     obs_space=environment.observation_space,
-        #     action_space=environment.action_space,
-        #     capacity=args.replay_buffer_capacity,
-        #     frame_stack=args.frame_stack,
-        #     device=device,
-        #     optimize_memory_usage=True,
-        # )
-        # from stable_baselines3.common.buffers import ReplayBuffer
-        # replay_buffer = ReplayBuffer(
-        #     args.replay_buffer_capacity,
-        #     environment.observation_space,
-        #     environment.action_space,
-        #     device,
-        #     optimize_memory_usage=True,
-        # )
-        replay_buffer = buffers.ReplayBuffer(
-            obs_space=env.observation_space,
-            action_space=env.action_space,
-            capacity=args.replay_buffer_capacity,
-            device=device,
-            optimize_memory_usage=True,
-        )
-    else:
-        replay_buffer = buffers.ReplayBuffer(
-            obs_space=env.observation_space,
-            action_space=env.action_space,
-            capacity=args.replay_buffer_capacity,
-            device=device,
-            optimize_memory_usage=True,
-        )
+    # if args.env_type == 'atari':
+    #     # replay_buffer = buffers.FrameStackReplayBuffer(
+    #     #     obs_space=environment.observation_space,
+    #     #     action_space=environment.action_space,
+    #     #     capacity=args.replay_buffer_capacity,
+    #     #     frame_stack=args.frame_stack,
+    #     #     device=device,
+    #     #     optimize_memory_usage=True,
+    #     # )
+    #     # from stable_baselines3.common.buffers import ReplayBuffer
+    #     # replay_buffer = ReplayBuffer(
+    #     #     args.replay_buffer_capacity,
+    #     #     environment.observation_space,
+    #     #     environment.action_space,
+    #     #     device,
+    #     #     optimize_memory_usage=True,
+    #     # )
+    #     replay_buffer = buffers.ReplayBuffer(
+    #         obs_space=env.observation_space,
+    #         action_space=env.action_space,
+    #         capacity=args.replay_buffer_capacity,
+    #         device=device,
+    #         optimize_memory_usage=True,
+    #     )
+    # else:
+    #     replay_buffer = buffers.ReplayBuffer(
+    #         obs_space=env.observation_space,
+    #         action_space=env.action_space,
+    #         capacity=args.replay_buffer_capacity,
+    #         device=device,
+    #         optimize_memory_usage=True,
+    #     )
 
     agent = make_agent(
         obs_space=env.observation_space,
@@ -276,6 +276,15 @@ def main(args):
             task_steps = 0
             start_time = time.time()
             obs = env.reset(sample_task=True)
+
+            # reset replay buffer
+            replay_buffer = buffers.ReplayBuffer(
+                obs_space=env.observation_space,
+                action_space=env.action_space,
+                capacity=args.replay_buffer_capacity,
+                device=device,
+                optimize_memory_usage=True,
+            )
 
             for task_epoch in range(total_epochs_per_task):
                 # Save agent periodically
@@ -436,17 +445,6 @@ def main(args):
                     agent.construct_memory(replay_buffer)
 
             agent.reset(reset_critic=args.reset_agent)
-            # replay_buffer.reset()
-
-            # reset replay buffer
-            del replay_buffer
-            replay_buffer = buffers.ReplayBuffer(
-                obs_space=env.observation_space,
-                action_space=env.action_space,
-                capacity=args.replay_buffer_capacity,
-                device=device,
-                optimize_memory_usage=True,
-            )
 
     print('Final evaluating:', args.work_dir)
     evaluate(env, eval_env, agent, video, args.num_eval_episodes, logger, total_steps)
