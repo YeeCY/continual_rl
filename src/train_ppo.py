@@ -148,7 +148,6 @@ def main(args):
             args.discount, train_env_log_dir,
             allow_early_resets=True,
             normalize=True,
-            multi_head=True if 'mh' in args.algo else False,
             add_onehot=args.add_onehot,
         )
 
@@ -157,7 +156,6 @@ def main(args):
             None, eval_env_log_dir,
             allow_early_resets=True,
             normalize=True,
-            multi_head=True if 'mh' in args.algo else False,
             add_onehot=args.add_onehot,
         )
 
@@ -235,7 +233,7 @@ def main(args):
 
     agent = make_agent(
         obs_space=env.observation_space,
-        action_space=env.all_action_spaces if 'mh' in args.algo else env.action_space,
+        action_space=[env.action_space for _ in range(env.num_tasks)],
         device=device,
         args=args
     )

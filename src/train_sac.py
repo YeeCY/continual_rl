@@ -141,7 +141,6 @@ def main(args):
             args.discount, train_env_log_dir,
             allow_early_resets=True,
             normalize=False,
-            multi_head=True if any(x in args.algo for x in ['mh', 'mi', 'individual']) else False,
             add_onehot=args.add_onehot,
         )
         eval_env = make_continual_vec_envs(
@@ -149,7 +148,6 @@ def main(args):
             None, eval_env_log_dir,
             allow_early_resets=True,
             normalize=False,
-            multi_head=True if any(x in args.algo for x in ['mh', 'mi', 'individual']) else False,
             add_onehot=args.add_onehot,
         )
     elif args.env_type == 'metaworld':
@@ -244,9 +242,7 @@ def main(args):
 
     agent = make_agent(
         obs_space=env.observation_space,
-        action_space=env.all_action_spaces
-        if any(x in args.algo for x in ['mh', 'mi', 'individual'])
-        else env.action_space,
+        action_space=[env.action_space for _ in range(env.num_tasks)],
         device=device,
         args=args
     )
