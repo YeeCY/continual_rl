@@ -161,7 +161,6 @@ def main(args):
             args.discount, train_env_log_dir,
             allow_early_resets=True,
             normalize=False,
-            multi_head=True if any(x in args.algo for x in ['mh', 'mi', 'individual']) else False,
             add_onehot=args.add_onehot,
         )
 
@@ -170,7 +169,6 @@ def main(args):
             None, eval_env_log_dir,
             allow_early_resets=True,
             normalize=False,
-            multi_head=True if any(x in args.algo for x in ['mh', 'mi', 'individual']) else False,
             add_onehot=args.add_onehot,
         )
 

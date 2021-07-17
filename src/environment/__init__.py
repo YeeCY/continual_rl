@@ -158,7 +158,6 @@ def make_continual_vec_envs(env_names,
                             log_dir,
                             allow_early_resets=False,
                             normalize=True,
-                            multi_head=False,
                             add_onehot=False):
     # TODO (chongyi zheng): We fork many processes here, optimize it
     envs = []
@@ -174,7 +173,7 @@ def make_continual_vec_envs(env_names,
                                     sample_strategy=round_robin_strategy,
                                     mode='add-onehot' if add_onehot else 'vanilla',
                                     augment_observation=True,
-                                    augment_action=not multi_head,
+                                    augment_action=True,
                                     env_names=env_names)
 
     return continual_env
