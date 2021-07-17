@@ -45,7 +45,7 @@ class RolloutStorage(object):
     #     self.bad_masks = self.bad_masks.to(device)
 
     def update_num_steps(self, num_steps):
-        # (chongyi zheng): used for AGEM memory resize
+        # (chongyi zheng): used for memory resize
         self.num_steps = num_steps
         self.obs = self.obs[:num_steps + 1]
         self.rewards = self.rewards[:num_steps]

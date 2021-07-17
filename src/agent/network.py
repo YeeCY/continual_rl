@@ -2,7 +2,9 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.distributions import Normal, Independent
 from itertools import chain
+from collections import OrderedDict
 
 
 from src.agent.encoder import PixelEncoder, DqnEncoder
@@ -112,7 +114,7 @@ class DQNCnn(nn.Module):
             nn.Linear(feature_dim, action_shape)
         )
 
-        # self.apply(weight_init)
+        self.apply(weight_init)
 
     def forward(self, obs):
         h = self.encoder(obs)
@@ -400,7 +402,7 @@ class MultiHeadSacActorMlp(nn.Module):
         log_pi = gaussian_logprob(noise, log_std)
 
         # squash log_pi
-        log_pi -= torch.log(F.relu(1 - action.pow(2)) + 1e-6).sum(-1, keepdim=True)
+        log_pi -= torch.log(torch.relu(1 - action.pow(2)) + 1e-6).sum(-1, keepdim=True)
 
         return log_pi
 
@@ -480,7 +482,7 @@ class MultiInputSacActorMlp(nn.Module):
         log_pi = gaussian_logprob(noise, log_std)
 
         # squash log_pi
-        log_pi -= torch.log(F.relu(1 - action.pow(2)) + 1e-6).sum(-1, keepdim=True)
+        log_pi -= torch.log(torch.relu(1 - action.pow(2)) + 1e-6).sum(-1, keepdim=True)
 
         return log_pi
 
@@ -549,7 +551,7 @@ class IndividualSacActorMlp(nn.Module):
         log_pi = gaussian_logprob(noise, log_std)
 
         # squash log_pi
-        log_pi -= torch.log(F.relu(1 - action.pow(2)) + 1e-6).sum(-1, keepdim=True)
+        log_pi -= torch.log(torch.relu(1 - action.pow(2)) + 1e-6).sum(-1, keepdim=True)
 
         return log_pi
 
@@ -637,6 +639,72 @@ class PpoActorMlp(nn.Module):
         dist = self.dist(hidden)
 
         log_pi = dist.log_probs(action)
+        entropy = dist.entropy().mean()
+
+        return log_pi, entropy
+
+
+class CmamlPpoActorMlp(nn.Module):
+    """Adapt from https://github.com/tristandeleu/pytorch-maml-rl"""
+    def __init__(self, obs_shape, action_shape, hidden_dim):
+        super().__init__()
+
+        self.layer_sizes = (obs_shape[0], hidden_dim, hidden_dim)
+        self.num_layers = len(self.layer_sizes) + 1
+        for i in range(1, self.num_layers - 1):
+            self.add_module('layer{}'.format(i - 1),
+                            nn.Linear(self.layer_sizes[i - 1], self.layer_sizes[i]))
+
+        self.mu = nn.Linear(hidden_dim, action_shape[0])
+        self.logstd = nn.Parameter(torch.Tensor(action_shape[0]))
+        self.logstd.data.fill_(0.0)
+
+        self.apply(weight_init)
+
+    def forward(self, obs, params=None, compute_pi=True, compute_log_pi=True, **kwargs):
+        if params is None:
+            params = OrderedDict(self.named_parameters())
+
+        output = obs
+        for i in range(1, self.num_layers - 1):
+            output = F.linear(output,
+                              weight=params['layer{}.weight'.format(i - 1)],
+                              bias=params['layer{}.bias'.format(i - 1)])
+            output = torch.tanh(output)
+
+        mu = F.linear(output, weight=params['mu.weight'], bias=params['mu.bias'])
+        std = torch.exp(params['logstd'])
+        dist = Independent(Normal(mu, std), 1)
+
+        mu = dist.mean
+        if compute_pi:
+            pi = dist.sample()
+        else:
+            pi = None
+
+        if compute_log_pi:
+            log_pi = dist.log_prob(pi)
+        else:
+            log_pi = None
+
+        return mu, pi, log_pi
+
+    def compute_log_probs(self, obs, action, params=None, **kwargs):
+        if params is None:
+            params = OrderedDict(self.named_parameters())
+
+        output = obs
+        for i in range(1, self.num_layers - 1):
+            output = F.linear(output,
+                              weight=params['layer{}.weight'.format(i - 1)],
+                              bias=params['layer{}.bias'.format(i - 1)])
+            output = troch.tanh(output)
+
+        mu = F.linear(output, weight=params['mu.weight'], bias=params['mu.bias'])
+        std = torch.exp(params['logstd'])
+        dist = Independent(Normal(mu, std), 1)
+
+        log_pi = dist.log_prob(action).unsqueeze(-1)
         entropy = dist.entropy().mean()
 
         return log_pi, entropy

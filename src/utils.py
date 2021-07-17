@@ -302,7 +302,7 @@ def squash(mu, pi, log_pi):
     if pi is not None:
         pi = torch.tanh(pi)
     if log_pi is not None:
-        log_pi -= torch.log(F.relu(1 - pi.pow(2)) + 1e-6).sum(-1, keepdim=True)
+        log_pi -= torch.log(torch.relu(1 - pi.pow(2)) + 1e-6).sum(-1, keepdim=True)
     return mu, pi, log_pi
 
 

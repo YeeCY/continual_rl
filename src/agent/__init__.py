@@ -8,7 +8,7 @@ from src.agent.sac import MultiHeadSacMlpAgentV2, EwcMultiHeadSacMlpAgentV2, SiM
     OracleAgemV2MultiInputSacMlpAgentV2
 from src.agent.ppo import PpoMlpAgent, EwcPpoMlpAgent, SiPpoMlpAgent, AgemPpoMlpAgent, \
     MultiHeadPpoMlpAgent, EwcMultiHeadPpoMlpAgent, SiMultiHeadPpoMlpAgent, AgemMultiHeadPpoMlpAgent
-from src.agent.ppo import EwcPpoMlpAgentV2, SiPpoMlpAgentV2, AgemPpoMlpAgentV2
+from src.agent.ppo import EwcPpoMlpAgentV2, SiPpoMlpAgentV2, AgemPpoMlpAgentV2, CmamlPpoMlpAgentV2
 from src.agent.ppo import MultiHeadPpoMlpAgentV2, EwcMultiHeadPpoMlpAgentV2, SiMultiHeadPpoMlpAgentV2, \
     AgemMultiHeadPpoMlpAgentV2
 
@@ -47,6 +47,7 @@ ALGOS = [
     'si_ppo_mlp_v2',
     'agem_ppo_mlp',
     'agem_ppo_mlp_v2',
+    'cmaml_ppo_mlp_v2',
     'mh_ppo_mlp',
     'mh_ppo_mlp_v2',
     'ewc_mh_ppo_mlp',
@@ -269,6 +270,13 @@ def make_agent(obs_space, action_space, device, args):
             kwargs['agem_memory_budget'] = args.ppo_agem_memory_budget
             kwargs['agem_ref_grad_batch_size'] = args.ppo_agem_ref_grad_batch_size
             agent = AgemPpoMlpAgentV2(**kwargs)
+        elif args.algo == 'cmaml_ppo_mlp_v2':
+            kwargs['cmaml_inner_grad_steps'] = args.ppo_cmaml_inner_grad_steps
+            kwargs['cmaml_fast_lr'] = args.ppo_cmaml_fast_lr
+            kwargs['cmaml_meta_lr'] = args.ppo_cmaml_meta_lr
+            kwargs['cmaml_memory_budget'] = args.ppo_cmaml_memory_budget
+            kwargs['cmaml_first_order'] = args.ppo_cmaml_first_order
+            agent = CmamlPpoMlpAgentV2(**kwargs)
         elif args.algo == 'mh_ppo_mlp':
             agent = MultiHeadPpoMlpAgent(**kwargs)
         elif args.algo == 'mh_ppo_mlp_v2':

@@ -5,6 +5,7 @@ from agent.ppo.si_ppo_agent import SiPpoMlpAgent
 from agent.ppo.si_ppo_agent_v2 import SiPpoMlpAgentV2
 from agent.ppo.agem_ppo_agent import AgemPpoMlpAgent
 from agent.ppo.agem_ppo_agent_v2 import AgemPpoMlpAgentV2
+from agent.ppo.cmaml_ppo_agent_v2 import CmamlPpoMlpAgentV2
 from agent.ppo.mh_ppo_agent import MultiHeadPpoMlpAgent
 from agent.ppo.mh_ppo_agent_v2 import MultiHeadPpoMlpAgentV2
 from agent.ppo.ewc_mh_ppo_agent import EwcMultiHeadPpoMlpAgent

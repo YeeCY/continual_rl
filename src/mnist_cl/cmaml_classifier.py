@@ -10,7 +10,7 @@ from src import utils
 
 
 class CmamlClassfier(nn.Module):
-    def __init__(self, image_size, image_channels, classes, hidden_units=400, fast_lr=0.001,
+    def __init__(self, image_size, image_channels, classes, hidden_units=400, fast_lr=0.0003,
                  meta_lr=0.001, memory_budget=200, grad_clip_norm=2.0, first_order=True,
                  device=None):
 
@@ -70,9 +70,9 @@ class CmamlClassfier(nn.Module):
                     dtype=torch.int64, device=self.device())
 
             # (chongyi zheng): clone original data to prevent erroneous backpropagation
-            aug_x = torch.cat([x.clone(), torch.as_tensor(
+            aug_x = torch.cat([x, torch.as_tensor(
                 mem_x, dtype=x.dtype, device=self.device())])
-            aug_y = torch.cat([y.clone(), torch.as_tensor(
+            aug_y = torch.cat([y, torch.as_tensor(
                 mem_y, dtype=y.dtype, device=self.device())])
             if class_entries is not None:
                 aug_class_entries = torch.cat([class_entries, mem_class_entries])
@@ -108,7 +108,6 @@ class CmamlClassfier(nn.Module):
                     np.copyto(self.memory['y'][idx], utils.to_np(single_y))
                     if single_class_entries is not None:
                         self.memory['class_entries'][idx] = single_class_entries
-
 
     def _inner_update(self, x, y, active_classes=None, params=None):
         if params is None:
@@ -148,7 +147,7 @@ class CmamlClassfier(nn.Module):
             output = F.linear(output,
                               weight=params['layer{}.weight'.format(i - 1)],
                               bias=params['layer{}.bias'.format(i - 1)])
-            output = F.relu(output)
+            output = torch.relu(output)
 
         logits = F.linear(output,
                           weight=params['layer{}.weight'.format(self.num_layers - 2)],

@@ -161,19 +161,12 @@ def parse_args():
 	parser.add_argument('--ppo_si_c', default=1.0, type=float)
 	parser.add_argument('--ppo_si_epsilon', default=0.1, type=float)
 
-	# ewc
-	parser.add_argument('--ewc_lambda', default=5000, type=float)
-	parser.add_argument('--ewc_fisher_sample_size', default=1024, type=int)
-	parser.add_argument('--online_ewc', default=False, action='store_true')
-	parser.add_argument('--online_ewc_gamma', default=1.0, type=float)
-
-	# si
-	parser.add_argument('--si_c', default=1.0, type=float)
-	parser.add_argument('--si_epsilon', default=0.1, type=float)
-
-	# agem
-	parser.add_argument('--agem_memory_budget', default=3000, type=int)
-	parser.add_argument('--agem_ref_grad_batch_size', default=1024)
+	# ppo cmaml
+	parser.add_argument('--ppo_cmaml_inner_grad_steps', default=8, type=int)
+	parser.add_argument('--ppo_cmaml_fast_lr', default=1e-5, type=float)
+	parser.add_argument('--ppo_cmaml_meta_lr', default=3e-4, type=float)
+	parser.add_argument('--ppo_cmaml_memory_budget', default=10240, type=int)
+	parser.add_argument('--ppo_cmaml_first_order', default=True, type=str2bool)
 
 	# misc
 	parser.add_argument('--seed', default=1, type=int)
