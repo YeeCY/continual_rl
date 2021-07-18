@@ -698,7 +698,7 @@ class CmamlPpoActorMlp(nn.Module):
             output = F.linear(output,
                               weight=params['layer{}.weight'.format(i - 1)],
                               bias=params['layer{}.bias'.format(i - 1)])
-            output = troch.tanh(output)
+            output = torch.tanh(output)
 
         mu = F.linear(output, weight=params['mu.weight'], bias=params['mu.bias'])
         std = torch.exp(params['logstd'])
