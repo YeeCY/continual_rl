@@ -162,6 +162,11 @@ CURVE_FORMAT = {
         'style': '-',
         'label': 'agem_ref_grad_batch_size20000'
     },
+    'cmaml_budget5000': {
+        'color': [139, 101, 8],
+        'style': '-',
+        'label': 'cmaml_budget5000',
+    },
 }
 
 
