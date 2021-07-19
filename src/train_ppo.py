@@ -233,7 +233,8 @@ def main(args):
 
     agent = make_agent(
         obs_space=env.observation_space,
-        action_space=[env.action_space for _ in range(env.num_tasks)],
+        action_space=[env.action_space for _ in range(env.num_tasks)]
+        if 'mh' in args.algo else env.action_space,
         device=device,
         args=args
     )
