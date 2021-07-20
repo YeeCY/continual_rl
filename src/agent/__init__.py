@@ -5,7 +5,8 @@ from src.agent.sac import MultiHeadSacMlpAgentV2, EwcMultiHeadSacMlpAgentV2, SiM
     AgemMultiHeadSacMlpAgentV2, EwcV2MultiHeadSacMlpAgentV2, AgemV2MultiHeadSacMlpAgentV2, \
     IndividualSacMlpAgentV2, EwcV2MultiInputSacMlpAgentV2, AgemV2MultiInputSacMlpAgentV2, \
     SiMultiInputSacMlpAgentV2, MultiInputSacMlpAgentV2, OracleAgemV2MultiHeadSacMlpAgentV2, \
-    OracleAgemV2MultiInputSacMlpAgentV2
+    OracleAgemV2MultiInputSacMlpAgentV2, OracleGradAgemV2MultiHeadSacMlpAgentV2, \
+    OracleGradAgemV2MultiInputSacMlpAgentV2
 from src.agent.ppo import PpoMlpAgent, EwcPpoMlpAgent, SiPpoMlpAgent, AgemPpoMlpAgent, \
     MultiHeadPpoMlpAgent, EwcMultiHeadPpoMlpAgent, SiMultiHeadPpoMlpAgent, AgemMultiHeadPpoMlpAgent
 from src.agent.ppo import EwcPpoMlpAgentV2, SiPpoMlpAgentV2, AgemPpoMlpAgentV2, CmamlPpoMlpAgentV2
@@ -40,6 +41,8 @@ ALGOS = [
     'agem_v2_mi_sac_mlp_v2',
     'oracle_agem_v2_mh_sac_mlp_v2',
     'oracle_agem_v2_mi_sac_mlp_v2',
+    'oracle_grad_agem_v2_mh_sac_mlp_v2',
+    'oracle_grad_agem_v2_mi_sac_mlp_v2',
     'ppo_mlp',
     'ewc_ppo_mlp',
     'ewc_ppo_mlp_v2',
@@ -228,6 +231,14 @@ def make_agent(obs_space, action_space, device, args):
             kwargs['agem_memory_budget'] = args.sac_agem_memory_budget
             kwargs['agem_ref_grad_batch_size'] = args.sac_agem_ref_grad_batch_size
             agent = OracleAgemV2MultiInputSacMlpAgentV2(**kwargs)
+        elif args.algo == 'oracle_grad_agem_v2_mh_sac_mlp_v2':
+            kwargs['agem_memory_budget'] = args.sac_agem_memory_budget
+            kwargs['agem_ref_grad_batch_size'] = args.sac_agem_ref_grad_batch_size
+            agent = OracleGradAgemV2MultiHeadSacMlpAgentV2(**kwargs)
+        elif args.algo == 'oracle_grad_agem_v2_mi_sac_mlp_v2':
+            kwargs['agem_memory_budget'] = args.sac_agem_memory_budget
+            kwargs['agem_ref_grad_batch_size'] = args.sac_agem_ref_grad_batch_size
+            agent = OracleGradAgemV2MultiInputSacMlpAgentV2(**kwargs)
     elif 'ppo' in args.algo:
         kwargs['hidden_dim'] = args.ppo_hidden_dim
         kwargs['clip_param'] = args.ppo_clip_param
