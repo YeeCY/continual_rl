@@ -90,7 +90,7 @@ class OracleGradAgemV2MultiHeadSacMlpAgentV2(MultiHeadSacMlpAgentV2, OracleGradA
 
         # save oracle gradient in memory
         _, actor_loss, _ = self.compute_actor_and_alpha_loss(
-            self.agem_memories[self.agem_task_count]['obses'], compute_alpha_loss=False)
+            self.agem_memories[self.agem_task_count]['obses'], compute_alpha_loss=False, **kwargs)
         self.actor_optimizer.zero_grad()  # clear current gradient
         actor_loss.backward()
 
