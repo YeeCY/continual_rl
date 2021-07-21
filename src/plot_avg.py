@@ -137,6 +137,11 @@ CURVE_FORMAT = {
         'style': '-',
         'label': 'oracle_agem_ref_grad_batch_size4500'
     },
+    'oracle_grad_agem_ref_grad_batch_size4500': {
+        'color': [139, 101, 8],
+        'style': '-',
+        'label': 'oracle_grad_agem_ref_grad_batch_size4500'
+    },
     'agem_ref_grad_batch_size5000': {
         'color': [255, 128, 0],
         'style': '-',
