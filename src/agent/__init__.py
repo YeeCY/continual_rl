@@ -2,12 +2,12 @@ from src.agent.dqn_agent import DqnCnnSSEnsembleAgent
 from src.agent.sac import EwcSacMlpAgent, SiSacMlpAgent, AgemSacMlpAgent, SacMlpAgent, \
     MultiHeadSacMlpAgent, EwcMultiHeadSacMlpAgent, SiMultiHeadSacMlpAgent, AgemMultiHeadSacMlpAgent
 from src.agent.sac import MultiHeadSacMlpAgentV2, EwcMultiHeadSacMlpAgentV2, SiMultiHeadSacMlpAgentV2, \
-    AgemMultiHeadSacMlpAgentV2, EwcV2MultiHeadSacMlpAgentV2, AgemV2MultiHeadSacMlpAgentV2, \
-    IndividualSacMlpAgentV2, EwcV2MultiInputSacMlpAgentV2, AgemV2MultiInputSacMlpAgentV2, \
-    SiMultiInputSacMlpAgentV2, MultiInputSacMlpAgentV2, OracleAgemV2MultiHeadSacMlpAgentV2, \
-    OracleAgemV2MultiInputSacMlpAgentV2, OracleGradAgemV2MultiHeadSacMlpAgentV2, \
-    OracleGradAgemV2MultiInputSacMlpAgentV2, OracleActorAgemV2MultiHeadSacMlpAgentV2, \
-    OracleActorAgemV2MultiInputSacMlpAgentV2
+    AgemMultiHeadSacMlpAgentV2, AgemMultiInputSacMlpAgentV2, EwcV2MultiHeadSacMlpAgentV2, \
+    AgemV2MultiHeadSacMlpAgentV2, IndividualSacMlpAgentV2, EwcV2MultiInputSacMlpAgentV2, \
+    AgemV2MultiInputSacMlpAgentV2, SiMultiInputSacMlpAgentV2, MultiInputSacMlpAgentV2, \
+    OracleAgemV2MultiHeadSacMlpAgentV2, OracleAgemV2MultiInputSacMlpAgentV2, \
+    OracleGradAgemV2MultiHeadSacMlpAgentV2, OracleGradAgemV2MultiInputSacMlpAgentV2, \
+    OracleActorAgemV2MultiHeadSacMlpAgentV2,  OracleActorAgemV2MultiInputSacMlpAgentV2
 from src.agent.ppo import PpoMlpAgent, EwcPpoMlpAgent, SiPpoMlpAgent, AgemPpoMlpAgent, \
     MultiHeadPpoMlpAgent, EwcMultiHeadPpoMlpAgent, SiMultiHeadPpoMlpAgent, AgemMultiHeadPpoMlpAgent
 from src.agent.ppo import EwcPpoMlpAgentV2, SiPpoMlpAgentV2, AgemPpoMlpAgentV2, CmamlPpoMlpAgentV2
@@ -38,6 +38,7 @@ ALGOS = [
     'si_mi_sac_mlp_v2',
     'agem_mh_sac_mlp',
     'agem_mh_sac_mlp_v2',
+    'agem_mi_sac_mlp_v2',
     'agem_v2_mh_sac_mlp_v2',
     'agem_v2_mi_sac_mlp_v2',
     'oracle_agem_v2_mh_sac_mlp_v2',
@@ -218,6 +219,10 @@ def make_agent(obs_space, action_space, device, args):
             kwargs['agem_memory_budget'] = args.sac_agem_memory_budget
             kwargs['agem_ref_grad_batch_size'] = args.sac_agem_ref_grad_batch_size
             agent = AgemMultiHeadSacMlpAgentV2(**kwargs)
+        elif args.algo == 'agem_mi_sac_mlp_v2':
+            kwargs['agem_memory_budget'] = args.sac_agem_memory_budget
+            kwargs['agem_ref_grad_batch_size'] = args.sac_agem_ref_grad_batch_size
+            agent = AgemMultiInputSacMlpAgentV2(**kwargs)
         elif args.algo == 'agem_v2_mh_sac_mlp_v2':
             kwargs['agem_memory_budget'] = args.sac_agem_memory_budget
             kwargs['agem_ref_grad_batch_size'] = args.sac_agem_ref_grad_batch_size

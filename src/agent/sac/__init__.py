@@ -23,6 +23,7 @@ from agent.sac.si_mh_sac_agent_v2 import SiMultiHeadSacMlpAgentV2
 from agent.sac.si_mi_sac_agent_v2 import SiMultiInputSacMlpAgentV2
 from agent.sac.agem_mh_sac_agent import AgemMultiHeadSacMlpAgent
 from agent.sac.agem_mh_sac_agent_v2 import AgemMultiHeadSacMlpAgentV2
+from agent.sac.agem_mi_sac_agent_v2 import AgemMultiInputSacMlpAgentV2
 from agent.sac.agem_v2_mh_sac_agent_v2 import AgemV2MultiHeadSacMlpAgentV2
 from agent.sac.oracle_agem_v2_mh_sac_agent_v2 import OracleAgemV2MultiHeadSacMlpAgentV2
 from agent.sac.oracle_grad_agem_v2_mh_sac_agent_v2 import OracleGradAgemV2MultiHeadSacMlpAgentV2
