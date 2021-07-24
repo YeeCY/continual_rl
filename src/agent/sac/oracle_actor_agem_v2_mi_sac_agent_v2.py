@@ -1,10 +1,12 @@
+import copy
 import torch
 import numpy as np
 
-from agent.sac import MultiInputSacMlpAgentV2, OracleAgemV2SacMlpAgentV2
+import utils
+from agent.sac import MultiInputSacMlpAgentV2, OracleActorAgemV2SacMlpAgentV2
 
 
-class OracleAgemV2MultiInputSacMlpAgentV2(MultiInputSacMlpAgentV2, OracleAgemV2SacMlpAgentV2):
+class OracleActorAgemV2MultiInputSacMlpAgentV2(MultiInputSacMlpAgentV2, OracleActorAgemV2SacMlpAgentV2):
     """Adapt from https://github.com/GMvandeVen/continual-learning"""
     def __init__(self,
                  obs_shape,
@@ -32,11 +34,11 @@ class OracleAgemV2MultiInputSacMlpAgentV2(MultiInputSacMlpAgentV2, OracleAgemV2S
                                          actor_log_std_min, actor_log_std_max, actor_update_freq, critic_lr,
                                          critic_tau, critic_target_update_freq, batch_size)
 
-        OracleAgemV2SacMlpAgentV2.__init__(self, obs_shape, action_shape, action_range, device, actor_hidden_dim,
-                                           critic_hidden_dim, discount, init_temperature, alpha_lr, actor_lr,
-                                           actor_log_std_min, actor_log_std_max, actor_update_freq, critic_lr,
-                                           critic_tau, critic_target_update_freq, batch_size, agem_memory_budget,
-                                           agem_ref_grad_batch_size)
+        OracleActorAgemV2SacMlpAgentV2.__init__(self, obs_shape, action_shape, action_range, device, actor_hidden_dim,
+                                                critic_hidden_dim, discount, init_temperature, alpha_lr, actor_lr,
+                                                actor_log_std_min, actor_log_std_max, actor_update_freq, critic_lr,
+                                                critic_tau, critic_target_update_freq, batch_size, agem_memory_budget,
+                                                agem_ref_grad_batch_size)
 
     def _compute_ref_grad(self):
         if not self.agem_memories:
@@ -48,25 +50,27 @@ class OracleAgemV2MultiInputSacMlpAgentV2(MultiInputSacMlpAgentV2, OracleAgemV2S
                 0, len(memory['obses']), size=self.agem_ref_grad_batch_size // self.agem_task_count
             )
 
-            obses, actions, rewards, next_obses, not_dones, old_critic = \
+            obses, actions, rewards, next_obses, not_dones, old_actor, old_critic, old_log_alpha, \
+            old_actor_optimizer = \
                 memory['obses'][idxs], memory['actions'][idxs], memory['rewards'][idxs], \
-                memory['next_obses'][idxs], memory['not_dones'][idxs], memory['critic']
+                memory['next_obses'][idxs], memory['not_dones'][idxs], memory['actor'], \
+                memory['critic'], memory['log_alpha'], memory['actor_optimizer']
 
-            # (chongyi zheng): use oracle critic for actor gradient projection loss
-            _, pi, log_pi, log_std = self.actor(obses, head_idx=task_id)
+            _, pi, log_pi, log_std = old_actor(obses, head_idx=task_id)
             actor_Q1, actor_Q2 = old_critic(obses, pi, head_idx=task_id)
-            actor_Q = torch.min(actor_Q1, actor_Q2)
-            actor_proj_loss = (self.alpha.detach() * log_pi - actor_Q).mean()
 
-            self.actor_optimizer.zero_grad()  # clear current gradient
+            actor_Q = torch.min(actor_Q1, actor_Q2)
+            actor_proj_loss = (old_log_alpha.exp().detach() * log_pi - actor_Q).mean()
+
+            old_actor_optimizer.zero_grad()  # clear current gradient
             actor_proj_loss.backward()
 
             single_ref_actor_grad = []
-            for param in self.actor.common_parameters():
+            for param in old_actor.common_parameters():
                 if param.requires_grad:
                     single_ref_actor_grad.append(param.grad.detach().clone().flatten())
             single_ref_actor_grad = torch.cat(single_ref_actor_grad)
-            self.actor_optimizer.zero_grad()
+            old_actor_optimizer.zero_grad()
 
             ref_actor_grad.append(single_ref_actor_grad)
         ref_actor_grad = torch.stack(ref_actor_grad).mean(dim=0)

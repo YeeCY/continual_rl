@@ -114,7 +114,7 @@ class OracleGradAgemV2MultiInputSacMlpAgentV2(MultiInputSacMlpAgentV2, OracleGra
         self.actor_optimizer.zero_grad()
         actor_loss.backward()
 
-        self._project_grad(self.actor.common_parameters(), ref_actor_grad)
+        self._project_grad(list(self.actor.common_parameters()), ref_actor_grad)
 
         self.actor_optimizer.step()
 
@@ -124,5 +124,4 @@ class OracleGradAgemV2MultiInputSacMlpAgentV2(MultiInputSacMlpAgentV2, OracleGra
 
             self.log_alpha_optimizer.zero_grad()
             alpha_loss.backward()
-            # self._project_grad(iter([self.log_alpha]), ref_alpha_grad)
             self.log_alpha_optimizer.step()

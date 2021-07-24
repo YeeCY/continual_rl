@@ -9,7 +9,7 @@ export PYTHONPATH=$PROJECT_DIR
 declare -a seeds=(0 1 2 3)
 
 for seed in "${seeds[@]}"; do
-  export CUDA_VISIBLE_DEVICES=0
+  export CUDA_VISIBLE_DEVICES="$seed"
   nohup \
   python $PROJECT_DIR/src/train_sac.py \
     --env_names \

@@ -9,6 +9,7 @@ from agent.sac.agem_sac_agent_v2 import AgemSacMlpAgentV2
 from agent.sac.agem_v2_sac_agent_v2 import AgemV2SacMlpAgentV2
 from agent.sac.oracle_agem_v2_sac_agent_v2 import OracleAgemV2SacMlpAgentV2
 from agent.sac.oracle_grad_agem_v2_sac_agent_v2 import OracleGradAgemV2SacMlpAgentV2
+from agent.sac.oracle_actor_agem_v2_sac_agent_v2 import OracleActorAgemV2SacMlpAgentV2
 from agent.sac.mh_sac_agent import MultiHeadSacMlpAgent
 from agent.sac.mh_sac_agent_v2 import MultiHeadSacMlpAgentV2
 from agent.sac.individual_sac_agent_v2 import IndividualSacMlpAgentV2
@@ -25,6 +26,8 @@ from agent.sac.agem_mh_sac_agent_v2 import AgemMultiHeadSacMlpAgentV2
 from agent.sac.agem_v2_mh_sac_agent_v2 import AgemV2MultiHeadSacMlpAgentV2
 from agent.sac.oracle_agem_v2_mh_sac_agent_v2 import OracleAgemV2MultiHeadSacMlpAgentV2
 from agent.sac.oracle_grad_agem_v2_mh_sac_agent_v2 import OracleGradAgemV2MultiHeadSacMlpAgentV2
+from agent.sac.oracle_actor_agem_v2_mh_sac_agent_v2 import OracleActorAgemV2MultiHeadSacMlpAgentV2
 from agent.sac.agem_v2_mi_sac_agent_v2 import AgemV2MultiInputSacMlpAgentV2
 from agent.sac.oracle_agem_v2_mi_sac_agent_v2 import OracleAgemV2MultiInputSacMlpAgentV2
 from agent.sac.oracle_grad_agem_v2_mi_sac_agent_v2 import OracleGradAgemV2MultiInputSacMlpAgentV2
+from agent.sac.oracle_actor_agem_v2_mi_sac_agent_v2 import OracleActorAgemV2MultiInputSacMlpAgentV2

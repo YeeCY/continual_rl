@@ -82,7 +82,7 @@ class OracleAgemV2MultiHeadSacMlpAgentV2(MultiHeadSacMlpAgentV2, OracleAgemV2Sac
         self.actor_optimizer.zero_grad()
         actor_loss.backward()
 
-        self._project_grad(self.actor.common_parameters(), ref_actor_grad)
+        self._project_grad(list(self.actor.common_parameters()), ref_actor_grad)
 
         self.actor_optimizer.step()
 
@@ -92,5 +92,4 @@ class OracleAgemV2MultiHeadSacMlpAgentV2(MultiHeadSacMlpAgentV2, OracleAgemV2Sac
 
             self.log_alpha_optimizer.zero_grad()
             alpha_loss.backward()
-            # self._project_grad(iter([self.log_alpha]), ref_alpha_grad)
             self.log_alpha_optimizer.step()

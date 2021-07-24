@@ -110,7 +110,7 @@ class AgemSacMlpAgentV2(SacMlpAgent):
         return ref_actor_grad
 
     def _project_grad(self, parameters, ref_grad):
-        assert isinstance(parameters, Iterable), "'parameters' must be a iterator"
+        assert isinstance(parameters, list), "'parameters' must be a list"
 
         if ref_grad is None:
             return
@@ -151,17 +151,6 @@ class AgemSacMlpAgentV2(SacMlpAgent):
 
         self.agem_task_count += 1
 
-    # TODO (chongyi zheng): delete this block
-    # def update_critic(self, critic_loss, logger, step, ref_critic_grad=None):
-    #     # Optimize the critic
-    #     logger.log('train_critic/loss', critic_loss, step)
-    #     self.critic_optimizer.zero_grad()
-    #     critic_loss.backward()
-    #
-    #     self._project_grad(self.critic.parameters(), ref_critic_grad)
-    #
-    #     self.critic_optimizer.step()
-
     def update_actor_and_alpha(self, log_pi, actor_loss, logger, step, alpha_loss=None, ref_actor_grad=None):
         logger.log('train_actor/loss', actor_loss, step)
         logger.log('train/target_entropy', self.target_entropy, step)
@@ -171,7 +160,7 @@ class AgemSacMlpAgentV2(SacMlpAgent):
         self.actor_optimizer.zero_grad()
         actor_loss.backward()
 
-        self._project_grad(self.actor.parameters(), ref_actor_grad)
+        self._project_grad(list(self.actor.parameters()), ref_actor_grad)
 
         self.actor_optimizer.step()
 
@@ -181,7 +170,6 @@ class AgemSacMlpAgentV2(SacMlpAgent):
 
             self.log_alpha_optimizer.zero_grad()
             alpha_loss.backward()
-            # self._project_grad(iter([self.log_alpha]), ref_alpha_grad)
             self.log_alpha_optimizer.step()
 
     def update(self, replay_buffer, logger, step, **kwargs):

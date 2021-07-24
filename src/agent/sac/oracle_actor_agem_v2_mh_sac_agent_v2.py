@@ -1,10 +1,12 @@
+import copy
 import torch
 import numpy as np
 
-from agent.sac import MultiHeadSacMlpAgentV2, AgemSacMlpAgentV2
+import utils
+from agent.sac import MultiHeadSacMlpAgentV2, OracleActorAgemV2SacMlpAgentV2
 
 
-class AgemMultiHeadSacMlpAgentV2(MultiHeadSacMlpAgentV2, AgemSacMlpAgentV2):
+class OracleActorAgemV2MultiHeadSacMlpAgentV2(MultiHeadSacMlpAgentV2, OracleActorAgemV2SacMlpAgentV2):
     """Adapt from https://github.com/GMvandeVen/continual-learning"""
     def __init__(self,
                  obs_shape,
@@ -32,10 +34,11 @@ class AgemMultiHeadSacMlpAgentV2(MultiHeadSacMlpAgentV2, AgemSacMlpAgentV2):
                                         actor_log_std_min, actor_log_std_max, actor_update_freq, critic_lr,
                                         critic_tau, critic_target_update_freq, batch_size)
 
-        AgemSacMlpAgentV2.__init__(self, obs_shape, action_shape, action_range, device, actor_hidden_dim,
-                                   critic_hidden_dim, discount, init_temperature, alpha_lr, actor_lr,
-                                   actor_log_std_min, actor_log_std_max, actor_update_freq, critic_lr, critic_tau,
-                                   critic_target_update_freq, batch_size, agem_memory_budget, agem_ref_grad_batch_size)
+        OracleActorAgemV2SacMlpAgentV2.__init__(self, obs_shape, action_shape, action_range, device, actor_hidden_dim,
+                                                critic_hidden_dim, discount, init_temperature, alpha_lr, actor_lr,
+                                                actor_log_std_min, actor_log_std_max, actor_update_freq, critic_lr,
+                                                critic_tau, critic_target_update_freq, batch_size, agem_memory_budget,
+                                                agem_ref_grad_batch_size)
 
     def _compute_ref_grad(self):
         if not self.agem_memories:
@@ -47,56 +50,31 @@ class AgemMultiHeadSacMlpAgentV2(MultiHeadSacMlpAgentV2, AgemSacMlpAgentV2):
                 0, len(memory['obses']), size=self.agem_ref_grad_batch_size // self.agem_task_count
             )
 
-            obs, action, reward, next_obs, not_done = \
+            obses, actions, rewards, next_obses, not_dones, old_actor, old_critic, old_log_alpha, \
+            old_actor_optimizer = \
                 memory['obses'][idxs], memory['actions'][idxs], memory['rewards'][idxs], \
-                memory['next_obses'][idxs], memory['not_dones'][idxs]
+                memory['next_obses'][idxs], memory['not_dones'][idxs], memory['actor'], \
+                memory['critic'], memory['log_alpha'], memory['actor_optimizer']
 
-            # TODO (chongyi zheng): delete this block
-            # critic_loss = self.compute_critic_loss(
-            #     obs, action, reward, next_obs, not_done, head_idx=task_id)
-            # self.critic_optimizer.zero_grad()  # clear current gradient
-            # critic_loss.backward()
+            _, pi, log_pi, log_std = old_actor(obses, head_idx=task_id)
+            actor_Q1, actor_Q2 = old_critic(obses, pi, head_idx=task_id)
 
-            # single_ref_critic_grad = []
-            # for param in self.critic.common_parameters():
-            #     if param.requires_grad:
-            #         single_ref_critic_grad.append(param.grad.detach().clone().flatten())
-            # single_ref_critic_grad = torch.cat(single_ref_critic_grad)
-            # self.critic_optimizer.zero_grad()
+            actor_Q = torch.min(actor_Q1, actor_Q2)
+            actor_proj_loss = (old_log_alpha.exp().detach() * log_pi - actor_Q).mean()
 
-            _, actor_loss, _ = self.compute_actor_and_alpha_loss(
-                obs, compute_alpha_loss=False, head_idx=task_id)
-            self.actor_optimizer.zero_grad()  # clear current gradient
-            actor_loss.backward()
+            old_actor_optimizer.zero_grad()  # clear current gradient
+            actor_proj_loss.backward()
 
             single_ref_actor_grad = []
-            for param in self.actor.common_parameters():
+            for param in old_actor.common_parameters():
                 if param.requires_grad:
                     single_ref_actor_grad.append(param.grad.detach().clone().flatten())
             single_ref_actor_grad = torch.cat(single_ref_actor_grad)
-            self.actor_optimizer.zero_grad()
+            old_actor_optimizer.zero_grad()
 
-            # if compute_alpha_ref_grad:
-            #     self.log_alpha_optimizer.zero_grad()  # clear current gradient
-            #     alpha_loss.backward()
-            #     single_ref_alpha_grad = self.log_alpha.grad.detach().clone()
-            #     self.log_alpha_optimizer.zero_grad()
-            # else:
-            #     single_ref_alpha_grad = None
-
-            # ref_critic_grad.append(single_ref_critic_grad)
             ref_actor_grad.append(single_ref_actor_grad)
-            # if single_ref_alpha_grad is not None:
-            #     ref_alpha_grad.append(single_ref_alpha_grad)
-            # else:
-            #     ref_alpha_grad = None
-
-        # ref_critic_grad = torch.stack(ref_critic_grad).mean(dim=0)
         ref_actor_grad = torch.stack(ref_actor_grad).mean(dim=0)
-        # if ref_alpha_grad is not None:
-        #     ref_alpha_grad = torch.stack(ref_alpha_grad).mean(dim=0)
 
-        # return ref_critic_grad, ref_actor_grad, ref_alpha_grad
         return ref_actor_grad
 
     def update_actor_and_alpha(self, log_pi, actor_loss, logger, step, alpha_loss=None, ref_actor_grad=None):
