@@ -119,6 +119,22 @@ def parse_args():
 	parser.add_argument('--sac_si_c', default=1.0, type=float)
 	parser.add_argument('--sac_si_epsilon', default=1e-6, type=float)
 
+	# td3
+	parser.add_argument('--td3_init_steps', default=1000, type=int)
+	parser.add_argument('--td3_num_expl_steps_per_process', default=1000, type=int)
+	parser.add_argument('--td3_num_processes', default=1, type=int)
+	parser.add_argument('--td3_num_train_iters', default=1000, type=int)
+	parser.add_argument('--td3_actor_hidden_dim', default=256, type=int)
+	parser.add_argument('--td3_critic_hidden_dim', default=256, type=int)
+	parser.add_argument('--td3_actor_lr', default=3e-4, type=float)
+	parser.add_argument('--td3_actor_noise', default=0.2, type=float)
+	parser.add_argument('--td3_actor_noise_clip', default=0.5, type=float)
+	parser.add_argument('--td3_critic_lr', default=3e-4, type=float)
+	parser.add_argument('--td3_expl_noise_std', default=0.1, type=float)
+	parser.add_argument('--td3_target_tau', default=0.005, type=float)
+	parser.add_argument('--td3_actor_and_target_update_freq', default=2, type=int)
+	parser.add_argument('--td3_batch_size', default=256, type=int)
+
 	# dqn
 	parser.add_argument('--double_q', default=False, action='store_true')
 	parser.add_argument('--dueling', default=False, action='store_true')

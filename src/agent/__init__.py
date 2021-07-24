@@ -8,6 +8,7 @@ from src.agent.sac import MultiHeadSacMlpAgentV2, EwcMultiHeadSacMlpAgentV2, SiM
     OracleAgemV2MultiHeadSacMlpAgentV2, OracleAgemV2MultiInputSacMlpAgentV2, \
     OracleGradAgemV2MultiHeadSacMlpAgentV2, OracleGradAgemV2MultiInputSacMlpAgentV2, \
     OracleActorAgemV2MultiHeadSacMlpAgentV2,  OracleActorAgemV2MultiInputSacMlpAgentV2
+from src.agent.td3 import Td3MlpAgent, MultiHeadTd3MlpAgent
 from src.agent.ppo import PpoMlpAgent, EwcPpoMlpAgent, SiPpoMlpAgent, AgemPpoMlpAgent, \
     MultiHeadPpoMlpAgent, EwcMultiHeadPpoMlpAgent, SiMultiHeadPpoMlpAgent, AgemMultiHeadPpoMlpAgent
 from src.agent.ppo import EwcPpoMlpAgentV2, SiPpoMlpAgentV2, AgemPpoMlpAgentV2, CmamlPpoMlpAgentV2
@@ -47,6 +48,8 @@ ALGOS = [
     'oracle_grad_agem_v2_mi_sac_mlp_v2',
     'oracle_actor_agem_v2_mh_sac_mlp_v2',
     'oracle_actor_agem_v2_mi_sac_mlp_v2',
+    'td3_mlp',
+    'mh_td3_mlp',
     'ppo_mlp',
     'ewc_ppo_mlp',
     'ewc_ppo_mlp_v2',
@@ -255,6 +258,28 @@ def make_agent(obs_space, action_space, device, args):
             kwargs['agem_memory_budget'] = args.sac_agem_memory_budget
             kwargs['agem_ref_grad_batch_size'] = args.sac_agem_ref_grad_batch_size
             agent = OracleActorAgemV2MultiInputSacMlpAgentV2(**kwargs)
+    elif 'td3' in args.algo:
+        if isinstance(action_space, list):
+            action_range = [[ac.low, ac.high] for ac in action_space]
+        else:
+            action_range = [action_space.low, action_space.high]
+
+        kwargs['action_range'] = action_range
+        kwargs['actor_hidden_dim'] = args.td3_actor_hidden_dim
+        kwargs['critic_hidden_dim'] = args.td3_critic_hidden_dim
+        kwargs['actor_lr'] = args.td3_actor_lr
+        kwargs['actor_noise'] = args.td3_actor_noise
+        kwargs['actor_noise_clip'] = args.td3_actor_noise_clip
+        kwargs['critic_lr'] = args.td3_critic_lr
+        kwargs['expl_noise_std'] = args.td3_expl_noise_std
+        kwargs['target_tau'] = args.td3_target_tau
+        kwargs['actor_and_target_update_freq'] = args.td3_actor_and_target_update_freq
+        kwargs['batch_size'] = args.td3_batch_size
+
+        if args.algo == 'td3_mlp':
+            agent = Td3MlpAgent(**kwargs)
+        elif args.algo == 'mh_td3_mlp':
+            agent = MultiHeadTd3MlpAgent(**kwargs)
     elif 'ppo' in args.algo:
         kwargs['hidden_dim'] = args.ppo_hidden_dim
         kwargs['clip_param'] = args.ppo_clip_param

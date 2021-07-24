@@ -50,11 +50,10 @@ class OracleActorAgemV2MultiHeadSacMlpAgentV2(MultiHeadSacMlpAgentV2, OracleActo
                 0, len(memory['obses']), size=self.agem_ref_grad_batch_size // self.agem_task_count
             )
 
-            obses, actions, rewards, next_obses, not_dones, old_actor, old_critic, old_log_alpha, \
-            old_actor_optimizer = \
+            obses, actions, rewards, next_obses, not_dones, old_actor, old_critic, old_log_alpha = \
                 memory['obses'][idxs], memory['actions'][idxs], memory['rewards'][idxs], \
                 memory['next_obses'][idxs], memory['not_dones'][idxs], memory['actor'], \
-                memory['critic'], memory['log_alpha'], memory['actor_optimizer']
+                memory['critic'], memory['log_alpha']
 
             _, pi, log_pi, log_std = old_actor(obses, head_idx=task_id)
             actor_Q1, actor_Q2 = old_critic(obses, pi, head_idx=task_id)
@@ -62,7 +61,8 @@ class OracleActorAgemV2MultiHeadSacMlpAgentV2(MultiHeadSacMlpAgentV2, OracleActo
             actor_Q = torch.min(actor_Q1, actor_Q2)
             actor_proj_loss = (old_log_alpha.exp().detach() * log_pi - actor_Q).mean()
 
-            old_actor_optimizer.zero_grad()  # clear current gradient
+            # clear current gradient with net since we didn't save optimizer
+            old_actor.zero_grad()
             actor_proj_loss.backward()
 
             single_ref_actor_grad = []
@@ -70,7 +70,7 @@ class OracleActorAgemV2MultiHeadSacMlpAgentV2(MultiHeadSacMlpAgentV2, OracleActo
                 if param.requires_grad:
                     single_ref_actor_grad.append(param.grad.detach().clone().flatten())
             single_ref_actor_grad = torch.cat(single_ref_actor_grad)
-            old_actor_optimizer.zero_grad()
+            old_actor.zero_grad()
 
             ref_actor_grad.append(single_ref_actor_grad)
         ref_actor_grad = torch.stack(ref_actor_grad).mean(dim=0)
