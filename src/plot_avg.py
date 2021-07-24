@@ -132,6 +132,11 @@ CURVE_FORMAT = {
         'style': '-',
         'label': 'agem_ref_grad_batch_size4500'
     },
+    'original_agem_ref_grad_batch_size4500': {
+        'color': [204, 153, 255],
+        'style': '-',
+        'label': 'original_agem_ref_grad_batch_size4500'
+    },
     'oracle_agem_ref_grad_batch_size4500': {
         'color': [180, 180, 180],
         'style': '-',
@@ -141,6 +146,11 @@ CURVE_FORMAT = {
         'color': [139, 101, 8],
         'style': '-',
         'label': 'oracle_grad_agem_ref_grad_batch_size4500'
+    },
+    'oracle_actor_agem_ref_grad_batch_size4500': {
+        'color': [216, 30, 54],
+        'style': '-',
+        'label': 'oracle_actor_agem_ref_grad_batch_size4500'
     },
     'agem_ref_grad_batch_size5000': {
         'color': [255, 128, 0],
