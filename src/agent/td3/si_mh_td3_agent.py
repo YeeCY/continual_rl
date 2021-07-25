@@ -1,41 +1,39 @@
 import torch
 
 import utils
-from agent.sac import MultiHeadSacMlpAgentV2, SiSacMlpAgentV2
+from agent.td3 import MultiHeadTd3MlpAgent, SiTd3MlpAgent
 
 
-class SiMultiHeadSacMlpAgentV2(MultiHeadSacMlpAgentV2, SiSacMlpAgentV2):
+class SiMultiHeadTd3MlpAgent(MultiHeadTd3MlpAgent, SiTd3MlpAgent):
     """Adapt from https://github.com/GMvandeVen/continual-learning"""
     def __init__(self,
                  obs_shape,
                  action_shape,
                  action_range,
                  device,
-                 actor_hidden_dim=400,
+                 actor_hidden_dim=256,
                  critic_hidden_dim=256,
                  discount=0.99,
-                 init_temperature=0.01,
-                 alpha_lr=1e-3,
-                 actor_lr=1e-3,
-                 actor_log_std_min=-10,
-                 actor_log_std_max=2,
-                 actor_update_freq=2,
-                 critic_lr=1e-3,
-                 critic_tau=0.005,
-                 critic_target_update_freq=2,
-                 batch_size=128,
+                 actor_lr=3e-4,
+                 actor_noise=0.2,
+                 actor_noise_clip=0.5,
+                 critic_lr=3e-4,
+                 expl_noise_std=0.1,
+                 target_tau=0.005,
+                 actor_and_target_update_freq=2,
+                 batch_size=256,
                  si_c=1.0,
                  si_epsilon=0.1,
                  ):
-        MultiHeadSacMlpAgentV2.__init__(self, obs_shape, action_shape, action_range, device, actor_hidden_dim,
-                                        critic_hidden_dim, discount, init_temperature, alpha_lr, actor_lr,
-                                        actor_log_std_min, actor_log_std_max, actor_update_freq, critic_lr,
-                                        critic_tau, critic_target_update_freq, batch_size)
+        MultiHeadTd3MlpAgent.__init__(self, obs_shape, action_shape, action_range, device, actor_hidden_dim,
+                                      critic_hidden_dim, discount, actor_lr, actor_noise, actor_noise_clip,
+                                      critic_lr, expl_noise_std, target_tau, actor_and_target_update_freq,
+                                      batch_size)
 
-        SiSacMlpAgentV2.__init__(self, obs_shape, action_shape, action_range, device, actor_hidden_dim,
-                                 critic_hidden_dim, discount, init_temperature, alpha_lr, actor_lr, actor_log_std_min, actor_log_std_max,
-                                 actor_update_freq, critic_lr, critic_tau, critic_target_update_freq, batch_size,
-                                 si_c, si_epsilon)
+        SiTd3MlpAgent.__init__(self, obs_shape, action_shape, action_range, device, actor_hidden_dim,
+                               critic_hidden_dim, discount, actor_lr, actor_noise, actor_noise_clip, critic_lr,
+                               expl_noise_std, target_tau, actor_and_target_update_freq, batch_size, si_c,
+                               si_epsilon)
 
     def _save_init_params(self):
         # set prev_task_params as weight initializations
@@ -72,26 +70,17 @@ class SiMultiHeadSacMlpAgentV2(MultiHeadSacMlpAgentV2, SiSacMlpAgentV2):
         logger.log('train/batch_reward', reward.mean(), step)
 
         critic_loss = self.compute_critic_loss(obs, action, reward, next_obs, not_done, **kwargs)
-        # TODO (chongyi zheng): delete this block
-        # critic_si_surrogate_loss = self._compute_surrogate_loss(
-        #     self.critic.named_common_parameters())
-        # critic_loss = critic_loss + self.si_c * critic_si_surrogate_loss
         self.update_critic(critic_loss, logger, step)
 
-        if step % self.actor_update_freq == 0:
-            log_pi, actor_loss, alpha_loss = self.compute_actor_and_alpha_loss(obs, **kwargs)
+        if step % self.actor_and_target_update_freq == 0:
+            actor_loss = self.compute_actor_loss(obs, **kwargs)
             actor_si_surrogate_loss = self._compute_surrogate_loss(
-                self.actor.named_common_parameters())
+                list(self.actor.named_common_parameters()))
             actor_loss = actor_loss + self.si_c * actor_si_surrogate_loss
-            # TODO (chongyi zheng): delete this block
-            # alpha_si_surrogate_loss = self._compute_surrogate_loss(iter([('log_alpha', self.log_alpha)]))
-            # alpha_loss = alpha_loss + self.si_c * alpha_si_surrogate_loss
+            self.update_actor(actor_loss, logger, step)
 
-            self.update_actor_and_alpha(log_pi, actor_loss, logger, step, alpha_loss=alpha_loss)
-
-        if step % self.critic_target_update_freq == 0:
-            utils.soft_update_params(self.critic, self.critic_target,
-                                     self.critic_tau)
+            utils.soft_update_params(self.actor, self.actor_target, self.target_tau)
+            utils.soft_update_params(self.critic, self.critic_target, self.target_tau)
 
         # estimate weight importance
         self._estimate_importance()

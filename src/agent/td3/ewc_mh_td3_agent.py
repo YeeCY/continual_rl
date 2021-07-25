@@ -1,66 +1,53 @@
 import torch
 
 import utils
-from agent.sac import MultiHeadSacMlpAgentV2, EwcSacMlpAgentV2
+from agent.td3 import MultiHeadTd3MlpAgent, EwcTd3MlpAgent
 
 
-class EwcMultiHeadSacMlpAgentV2(MultiHeadSacMlpAgentV2, EwcSacMlpAgentV2):
+class EwcMultiHeadTd3MlpAgent(MultiHeadTd3MlpAgent, EwcTd3MlpAgent):
     """Adapt https://github.com/GMvandeVen/continual-learning"""
     def __init__(self,
                  obs_shape,
                  action_shape,
                  action_range,
                  device,
-                 actor_hidden_dim=400,
+                 actor_hidden_dim=256,
                  critic_hidden_dim=256,
                  discount=0.99,
-                 init_temperature=0.01,
-                 alpha_lr=1e-3,
-                 actor_lr=1e-3,
-                 actor_log_std_min=-10,
-                 actor_log_std_max=2,
-                 actor_update_freq=2,
-                 critic_lr=1e-3,
-                 critic_tau=0.005,
-                 critic_target_update_freq=2,
-                 batch_size=128,
+                 actor_lr=3e-4,
+                 actor_noise=0.2,
+                 actor_noise_clip=0.5,
+                 critic_lr=3e-4,
+                 expl_noise_std=0.1,
+                 target_tau=0.005,
+                 actor_and_target_update_freq=2,
+                 batch_size=256,
                  ewc_lambda=5000,
                  ewc_estimate_fisher_iters=100,
                  ewc_estimate_fisher_batch_size=1024,
                  online_ewc=False,
                  online_ewc_gamma=1.0,
                  ):
-        MultiHeadSacMlpAgentV2.__init__(self, obs_shape, action_shape, action_range, device, actor_hidden_dim,
-                                        critic_hidden_dim, discount, init_temperature, alpha_lr, actor_lr,
-                                        actor_log_std_min, actor_log_std_max, actor_update_freq, critic_lr, critic_tau,
-                                        critic_target_update_freq, batch_size)
+        MultiHeadTd3MlpAgent.__init__(self, obs_shape, action_shape, action_range, device, actor_hidden_dim,
+                                      critic_hidden_dim, discount, actor_lr, actor_noise, actor_noise_clip,
+                                      critic_lr, expl_noise_std, target_tau, actor_and_target_update_freq,
+                                      batch_size)
 
-        EwcSacMlpAgentV2.__init__(self, obs_shape, action_shape, action_range, device, actor_hidden_dim,
-                                  critic_hidden_dim, discount, init_temperature, alpha_lr, actor_lr, actor_log_std_min,
-                                  actor_log_std_max, actor_update_freq, critic_lr, critic_tau,
-                                  critic_target_update_freq, batch_size, ewc_lambda, ewc_estimate_fisher_iters,
-                                  ewc_estimate_fisher_batch_size, online_ewc, online_ewc_gamma)
+        EwcTd3MlpAgent.__init__(self, obs_shape, action_shape, action_range, device, actor_hidden_dim,
+                                critic_hidden_dim, discount, actor_lr, actor_noise, actor_noise_clip, critic_lr,
+                                expl_noise_std, target_tau, actor_and_target_update_freq, batch_size, ewc_lambda,
+                                ewc_estimate_fisher_iters, ewc_estimate_fisher_batch_size, online_ewc,
+                                online_ewc_gamma)
 
     def estimate_fisher(self, replay_buffer, **kwargs):
-        # TODO (chongyi zheng): save trajectory for KL divergence
         fishers = {}
         for _ in range(self.ewc_estimate_fisher_iters):
-            # with utils.eval_mode(self): (chongyi zheng): is this bug?
             obs, action, reward, next_obs, not_done = replay_buffer.sample(
                 self.ewc_estimate_fisher_batch_size)
 
-            # TODO (chongyi zheng): delete this block
-            # critic_loss = self.compute_critic_loss(obs, action, reward, next_obs, not_done, **kwargs)
-            # self.critic_optimizer.zero_grad()
-            # critic_loss.backward()
-
-            _, actor_loss, _ = self.compute_actor_and_alpha_loss(
-                obs, compute_alpha_loss=False, **kwargs
-            )
+            actor_loss = self.compute_actor_loss(obs, **kwargs)
             self.actor_optimizer.zero_grad()
             actor_loss.backward()
-            # self.log_alpha_optimizer.zero_grad()
-            # alpha_loss.backward()
 
             for name, param in self.actor.named_common_parameters():
                 if param.requires_grad:
@@ -95,21 +82,13 @@ class EwcMultiHeadSacMlpAgentV2(MultiHeadSacMlpAgentV2, EwcSacMlpAgentV2):
         logger.log('train/batch_reward', reward.mean(), step)
 
         critic_loss = self.compute_critic_loss(obs, action, reward, next_obs, not_done, **kwargs)
-        # TODO (chongyi zheng): delete this block
-        # critic_ewc_loss = self._compute_ewc_loss(self.critic.named_common_parameters())
-        # critic_loss = critic_loss + self.ewc_lambda * critic_ewc_loss
         self.update_critic(critic_loss, logger, step)
 
-        if step % self.actor_update_freq == 0:
-            log_pi, actor_loss, alpha_loss = self.compute_actor_and_alpha_loss(obs, **kwargs)
-            actor_ewc_loss = self._compute_ewc_loss(self.actor.named_common_parameters())
+        if step % self.actor_and_target_update_freq == 0:
+            actor_loss = self.compute_actor_loss(obs, **kwargs)
+            actor_ewc_loss = self._compute_ewc_loss(list(self.actor.named_common_parameters()))
             actor_loss = actor_loss + self.ewc_lambda * actor_ewc_loss
-            # TODO (chongyi zheng): delete this block
-            # alpha_ewc_loss = self._compute_ewc_loss(iter([('log_alpha', self.log_alpha)]))
-            # alpha_loss = alpha_loss + self.ewc_lambda * alpha_ewc_loss
+            self.update_actor(actor_loss, logger, step)
 
-            self.update_actor_and_alpha(log_pi, actor_loss, logger, step, alpha_loss=alpha_loss)
-
-        if step % self.critic_target_update_freq == 0:
-            utils.soft_update_params(self.critic, self.critic_target,
-                                     self.critic_tau)
+            utils.soft_update_params(self.actor, self.actor_target, self.target_tau)
+            utils.soft_update_params(self.critic, self.critic_target, self.target_tau)

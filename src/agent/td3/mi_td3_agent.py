@@ -5,10 +5,10 @@ import torch
 import utils
 
 from agent.td3 import Td3MlpAgent
-from agent.network import MultiHeadTd3ActorMlp, Td3CriticMlp
+from agent.network import MultiInputTd3ActorMlp, Td3CriticMlp
 
 
-class MultiHeadTd3MlpAgent(Td3MlpAgent):
+class MultiInputTd3MlpAgent(Td3MlpAgent):
     def __init__(
             self,
             obs_shape,
@@ -39,12 +39,12 @@ class MultiHeadTd3MlpAgent(Td3MlpAgent):
                 and hasattr(self, 'optimizer'):
             return
 
-        self.actor = MultiHeadTd3ActorMlp(
+        self.actor = MultiInputTd3ActorMlp(
             self.obs_shape, self.action_shape, self.actor_hidden_dim,
             self.action_range
         ).to(self.device)
 
-        self.actor_target = MultiHeadTd3ActorMlp(
+        self.actor_target = MultiInputTd3ActorMlp(
             self.obs_shape, self.action_shape, self.actor_hidden_dim,
             self.action_range
         ).to(self.device)

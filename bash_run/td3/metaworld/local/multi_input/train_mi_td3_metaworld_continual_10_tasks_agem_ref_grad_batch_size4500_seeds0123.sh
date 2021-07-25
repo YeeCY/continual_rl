@@ -1,7 +1,7 @@
 #!/bin/bash
 
 SCRIPT_DIR=$(dirname "$BASH_SOURCE")
-PROJECT_DIR=$(realpath "$SCRIPT_DIR/../../../..")
+PROJECT_DIR=$(realpath "$SCRIPT_DIR/../../../../..")
 
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/.mujoco/mujoco200/bin
 export PYTHONPATH=$PROJECT_DIR
@@ -24,7 +24,7 @@ for seed in "${seeds[@]}"; do
       handle-pull-side-v2 \
       window-open-v2 \
     --env_type metaworld \
-    --algo mh_td3_mlp \
+    --algo agem_mi_td3_mlp \
     --train_steps_per_task 500000 \
     --eval_freq 10 \
     --discount 0.99 \
@@ -32,7 +32,9 @@ for seed in "${seeds[@]}"; do
     --td3_num_expl_steps_per_process 1000 \
     --td3_num_processes 1 \
     --td3_num_train_iters 1000 \
+    --td3_agem_memory_budget 9000 \
+    --td3_agem_ref_grad_batch_size 4500 \
     --seed $seed \
-    --work_dir $PROJECT_DIR/vec_logs/mh_td3_mlp_metaworld_10_tasks/sgd/$seed \
-    > $PROJECT_DIR/terminal_logs/mh_td3_mlp_metaworld_10_tasks-sgd-seed"$seed".log 2>&1 &
+    --work_dir $PROJECT_DIR/vec_logs/mi_td3_mlp_metaworld_10_tasks/agem_ref_grad_batch_size4500/$seed \
+    > $PROJECT_DIR/terminal_logs/mi_td3_mlp_metaworld_10_tasks-agem_ref_grad_batch_size4500-seed"$seed".log 2>&1 &
 done

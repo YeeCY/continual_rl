@@ -660,6 +660,97 @@ class MultiHeadTd3ActorMlp(nn.Module):
         return out
 
 
+class MultiInputTd3ActorMlp(nn.Module):
+    """Adapt from https://github.com/rail-berkeley/rlkit and https://github.com/sfujim/TD3"""
+    def __init__(self, obs_shape, action_shapes, hidden_dim, action_ranges):
+        super().__init__()
+
+        assert isinstance(action_ranges[0], list), "Action range must be a list!"
+        self.action_ranges = action_ranges
+
+        self.trunk = nn.Sequential(
+            nn.Linear(obs_shape[0], hidden_dim),
+            nn.ReLU(),
+        )
+
+        self.heads = torch.nn.ModuleList()
+        for action_shape in action_shapes:
+            self.heads.append(nn.Sequential(
+                nn.Linear(hidden_dim, hidden_dim),
+                nn.ReLU(),
+                nn.Linear(hidden_dim, action_shape[0]),
+                nn.Tanh(),
+            ))
+
+        self.apply(weight_init)
+
+    def common_parameters(self, recurse=True):
+        for name, param in self.trunk.named_parameters(recurse=recurse):
+            yield param
+
+    def named_common_parameters(self, recurse=True):
+        for elem in self.trunk.named_parameters(prefix='trunk', recurse=recurse):
+            yield elem
+
+    def forward(self, obs, head_idx):
+        hidden = self.trunk(obs)
+        normalized_out = self.heads[head_idx](hidden)
+
+        low, high = torch.as_tensor(self.action_ranges[head_idx][0], device=obs.device), \
+                    torch.as_tensor(self.action_ranges[head_idx][1], device=obs.device)
+        out = 0.5 * (normalized_out + 1.0) * (high - low) + low
+
+        return out
+
+
+class Td3CriticMlp(nn.Module):
+    """Adapt from https://github.com/rail-berkeley/rlkit and https://github.com/sfujim/TD3"""
+    def __init__(self, obs_shape, action_shape, hidden_dim):
+        super().__init__()
+
+        self.q1_trunk = nn.Sequential(
+            nn.Linear(obs_shape[0] + action_shape[0], hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, 1)
+        )
+        self.q2_trunk = nn.Sequential(
+            nn.Linear(obs_shape[0] + action_shape[0], hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, 1)
+        )
+
+        self.apply(weight_init)
+
+    def forward(self, obs, action, **kwargs):
+        assert obs.size(0) == action.size(0)
+
+        obs_action = torch.cat([obs, action], dim=-1)
+        q1 = self.q1_trunk(obs_action)
+        q2 = self.q2_trunk(obs_action)
+
+        return q1, q2
+
+    def Q1(self, obs, action, **kwargs):
+        assert obs.size(0) == action.size(0)
+
+        obs_action = torch.cat([obs, action], dim=-1)
+        q1 = self.q1_trunk(obs_action)
+
+        return q1
+
+    def Q2(self, obs, action, **kwargs):
+        assert obs.size(0) == action.size(0)
+
+        obs_action = torch.cat([obs, action], dim=-1)
+        q2 = self.q2_trunk(obs_action)
+
+        return q2
+
+
 class MultiHeadTd3CriticMlp(nn.Module):
     """Adapt from https://github.com/rail-berkeley/rlkit and https://github.com/sfujim/TD3"""
     def __init__(self, obs_shape, action_shapes, hidden_dim):
@@ -728,53 +819,76 @@ class MultiHeadTd3CriticMlp(nn.Module):
         return q2
 
 
-class Td3CriticMlp(nn.Module):
+class MultiInputTd3CriticMlp(nn.Module):
     """Adapt from https://github.com/rail-berkeley/rlkit and https://github.com/sfujim/TD3"""
-    def __init__(self, obs_shape, action_shape, hidden_dim):
+    def __init__(self, obs_shape, action_shapes, hidden_dim):
         super().__init__()
 
         self.q1_trunk = nn.Sequential(
-            nn.Linear(obs_shape[0] + action_shape[0], hidden_dim),
+            nn.Linear(obs_shape[0] + action_shapes[0][0], hidden_dim),
             nn.ReLU(),
-            nn.Linear(hidden_dim, hidden_dim),
-            nn.ReLU(),
-            nn.Linear(hidden_dim, 1)
         )
+        self.q1_heads = torch.nn.ModuleList()
+        for _ in action_shapes:
+            self.q1_heads.append(nn.Sequential(
+                nn.Linear(hidden_dim, hidden_dim),
+                nn.ReLU(),
+                nn.Linear(hidden_dim, 1),
+            ))
+
         self.q2_trunk = nn.Sequential(
-            nn.Linear(obs_shape[0] + action_shape[0], hidden_dim),
+            nn.Linear(obs_shape[0] + action_shapes[0][0], hidden_dim),
             nn.ReLU(),
-            nn.Linear(hidden_dim, hidden_dim),
-            nn.ReLU(),
-            nn.Linear(hidden_dim, 1)
         )
+        self.q2_heads = torch.nn.ModuleList()
+        for _ in action_shapes:
+            self.q2_heads.append(nn.Sequential(
+                nn.Linear(hidden_dim, hidden_dim),
+                nn.ReLU(),
+                nn.Linear(hidden_dim, 1),
+            ))
 
         self.apply(weight_init)
 
-    def forward(self, obs, action, **kwargs):
+    def common_parameters(self, recurse=True):
+        for name, param in chain(self.q1_trunk.named_parameters(recurse=recurse),
+                                 self.q2_trunk.named_parameters(recurse=recurse)):
+            yield param
+
+    def named_common_parameters(self, prefix='', recurse=True):
+        for elem in chain(self.q1_trunk.named_parameters(prefix=prefix, recurse=recurse),
+                          self.q2_trunk.named_parameters(prefix=prefix, recurse=recurse)):
+            yield elem
+
+    def forward(self, obs, action, head_idx):
         assert obs.size(0) == action.size(0)
 
         obs_action = torch.cat([obs, action], dim=-1)
-        q1 = self.q1_trunk(obs_action)
-        q2 = self.q2_trunk(obs_action)
+
+        hidden1 = self.q1_trunk(obs_action)
+        q1 = self.q1_heads[head_idx](hidden1)
+        hidden2 = self.q2_trunk(obs_action)
+        q2 = self.q2_heads[head_idx](hidden2)
 
         return q1, q2
 
-    def Q1(self, obs, action, **kwargs):
+    def Q1(self, obs, action, head_idx):
         assert obs.size(0) == action.size(0)
 
         obs_action = torch.cat([obs, action], dim=-1)
-        q1 = self.q1_trunk(obs_action)
+        hidden1 = self.q1_trunk(obs_action)
+        q1 = self.q1_heads[head_idx](hidden1)
 
         return q1
 
-    def Q2(self, obs, action, **kwargs):
+    def Q2(self, obs, action, head_idx):
         assert obs.size(0) == action.size(0)
 
         obs_action = torch.cat([obs, action], dim=-1)
-        q2 = self.q2_trunk(obs_action)
+        hidden2 = self.q2_trunk(obs_action)
+        q2 = self.q2_heads[head_idx](hidden2)
 
         return q2
-
 
 
 class PpoActorMlp(nn.Module):

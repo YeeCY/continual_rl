@@ -8,7 +8,8 @@ from src.agent.sac import MultiHeadSacMlpAgentV2, EwcMultiHeadSacMlpAgentV2, SiM
     OracleAgemV2MultiHeadSacMlpAgentV2, OracleAgemV2MultiInputSacMlpAgentV2, \
     OracleGradAgemV2MultiHeadSacMlpAgentV2, OracleGradAgemV2MultiInputSacMlpAgentV2, \
     OracleActorAgemV2MultiHeadSacMlpAgentV2,  OracleActorAgemV2MultiInputSacMlpAgentV2
-from src.agent.td3 import Td3MlpAgent, MultiHeadTd3MlpAgent
+from src.agent.td3 import Td3MlpAgent, MultiHeadTd3MlpAgent, EwcMultiHeadTd3MlpAgent, SiMultiHeadTd3MlpAgent, \
+    AgemMultiHeadTd3MlpAgent, AgemMultiInputTd3MlpAgent
 from src.agent.ppo import PpoMlpAgent, EwcPpoMlpAgent, SiPpoMlpAgent, AgemPpoMlpAgent, \
     MultiHeadPpoMlpAgent, EwcMultiHeadPpoMlpAgent, SiMultiHeadPpoMlpAgent, AgemMultiHeadPpoMlpAgent
 from src.agent.ppo import EwcPpoMlpAgentV2, SiPpoMlpAgentV2, AgemPpoMlpAgentV2, CmamlPpoMlpAgentV2
@@ -50,6 +51,10 @@ ALGOS = [
     'oracle_actor_agem_v2_mi_sac_mlp_v2',
     'td3_mlp',
     'mh_td3_mlp',
+    'ewc_mh_td3_mlp',
+    'si_mh_td3_mlp',
+    'agem_mh_td3_mlp',
+    'agem_mi_td3_mlp',
     'ppo_mlp',
     'ewc_ppo_mlp',
     'ewc_ppo_mlp_v2',
@@ -280,6 +285,25 @@ def make_agent(obs_space, action_space, device, args):
             agent = Td3MlpAgent(**kwargs)
         elif args.algo == 'mh_td3_mlp':
             agent = MultiHeadTd3MlpAgent(**kwargs)
+        elif args.algo == 'ewc_mh_td3_mlp':
+            kwargs['ewc_lambda'] = args.td3_ewc_lambda
+            kwargs['ewc_estimate_fisher_iters'] = args.td3_ewc_estimate_fisher_iters
+            kwargs['ewc_estimate_fisher_batch_size'] = args.td3_ewc_estimate_fisher_batch_size
+            kwargs['online_ewc'] = args.td3_online_ewc
+            kwargs['online_ewc_gamma'] = args.td3_online_ewc_gamma
+            agent = EwcMultiHeadTd3MlpAgent(**kwargs)
+        elif args.algo == 'si_mh_td3_mlp':
+            kwargs['si_c'] = args.td3_si_c
+            kwargs['si_epsilon'] = args.td3_si_epsilon
+            agent = SiMultiHeadTd3MlpAgent(**kwargs)
+        elif args.algo == 'agem_mh_td3_mlp':
+            kwargs['agem_memory_budget'] = args.td3_agem_memory_budget
+            kwargs['agem_ref_grad_batch_size'] = args.td3_agem_ref_grad_batch_size
+            agent = AgemMultiHeadTd3MlpAgent(**kwargs)
+        elif args.algo == 'agem_mi_td3_mlp':
+            kwargs['agem_memory_budget'] = args.td3_agem_memory_budget
+            kwargs['agem_ref_grad_batch_size'] = args.td3_agem_ref_grad_batch_size
+            agent = AgemMultiInputTd3MlpAgent(**kwargs)
     elif 'ppo' in args.algo:
         kwargs['hidden_dim'] = args.ppo_hidden_dim
         kwargs['clip_param'] = args.ppo_clip_param
