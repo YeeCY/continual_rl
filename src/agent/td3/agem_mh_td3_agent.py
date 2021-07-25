@@ -72,11 +72,11 @@ class AgemMultiHeadTd3MlpAgent(MultiHeadTd3MlpAgent, AgemTd3MlpAgent):
     def _compute_ref_grad(self):
         # (chongyi zheng): We compute reference gradients for actor and critic separately
         if not self.agem_memories:
-            return None, None, None
+            return None, None
 
         ref_critic_grad = []
         ref_actor_grad = []
-        for memory in self.agem_memories.values():
+        for task_id, memory in enumerate(self.agem_memories.values()):
             idxs = np.random.randint(
                 0, len(memory['obses']), size=self.agem_ref_grad_batch_size // self.agem_task_count
             )
@@ -85,7 +85,7 @@ class AgemMultiHeadTd3MlpAgent(MultiHeadTd3MlpAgent, AgemTd3MlpAgent):
                 memory['obses'][idxs], memory['actions'][idxs], memory['rewards'][idxs], \
                 memory['next_obses'][idxs], memory['not_dones'][idxs]
 
-            critic_loss = self.compute_critic_loss(obs, action, reward, next_obs, not_done)
+            critic_loss = self.compute_critic_loss(obs, action, reward, next_obs, not_done, head_idx=task_id)
             self.critic_optimizer.zero_grad()  # clear current gradient
             critic_loss.backward()
 
@@ -96,7 +96,7 @@ class AgemMultiHeadTd3MlpAgent(MultiHeadTd3MlpAgent, AgemTd3MlpAgent):
             single_ref_critic_grad = torch.cat(single_ref_critic_grad)
             self.critic_optimizer.zero_grad()
 
-            actor_loss = self.compute_actor_loss(obs)
+            actor_loss = self.compute_actor_loss(obs, head_idx=task_id)
             self.actor_optimizer.zero_grad()  # clear current gradient
             actor_loss.backward()
 
