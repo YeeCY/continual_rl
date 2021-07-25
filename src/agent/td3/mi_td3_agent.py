@@ -50,11 +50,11 @@ class MultiInputTd3MlpAgent(Td3MlpAgent):
         ).to(self.device)
 
         self.critic = Td3CriticMlp(
-            self.obs_shape, self.action_shape, self.critic_hidden_dim
+            self.obs_shape, self.action_shape[0], self.critic_hidden_dim
         ).to(self.device)
 
         self.critic_target = Td3CriticMlp(
-            self.obs_shape, self.action_shape, self.critic_hidden_dim
+            self.obs_shape, self.action_shape[0], self.critic_hidden_dim
         ).to(self.device)
 
         self.reset_target()
