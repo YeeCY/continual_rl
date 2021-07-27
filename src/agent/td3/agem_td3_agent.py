@@ -47,7 +47,7 @@ class AgemTd3MlpAgent(Td3MlpAgent):
     def _compute_ref_grad(self):
         # (chongyi zheng): We compute reference gradients for actor and critic separately
         if not self.agem_memories:
-            return None, None, None
+            return None, None
 
         ref_critic_grad = []
         ref_actor_grad = []
