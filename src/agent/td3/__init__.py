@@ -5,6 +5,8 @@ from agent.td3.agem_td3_agent import AgemTd3MlpAgent
 from agent.td3.mh_td3_agent import MultiHeadTd3MlpAgent
 from agent.td3.mi_td3_agent import MultiInputTd3MlpAgent
 from agent.td3.ewc_mh_td3_agent import EwcMultiHeadTd3MlpAgent
+from agent.td3.ewc_mi_td3_agent import EwcMultiInputTd3MlpAgent
 from agent.td3.si_mh_td3_agent import SiMultiHeadTd3MlpAgent
+from agent.td3.si_mi_td3_agent import SiMultiInputTd3MlpAgent
 from agent.td3.agem_mh_td3_agent import AgemMultiHeadTd3MlpAgent
 from agent.td3.agem_mi_td3_agent import AgemMultiInputTd3MlpAgent
