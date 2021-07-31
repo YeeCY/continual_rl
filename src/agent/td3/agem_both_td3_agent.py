@@ -5,7 +5,7 @@ import utils
 from agent.td3 import Td3MlpAgent
 
 
-class AgemTd3MlpAgent(Td3MlpAgent):
+class AgemBothTd3MlpAgent(Td3MlpAgent):
     """Adapt from https://github.com/GMvandeVen/continual-learning"""
     def __init__(self,
                  obs_shape,

@@ -2,11 +2,11 @@ import torch
 import numpy as np
 import copy
 
-from agent.td3 import MultiHeadTd3MlpAgent, AgemTd3MlpAgent
-from agent.network import MultiInputTd3ActorMlp, MultiInputTd3CriticMlp
+from agent.td3 import MultiHeadTd3MlpAgent, AgemBothTd3MlpAgent
+from agent.network import MultiHeadTd3ActorMlp, MultiHeadTd3CriticMlp
 
 
-class AgemMultiInputTd3MlpAgent(MultiHeadTd3MlpAgent, AgemTd3MlpAgent):
+class AgemBothMultiHeadTd3MlpAgent(MultiHeadTd3MlpAgent, AgemBothTd3MlpAgent):
     """Adapt from https://github.com/GMvandeVen/continual-learning"""
     def __init__(self,
                  obs_shape,
@@ -32,31 +32,31 @@ class AgemMultiInputTd3MlpAgent(MultiHeadTd3MlpAgent, AgemTd3MlpAgent):
                                       critic_lr, expl_noise_std, target_tau, actor_and_target_update_freq,
                                       batch_size)
 
-        AgemTd3MlpAgent.__init__(self, obs_shape, action_shape, action_range, device, actor_hidden_dim,
-                                 critic_hidden_dim, discount, actor_lr, actor_noise, actor_noise_clip,
-                                 critic_lr, expl_noise_std, target_tau, actor_and_target_update_freq,
-                                 batch_size, agem_memory_budget, agem_ref_grad_batch_size)
+        AgemBothTd3MlpAgent.__init__(self, obs_shape, action_shape, action_range, device, actor_hidden_dim,
+                                     critic_hidden_dim, discount, actor_lr, actor_noise, actor_noise_clip,
+                                     critic_lr, expl_noise_std, target_tau, actor_and_target_update_freq,
+                                     batch_size, agem_memory_budget, agem_ref_grad_batch_size)
 
     def _setup_agent(self):
         if hasattr(self, 'actor') and hasattr(self, 'critic') \
                 and hasattr(self, 'optimizer'):
             return
 
-        self.actor = MultiInputTd3ActorMlp(
+        self.actor = MultiHeadTd3ActorMlp(
             self.obs_shape, self.action_shape, self.actor_hidden_dim,
             self.action_range
         ).to(self.device)
 
-        self.actor_target = MultiInputTd3ActorMlp(
+        self.actor_target = MultiHeadTd3ActorMlp(
             self.obs_shape, self.action_shape, self.actor_hidden_dim,
             self.action_range
         ).to(self.device)
 
-        self.critic = MultiInputTd3CriticMlp(
+        self.critic = MultiHeadTd3CriticMlp(
             self.obs_shape, self.action_shape, self.critic_hidden_dim
         ).to(self.device)
 
-        self.critic_target = MultiInputTd3CriticMlp(
+        self.critic_target = MultiHeadTd3CriticMlp(
             self.obs_shape, self.action_shape, self.critic_hidden_dim
         ).to(self.device)
 
@@ -85,8 +85,7 @@ class AgemMultiInputTd3MlpAgent(MultiHeadTd3MlpAgent, AgemTd3MlpAgent):
                 memory['obses'][idxs], memory['actions'][idxs], memory['rewards'][idxs], \
                 memory['next_obses'][idxs], memory['not_dones'][idxs]
 
-            critic_loss = self.compute_critic_loss(
-                obs, action, reward, next_obs, not_done, head_idx=task_id)
+            critic_loss = self.compute_critic_loss(obs, action, reward, next_obs, not_done, head_idx=task_id)
             self.critic_optimizer.zero_grad()  # clear current gradient
             critic_loss.backward()
 

@@ -24,7 +24,7 @@ for seed in "${seeds[@]}"; do
       handle-pull-side-v2 \
       window-open-v2 \
     --env_type metaworld \
-    --algo agem_mh_td3_mlp \
+    --algo agem_both_mh_td3_mlp \
     --train_steps_per_task 500000 \
     --eval_freq 10 \
     --discount 0.99 \
@@ -35,6 +35,6 @@ for seed in "${seeds[@]}"; do
     --td3_agem_memory_budget 9000 \
     --td3_agem_ref_grad_batch_size 4500 \
     --seed $seed \
-    --work_dir $PROJECT_DIR/vec_logs/mh_td3_mlp_metaworld_10_tasks/agem_ref_grad_batch_size4500/$seed \
-    > $PROJECT_DIR/terminal_logs/mh_td3_mlp_metaworld_10_tasks-agem_ref_grad_batch_size4500-seed"$seed".log 2>&1 &
+    --work_dir $PROJECT_DIR/vec_logs/mh_td3_mlp_metaworld_10_tasks/agem_both_ref_grad_batch_size4500/$seed \
+    > $PROJECT_DIR/terminal_logs/mh_td3_mlp_metaworld_10_tasks-agem_both_ref_grad_batch_size4500-seed"$seed".log 2>&1 &
 done
