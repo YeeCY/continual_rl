@@ -48,10 +48,10 @@ CURVE_FORMAT = {
         'style': '-',
         'label': 'SOFTLEARNING_SAC'
     },
-    'ewc_lambda5000': {
+    'td3_rlkit_single': {
         'color': [55, 126, 184],
         'style': '-',
-        'label': 'EWC_lambda5000'
+        'label': 'td3_rlkit_single'
     },
     'ewc_lambda10': {
         'color': [180, 180, 180],
@@ -191,6 +191,8 @@ def main(args):
                 for seed in seeds:
                     if exp_name == 'sac_rlkit_single':
                         data_path = osp.join(data_dir, exp_name, 'SAC-' + task_name, 's-' + str(seed), 'progress.csv')
+                    elif exp_name == 'td3_rlkit_single':
+                        data_path = osp.join(data_dir, exp_name, 'TD3-' + task_name, 's-' + str(seed), 'progress.csv')
                     elif exp_name == 'sac_garage_single':
                         data_path = osp.join(data_dir, exp_name, 'sac-' + task_name, 's-' + str(seed), 'progress.csv')
                     elif exp_name == 'sac_softlearning_single':
@@ -215,7 +217,7 @@ def main(args):
                     # file = file[file['step'] <= args.timesteps]
                     # x = file['exploration/all num steps total'].values
 
-                    if exp_name == 'sac_rlkit_single':
+                    if exp_name in ['sac_rlkit_single', 'td3_rlkit_single']:
                         task_df = df[df['exploration/num steps total'] <= max_timesteps]
                         data[exp_name].update(x=task_df['exploration/num steps total'].values)
                     elif exp_name == 'sac_garage_single':
@@ -231,7 +233,7 @@ def main(args):
                         data[exp_name].update(x=task_df['step'].values)
 
                     try:
-                        if exp_name == 'sac_rlkit_single':
+                        if exp_name in ['sac_rlkit_single', 'td3_rlkit_single']:
                             y = task_df['evaluation/Returns Mean'].values
                         elif exp_name == 'sac_garage_single':
                             y = task_df['Evaluation/AverageReturn'].values
