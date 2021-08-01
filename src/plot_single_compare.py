@@ -51,12 +51,12 @@ CURVE_FORMAT = {
     'td3_rlkit_single': {
         'color': [55, 126, 184],
         'style': '-',
-        'label': 'td3_rlkit_single'
+        'label': 'TD3_RLKIT'
     },
-    'ewc_lambda10': {
+    'td3_garage_single': {
         'color': [180, 180, 180],
         'style': '-',
-        'label': 'EWC_labmda10'
+        'label': 'TD3_GARAGE'
     },
     'si_c1': {
         'color': [204, 204, 0],
@@ -195,6 +195,8 @@ def main(args):
                         data_path = osp.join(data_dir, exp_name, 'TD3-' + task_name, 's-' + str(seed), 'progress.csv')
                     elif exp_name == 'sac_garage_single':
                         data_path = osp.join(data_dir, exp_name, 'sac-' + task_name, 's-' + str(seed), 'progress.csv')
+                    elif exp_name == 'td3_garage_single':
+                        data_path = osp.join(data_dir, exp_name, 'td3-' + task_name, 's-' + str(seed), 'progress.csv')
                     elif exp_name == 'sac_softlearning_single':
                         data_path = osp.join(data_dir, exp_name, task_name.replace('-v2', ''),
                                              'v2', '*/*seed={}*'.format(str(seed)), 'progress.csv')
@@ -220,7 +222,7 @@ def main(args):
                     if exp_name in ['sac_rlkit_single', 'td3_rlkit_single']:
                         task_df = df[df['exploration/num steps total'] <= max_timesteps]
                         data[exp_name].update(x=task_df['exploration/num steps total'].values)
-                    elif exp_name == 'sac_garage_single':
+                    elif exp_name in ['sac_garage_single', 'td3_garage_single']:
                         task_df = df[df['TotalEnvSteps'] <= max_timesteps]
                         data[exp_name].update(x=task_df['TotalEnvSteps'].values)
                     elif exp_name == 'sac_softlearning_single':
@@ -235,7 +237,7 @@ def main(args):
                     try:
                         if exp_name in ['sac_rlkit_single', 'td3_rlkit_single']:
                             y = task_df['evaluation/Returns Mean'].values
-                        elif exp_name == 'sac_garage_single':
+                        elif exp_name in ['sac_garage_single', 'td3_garage_single']:
                             y = task_df['Evaluation/AverageReturn'].values
                         elif exp_name == 'sac_softlearning_single':
                             y = task_df['evaluation/episode-reward-mean'].values

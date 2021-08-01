@@ -36,6 +36,6 @@ for seed in "${seeds[@]}"; do
     --sac_agem_memory_budget 9000 \
     --sac_agem_ref_grad_batch_size 4500 \
     --seed $seed \
-    --work_dir $PROJECT_DIR/vec_logs/mh_sac_mlp_v2_overparam256_metaworld_10_tasks_improvement/oracle_actor_agem_ref_grad_batch_size4500/$seed \
-    > $PROJECT_DIR/terminal_logs/mh_sac_mlp_v2_overparam256_metaworld_10_tasks_improvement-oracle_actor_agem_ref_grad_batch_size4500-seed"$seed".log 2>&1 &
+    --work_dir $PROJECT_DIR/vec_logs/mh_sac_mlp_v2_overparam256_metaworld_10_tasks_improvement/oracle_actor_critic_agem_ref_grad_batch_size4500/$seed \
+    > $PROJECT_DIR/terminal_logs/mh_sac_mlp_v2_overparam256_metaworld_10_tasks_improvement-oracle_actor_critic_agem_ref_grad_batch_size4500-seed"$seed".log 2>&1 &
 done

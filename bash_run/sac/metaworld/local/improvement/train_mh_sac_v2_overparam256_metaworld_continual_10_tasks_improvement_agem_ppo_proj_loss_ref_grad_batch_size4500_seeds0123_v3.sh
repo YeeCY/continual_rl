@@ -24,7 +24,7 @@ for seed in "${seeds[@]}"; do
       handle-pull-side-v2 \
       window-open-v2 \
     --env_type metaworld \
-    --algo oracle_agem_v2_mi_sac_mlp_v2 \
+    --algo agem_v2_mh_sac_mlp_v2 \
     --train_steps_per_task 500000 \
     --eval_freq 10 \
     --discount 0.99 \
@@ -36,6 +36,6 @@ for seed in "${seeds[@]}"; do
     --sac_agem_memory_budget 9000 \
     --sac_agem_ref_grad_batch_size 4500 \
     --seed $seed \
-    --work_dir $PROJECT_DIR/vec_logs/mi_sac_mlp_v2_overparam256_metaworld_10_tasks_improvement/oracle_agem_ref_grad_batch_size4500/$seed \
-    > $PROJECT_DIR/terminal_logs/mi_sac_mlp_v2_overparam256_metaworld_10_tasks_improvement-oracle_agem_ref_grad_batch_size4500-seed"$seed".log 2>&1 &
+    --work_dir $PROJECT_DIR/vec_logs/mh_sac_mlp_v2_overparam256_metaworld_10_tasks_improvement/agem_ppo_proj_loss_ref_grad_batch_size4500/$seed \
+    > $PROJECT_DIR/terminal_logs/mh_sac_mlp_v2_overparam256_metaworld_10_tasks_improvement-agem_ppo_proj_loss_ref_grad_batch_size4500-seed"$seed".log 2>&1 &
 done
