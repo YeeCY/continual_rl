@@ -6,7 +6,7 @@ import utils
 from agent.td3 import Td3MlpAgent
 
 
-class OracleCriticAgemTd3MlpAgent(Td3MlpAgent):
+class OracleActorCriticAgemTd3MlpAgent(Td3MlpAgent):
     """Adapt from https://github.com/GMvandeVen/continual-learning"""
     def __init__(self,
                  obs_shape,
@@ -56,21 +56,22 @@ class OracleCriticAgemTd3MlpAgent(Td3MlpAgent):
                 0, len(memory['obses']), size=self.agem_ref_grad_batch_size // self.agem_task_count
             )
 
-            obs, action, reward, next_obs, not_done, old_critic = \
+            obs, action, reward, next_obs, not_done, old_actor, old_critic = \
                 memory['obses'][idxs], memory['actions'][idxs], memory['rewards'][idxs], \
-                memory['next_obses'][idxs], memory['not_dones'][idxs], memory['critic']
+                memory['next_obses'][idxs], memory['not_dones'][idxs], \
+                memory['actor'], memory['critic']
 
-            actor_action = self.actor(obs)
+            actor_action = old_actor(obs)
             actor_proj_loss = -old_critic.Q1(obs, actor_action).mean()
-            self.actor_optimizer.zero_grad()  # clear current gradient
+            old_actor.zero_grad()  # clear current gradient
             actor_proj_loss.backward()
 
             single_ref_actor_grad = []
-            for param in self.actor.parameters():
+            for param in old_actor.parameters():
                 if param.requires_grad:
                     single_ref_actor_grad.append(param.grad.detach().clone().flatten())
             single_ref_actor_grad = torch.cat(single_ref_actor_grad)
-            self.actor_optimizer.zero_grad()
+            old_actor.zero_grad()
 
             ref_actor_grad.append(single_ref_actor_grad)
         ref_actor_grad = torch.stack(ref_actor_grad).mean(dim=0)
@@ -146,6 +147,7 @@ class OracleCriticAgemTd3MlpAgent(Td3MlpAgent):
         self.agem_memories[self.agem_task_count]['not_dones'] = torch.Tensor(
             self.agem_memories[self.agem_task_count]['not_dones']).to(device=self.device).unsqueeze(-1)
         self.agem_memories[self.agem_task_count]['critic'] = copy.deepcopy(self.critic)
+        self.agem_memories[self.agem_task_count]['actor'] = copy.deepcopy(self.actor)
 
         self.agem_task_count += 1
 

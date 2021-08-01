@@ -1,10 +1,10 @@
 import torch
 import numpy as np
 
-from agent.td3 import MultiInputTd3MlpAgent, OracleCriticAgemTd3MlpAgent
+from agent.td3 import MultiInputTd3MlpAgent, OracleActorCriticAgemTd3MlpAgent
 
 
-class OracleCriticAgemMultiInputTd3MlpAgent(MultiInputTd3MlpAgent, OracleCriticAgemTd3MlpAgent):
+class OracleActorCriticAgemMultiInputTd3MlpAgent(MultiInputTd3MlpAgent, OracleActorCriticAgemTd3MlpAgent):
     """Adapt from https://github.com/GMvandeVen/continual-learning"""
     def __init__(self,
                  obs_shape,
@@ -30,10 +30,11 @@ class OracleCriticAgemMultiInputTd3MlpAgent(MultiInputTd3MlpAgent, OracleCriticA
                                       critic_lr, expl_noise_std, target_tau, actor_and_target_update_freq,
                                       batch_size)
 
-        OracleCriticAgemTd3MlpAgent.__init__(self, obs_shape, action_shape, action_range, device, actor_hidden_dim,
-                                             critic_hidden_dim, discount, actor_lr, actor_noise, actor_noise_clip,
-                                             critic_lr, expl_noise_std, target_tau, actor_and_target_update_freq,
-                                             batch_size, agem_memory_budget, agem_ref_grad_batch_size)
+        OracleActorCriticAgemTd3MlpAgent.__init__(self, obs_shape, action_shape, action_range, device,
+                                                  actor_hidden_dim, critic_hidden_dim, discount, actor_lr,
+                                                  actor_noise, actor_noise_clip, critic_lr, expl_noise_std,
+                                                  target_tau, actor_and_target_update_freq, batch_size,
+                                                  agem_memory_budget, agem_ref_grad_batch_size)
 
     def _compute_ref_grad(self):
         # (chongyi zheng): We compute reference gradients for actor and critic separately
@@ -46,21 +47,22 @@ class OracleCriticAgemMultiInputTd3MlpAgent(MultiInputTd3MlpAgent, OracleCriticA
                 0, len(memory['obses']), size=self.agem_ref_grad_batch_size // self.agem_task_count
             )
 
-            obs, action, reward, next_obs, not_done, old_critic = \
+            obs, action, reward, next_obs, not_done, old_actor, old_critic = \
                 memory['obses'][idxs], memory['actions'][idxs], memory['rewards'][idxs], \
-                memory['next_obses'][idxs], memory['not_dones'][idxs], memory['critic']
+                memory['next_obses'][idxs], memory['not_dones'][idxs], \
+                memory['actor'], memory['critic']
 
-            actor_action = self.actor(obs, head_idx=task_id)
+            actor_action = old_actor(obs, head_idx=task_id)
             actor_proj_loss = -old_critic.Q1(obs, actor_action, head_idx=task_id).mean()
-            self.actor_optimizer.zero_grad()  # clear current gradient
+            old_actor.zero_grad()  # clear current gradient
             actor_proj_loss.backward()
 
             single_ref_actor_grad = []
-            for param in self.actor.common_parameters():
+            for param in old_actor.common_parameters():
                 if param.requires_grad:
                     single_ref_actor_grad.append(param.grad.detach().clone().flatten())
             single_ref_actor_grad = torch.cat(single_ref_actor_grad)
-            self.actor_optimizer.zero_grad()
+            old_actor.zero_grad()
 
             ref_actor_grad.append(single_ref_actor_grad)
         ref_actor_grad = torch.stack(ref_actor_grad).mean(dim=0)

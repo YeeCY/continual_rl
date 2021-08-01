@@ -12,7 +12,9 @@ from src.agent.td3 import Td3MlpAgent, MultiHeadTd3MlpAgent, MultiInputTd3MlpAge
     EwcMultiHeadTd3MlpAgent, EwcMultiInputTd3MlpAgent, \
     SiMultiHeadTd3MlpAgent, SiMultiInputTd3MlpAgent, \
     AgemBothMultiHeadTd3MlpAgent, AgemBothMultiInputTd3MlpAgent, \
-    OracleCriticAgemMultiHeadTd3MlpAgent, OracleCriticAgemMultiInputTd3MlpAgent
+    OracleCriticAgemMultiHeadTd3MlpAgent, OracleCriticAgemMultiInputTd3MlpAgent, \
+    OracleActorCriticAgemMultiHeadTd3MlpAgent, OracleActorCriticAgemMultiInputTd3MlpAgent, \
+    OracleGradAgemMultiHeadTd3MlpAgent, OracleGradAgemMultiInputTd3MlpAgent
 from src.agent.ppo import PpoMlpAgent, EwcPpoMlpAgent, SiPpoMlpAgent, AgemPpoMlpAgent, \
     MultiHeadPpoMlpAgent, EwcMultiHeadPpoMlpAgent, SiMultiHeadPpoMlpAgent, AgemMultiHeadPpoMlpAgent
 from src.agent.ppo import EwcPpoMlpAgentV2, SiPpoMlpAgentV2, AgemPpoMlpAgentV2, CmamlPpoMlpAgentV2
@@ -63,6 +65,10 @@ ALGOS = [
     'agem_both_mi_td3_mlp',
     'oracle_critic_agem_mh_td3_mlp',
     'oracle_critic_agem_mi_td3_mlp',
+    'oracle_actor_critic_agem_mh_td3_mlp',
+    'oracle_actor_critic_agem_mi_td3_mlp',
+    'oracle_grad_agem_mh_td3_mlp',
+    'oracle_grad_agem_mi_td3_mlp',
     'ppo_mlp',
     'ewc_ppo_mlp',
     'ewc_ppo_mlp_v2',
@@ -333,6 +339,22 @@ def make_agent(obs_space, action_space, device, args):
             kwargs['agem_memory_budget'] = args.td3_agem_memory_budget
             kwargs['agem_ref_grad_batch_size'] = args.td3_agem_ref_grad_batch_size
             agent = OracleCriticAgemMultiInputTd3MlpAgent(**kwargs)
+        elif args.algo == 'oracle_actor_critic_agem_mh_td3_mlp':
+            kwargs['agem_memory_budget'] = args.td3_agem_memory_budget
+            kwargs['agem_ref_grad_batch_size'] = args.td3_agem_ref_grad_batch_size
+            agent = OracleActorCriticAgemMultiHeadTd3MlpAgent(**kwargs)
+        elif args.algo == 'oracle_actor_critic_agem_mi_td3_mlp':
+            kwargs['agem_memory_budget'] = args.td3_agem_memory_budget
+            kwargs['agem_ref_grad_batch_size'] = args.td3_agem_ref_grad_batch_size
+            agent = OracleActorCriticAgemMultiInputTd3MlpAgent(**kwargs)
+        elif args.algo == 'oracle_grad_agem_mh_td3_mlp':
+            kwargs['agem_memory_budget'] = args.td3_agem_memory_budget
+            kwargs['agem_ref_grad_batch_size'] = args.td3_agem_ref_grad_batch_size
+            agent = OracleGradAgemMultiHeadTd3MlpAgent(**kwargs)
+        elif args.algo == 'oracle_grad_agem_mi_td3_mlp':
+            kwargs['agem_memory_budget'] = args.td3_agem_memory_budget
+            kwargs['agem_ref_grad_batch_size'] = args.td3_agem_ref_grad_batch_size
+            agent = OracleGradAgemMultiInputTd3MlpAgent(**kwargs)
     elif 'ppo' in args.algo:
         kwargs['hidden_dim'] = args.ppo_hidden_dim
         kwargs['clip_param'] = args.ppo_clip_param

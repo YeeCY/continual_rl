@@ -156,7 +156,6 @@ class OracleGradAgemV2SacMlpAgentV2(SacMlpAgent):
             self.agem_memories[self.agem_task_count]['next_obses']).to(device=self.device)
         self.agem_memories[self.agem_task_count]['not_dones'] = torch.Tensor(
             self.agem_memories[self.agem_task_count]['not_dones']).to(device=self.device).unsqueeze(-1)
-        self.agem_memories[self.agem_task_count]['critic'] = copy.deepcopy(self.critic)
 
         # save oracle gradient in memory
         _, actor_loss, _ = self.compute_actor_and_alpha_loss(

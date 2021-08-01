@@ -85,7 +85,7 @@ class AgemV2SacMlpAgentV2(SacMlpAgent):
         return ref_actor_grad
 
     def _project_grad(self, parameters, ref_grad):
-        assert isinstance(parameters, list), "'parameters' must be a iterator"
+        assert isinstance(parameters, list), "'parameters' must be a list"
 
         if ref_grad is None:
             return

@@ -1,10 +1,11 @@
 import torch
 import numpy as np
 
-from agent.td3 import MultiHeadTd3MlpAgent, OracleCriticAgemTd3MlpAgent
+import utils
+from agent.td3 import MultiHeadTd3MlpAgent, OracleGradAgemTd3MlpAgent
 
 
-class OracleCriticAgemMultiHeadTd3MlpAgent(MultiHeadTd3MlpAgent, OracleCriticAgemTd3MlpAgent):
+class OracleGradAgemMultiHeadTd3MlpAgent(MultiHeadTd3MlpAgent, OracleGradAgemTd3MlpAgent):
     """Adapt from https://github.com/GMvandeVen/continual-learning"""
     def __init__(self,
                  obs_shape,
@@ -30,42 +31,71 @@ class OracleCriticAgemMultiHeadTd3MlpAgent(MultiHeadTd3MlpAgent, OracleCriticAge
                                       critic_lr, expl_noise_std, target_tau, actor_and_target_update_freq,
                                       batch_size)
 
-        OracleCriticAgemTd3MlpAgent.__init__(self, obs_shape, action_shape, action_range, device, actor_hidden_dim,
-                                             critic_hidden_dim, discount, actor_lr, actor_noise, actor_noise_clip,
-                                             critic_lr, expl_noise_std, target_tau, actor_and_target_update_freq,
-                                             batch_size, agem_memory_budget, agem_ref_grad_batch_size)
+        OracleGradAgemTd3MlpAgent.__init__(self, obs_shape, action_shape, action_range, device, actor_hidden_dim,
+                                           critic_hidden_dim, discount, actor_lr, actor_noise, actor_noise_clip,
+                                           critic_lr, expl_noise_std, target_tau, actor_and_target_update_freq,
+                                           batch_size, agem_memory_budget, agem_ref_grad_batch_size)
 
-    def _compute_ref_grad(self):
-        # (chongyi zheng): We compute reference gradients for actor and critic separately
-        if not self.agem_memories:
-            return None
+    def construct_memory(self, env, **kwargs):
+        memory_size_per_task = self.agem_memory_budget // (self.agem_task_count + 1)
+        self._adjust_memory_size(memory_size_per_task)
 
-        ref_actor_grad = []
-        for task_id, memory in enumerate(self.agem_memories.values()):
-            idxs = np.random.randint(
-                0, len(memory['obses']), size=self.agem_ref_grad_batch_size // self.agem_task_count
-            )
+        obs = env.reset()
+        self.agem_memories[self.agem_task_count] = {
+            'obses': [],
+            'actions': [],
+            'rewards': [],
+            'next_obses': [],
+            'not_dones': [],
+        }
+        for _ in range(memory_size_per_task):
+            with utils.eval_mode(self):
+                action = self.actor(obs, **kwargs)
 
-            obs, action, reward, next_obs, not_done, old_critic = \
-                memory['obses'][idxs], memory['actions'][idxs], memory['rewards'][idxs], \
-                memory['next_obses'][idxs], memory['not_dones'][idxs], memory['critic']
+                if 'head_idx' in kwargs:
+                    action = utils.to_np(
+                        action.clamp(*self.action_range[kwargs['head_idx']]))
+                else:
+                    action = utils.to_np(action.clamp(*self.action_range))
 
-            actor_action = self.actor(obs, head_idx=task_id)
-            actor_proj_loss = -old_critic.Q1(obs, actor_action, head_idx=task_id).mean()
-            self.actor_optimizer.zero_grad()  # clear current gradient
-            actor_proj_loss.backward()
+            next_obs, reward, done, _ = env.step(action)
 
-            single_ref_actor_grad = []
-            for param in self.actor.common_parameters():
-                if param.requires_grad:
-                    single_ref_actor_grad.append(param.grad.detach().clone().flatten())
-            single_ref_actor_grad = torch.cat(single_ref_actor_grad)
-            self.actor_optimizer.zero_grad()
+            self.agem_memories[self.agem_task_count]['obses'].append(obs)
+            self.agem_memories[self.agem_task_count]['actions'].append(action)
+            self.agem_memories[self.agem_task_count]['rewards'].append(reward)
+            self.agem_memories[self.agem_task_count]['next_obses'].append(next_obs)
+            not_done = np.array([not done_ for done_ in done], dtype=np.float32)
+            self.agem_memories[self.agem_task_count]['not_dones'].append(not_done)
 
-            ref_actor_grad.append(single_ref_actor_grad)
-        ref_actor_grad = torch.stack(ref_actor_grad).mean(dim=0)
+            obs = next_obs
 
-        return ref_actor_grad
+        self.agem_memories[self.agem_task_count]['obses'] = torch.Tensor(
+            self.agem_memories[self.agem_task_count]['obses']).to(device=self.device)
+        self.agem_memories[self.agem_task_count]['actions'] = torch.Tensor(
+            self.agem_memories[self.agem_task_count]['actions']).to(device=self.device)
+        self.agem_memories[self.agem_task_count]['rewards'] = torch.Tensor(
+            self.agem_memories[self.agem_task_count]['rewards']).to(device=self.device).unsqueeze(-1)
+        self.agem_memories[self.agem_task_count]['next_obses'] = torch.Tensor(
+            self.agem_memories[self.agem_task_count]['next_obses']).to(device=self.device)
+        self.agem_memories[self.agem_task_count]['not_dones'] = torch.Tensor(
+            self.agem_memories[self.agem_task_count]['not_dones']).to(device=self.device).unsqueeze(-1)
+
+        # save oracle gradient in memory
+        actor_loss = self.compute_actor_loss(
+            self.agem_memories[self.agem_task_count]['obses'], compute_alpha_loss=False)
+        self.actor_optimizer.zero_grad()  # clear current gradient
+        actor_loss.backward()
+
+        single_ref_actor_grad = []
+        for param in self.actor.common_parameters():
+            if param.requires_grad:
+                single_ref_actor_grad.append(param.grad.detach().clone().flatten())
+        single_ref_actor_grad = torch.cat(single_ref_actor_grad)
+        self.actor_optimizer.zero_grad()
+
+        self.agem_memories[self.agem_task_count]['ref_grad'] = single_ref_actor_grad
+
+        self.agem_task_count += 1
 
     def update_actor(self, actor_loss, logger, step, ref_actor_grad=None):
         logger.log('train_actor/loss', actor_loss, step)

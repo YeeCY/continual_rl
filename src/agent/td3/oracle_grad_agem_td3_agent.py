@@ -1,4 +1,3 @@
-import copy
 import torch
 import numpy as np
 
@@ -6,7 +5,7 @@ import utils
 from agent.td3 import Td3MlpAgent
 
 
-class OracleCriticAgemTd3MlpAgent(Td3MlpAgent):
+class OracleGradAgemTd3MlpAgent(Td3MlpAgent):
     """Adapt from https://github.com/GMvandeVen/continual-learning"""
     def __init__(self,
                  obs_shape,
@@ -52,27 +51,27 @@ class OracleCriticAgemTd3MlpAgent(Td3MlpAgent):
 
         ref_actor_grad = []
         for memory in self.agem_memories.values():
-            idxs = np.random.randint(
-                0, len(memory['obses']), size=self.agem_ref_grad_batch_size // self.agem_task_count
-            )
+            # idxs = np.random.randint(
+            #     0, len(memory['obses']), size=self.agem_ref_grad_batch_size // self.agem_task_count
+            # )
+            #
+            # obs, action, reward, next_obs, not_done, old_critic = \
+            #     memory['obses'][idxs], memory['actions'][idxs], memory['rewards'][idxs], \
+            #     memory['next_obses'][idxs], memory['not_dones'][idxs], memory['critic']
+            #
+            # actor_action = self.actor(obs)
+            # actor_proj_loss = -old_critic.Q1(obs, actor_action).mean()
+            # self.actor_optimizer.zero_grad()  # clear current gradient
+            # actor_proj_loss.backward()
+            #
+            # single_ref_actor_grad = []
+            # for param in self.actor.parameters():
+            #     if param.requires_grad:
+            #         single_ref_actor_grad.append(param.grad.detach().clone().flatten())
+            # single_ref_actor_grad = torch.cat(single_ref_actor_grad)
+            # self.actor_optimizer.zero_grad()
 
-            obs, action, reward, next_obs, not_done, old_critic = \
-                memory['obses'][idxs], memory['actions'][idxs], memory['rewards'][idxs], \
-                memory['next_obses'][idxs], memory['not_dones'][idxs], memory['critic']
-
-            actor_action = self.actor(obs)
-            actor_proj_loss = -old_critic.Q1(obs, actor_action).mean()
-            self.actor_optimizer.zero_grad()  # clear current gradient
-            actor_proj_loss.backward()
-
-            single_ref_actor_grad = []
-            for param in self.actor.parameters():
-                if param.requires_grad:
-                    single_ref_actor_grad.append(param.grad.detach().clone().flatten())
-            single_ref_actor_grad = torch.cat(single_ref_actor_grad)
-            self.actor_optimizer.zero_grad()
-
-            ref_actor_grad.append(single_ref_actor_grad)
+            ref_actor_grad.append(memory['ref_grad'])
         ref_actor_grad = torch.stack(ref_actor_grad).mean(dim=0)
 
         return ref_actor_grad
@@ -145,7 +144,21 @@ class OracleCriticAgemTd3MlpAgent(Td3MlpAgent):
             self.agem_memories[self.agem_task_count]['next_obses']).to(device=self.device)
         self.agem_memories[self.agem_task_count]['not_dones'] = torch.Tensor(
             self.agem_memories[self.agem_task_count]['not_dones']).to(device=self.device).unsqueeze(-1)
-        self.agem_memories[self.agem_task_count]['critic'] = copy.deepcopy(self.critic)
+
+        # save oracle gradient in memory
+        actor_loss = self.compute_actor_loss(
+            self.agem_memories[self.agem_task_count]['obses'], compute_alpha_loss=False)
+        self.actor_optimizer.zero_grad()  # clear current gradient
+        actor_loss.backward()
+
+        single_ref_actor_grad = []
+        for param in self.actor.parameters():
+            if param.requires_grad:
+                single_ref_actor_grad.append(param.grad.detach().clone().flatten())
+        single_ref_actor_grad = torch.cat(single_ref_actor_grad)
+        self.actor_optimizer.zero_grad()
+
+        self.agem_memories[self.agem_task_count]['ref_grad'] = single_ref_actor_grad
 
         self.agem_task_count += 1
 
