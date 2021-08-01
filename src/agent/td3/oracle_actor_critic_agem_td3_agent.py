@@ -117,13 +117,15 @@ class OracleActorCriticAgemTd3MlpAgent(Td3MlpAgent):
         }
         for _ in range(memory_size_per_task):
             with utils.eval_mode(self):
-                action = self.actor(obs, **kwargs)
+                action = self.actor(
+                    torch.Tensor(obs).to(device=self.device),
+                    **kwargs)
 
                 if 'head_idx' in kwargs:
-                    action = utils.to_np(
-                        action.clamp(*self.action_range[kwargs['head_idx']]))
+                    action = utils.to_np(action).clip(
+                        *self.action_range[kwargs['head_idx']])
                 else:
-                    action = utils.to_np(action.clamp(*self.action_range))
+                    action = utils.to_np(action).clip(*self.action_range)
 
             next_obs, reward, done, _ = env.step(action)
 

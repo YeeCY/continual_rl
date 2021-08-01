@@ -259,7 +259,7 @@ def main(args):
                 agent.update_omegas()
             elif 'agem' in args.algo:
                 print(f"Constructing AGEM memory: {infos[0]['task_name']}")
-                if 'agem_v2' in args.algo:
+                if 'agem' in args.algo:
                     if any(x in args.algo for x in ['mh', 'mi', 'individual']):
                         agent.construct_memory(env, head_idx=task_id)
                     else:
