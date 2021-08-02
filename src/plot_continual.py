@@ -137,6 +137,11 @@ CURVE_FORMAT = {
         'style': '-',
         'label': 'agem_both_ref_grad_batch_size4500'
     },
+    'agem_ppo_proj_loss_ref_grad_batch_size4500': {
+        'color': [55, 126, 184],
+        'style': '-',
+        'label': 'agem_ppo_proj_loss_ref_grad_batch_size4500'
+    },
     'original_agem_ref_grad_batch_size4500': {
         'color': [204, 153, 255],
         'style': '-',
@@ -161,6 +166,11 @@ CURVE_FORMAT = {
         'color': [216, 30, 54],
         'style': '-',
         'label': 'oracle_actor_agem_ref_grad_batch_size4500'
+    },
+    'oracle_actor_critic_agem_ref_grad_batch_size4500': {
+        'color': [216, 30, 54],
+        'style': '-',
+        'label': 'oracle_actor_critic_agem_ref_grad_batch_size4500'
     },
     'agem_ref_grad_batch_size5000': {
         'color': [255, 128, 0],
