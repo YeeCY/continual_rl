@@ -52,7 +52,7 @@ declare -a seeds=(0 1 2 3)
 
 for env_names in "${all_env_names[@]}"; do
   for seed in "${seeds[@]}"; do
-    export CUDA_VISIBLE_DEVICES=$seed
+    export CUDA_VISIBLE_DEVICES="$(($seed % 2))"
     nohup \
     python $PROJECT_DIR/src/train_td3.py \
       --env_names $env_names \
