@@ -11,7 +11,7 @@ PROJECT_DIR=$(realpath "$SCRIPT_DIR/../../../../..")
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/.mujoco/mujoco200/bin
 export PYTHONPATH=$PROJECT_DIR
 
-declare -a env_names=(
+declare -a all_env_names=(
 #  assembly-v2
 #  basketball-v2
 #  bin-picking-v2
