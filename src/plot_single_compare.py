@@ -58,10 +58,10 @@ CURVE_FORMAT = {
         'style': '-',
         'label': 'TD3_GARAGE'
     },
-    'si_c1': {
+    'mh_td3_mlp_metaworld_single': {
         'color': [204, 204, 0],
         'style': '-',
-        'label': 'SI_c1'
+        'label': 'TD3'
     },
     'si_c10': {
         'color': [254, 153, 204],
