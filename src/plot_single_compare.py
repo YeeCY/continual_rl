@@ -63,10 +63,10 @@ CURVE_FORMAT = {
         'style': '-',
         'label': 'TD3'
     },
-    'si_c10': {
+    'td3_official_single': {
         'color': [254, 153, 204],
         'style': '-',
-        'label': 'SI_c10'
+        'label': 'TD3_OFFICIAL'
     },
     'si_c100': {
         'color': [255, 128, 0],
@@ -197,6 +197,8 @@ def main(args):
                         data_path = osp.join(data_dir, exp_name, 'sac-' + task_name, 's-' + str(seed), 'progress.csv')
                     elif exp_name == 'td3_garage_single':
                         data_path = osp.join(data_dir, exp_name, 'td3-' + task_name, 's-' + str(seed), 'progress.csv')
+                    elif exp_name == 'td3_official_single':
+                        data_path = osp.join(data_dir, exp_name, 'TD3_' + task_name + '_' + str(seed) + '.npy')
                     elif exp_name == 'sac_softlearning_single':
                         data_path = osp.join(data_dir, exp_name, task_name.replace('-v2', ''),
                                              'v2', '*/*seed={}*'.format(str(seed)), 'progress.csv')
@@ -211,7 +213,10 @@ def main(args):
                     data_path = os.path.abspath(data_path)
 
                     try:
-                        df = pd.read_csv(data_path)
+                        if 'npy' in data_path:
+                            df = np.load(data_path)
+                        else:
+                            df = pd.read_csv(data_path)
                     except:
                         print(f"Data path not found: {data_path}!")
                         continue
@@ -225,6 +230,8 @@ def main(args):
                     elif exp_name in ['sac_garage_single', 'td3_garage_single']:
                         task_df = df[df['TotalEnvSteps'] <= max_timesteps]
                         data[exp_name].update(x=task_df['TotalEnvSteps'].values)
+                    elif exp_name == 'td3_official_single':
+                        data[exp_name].update(x=np.arange(len(df)) * 10000)
                     elif exp_name == 'sac_softlearning_single':
                         task_df = df[df['total_timestep'] <= max_timesteps]
                         task_df = task_df.drop_duplicates(subset=['total_timestep'], keep='last')
@@ -239,6 +246,8 @@ def main(args):
                             y = task_df['evaluation/Returns Mean'].values
                         elif exp_name in ['sac_garage_single', 'td3_garage_single']:
                             y = task_df['Evaluation/AverageReturn'].values
+                        elif exp_name == 'td3_official_single':
+                            y = df
                         elif exp_name == 'sac_softlearning_single':
                             y = task_df['evaluation/episode-reward-mean'].values
                         else:
