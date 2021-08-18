@@ -154,9 +154,14 @@ class FBRC:
         _, _, q1, q2 = self.critic(states, actions, detach_behavioral_cloner=True)
 
         policy_actions = self.actor(states, sample=True)
+        if not policy_actions.requires_grad:
+            policy_actions.requires_grad = True
         o1, o2, _, _ = self.critic(states, policy_actions)
-        o1_grads = torch.autograd.grad(o1, policy_actions)
-        o2_grads = torch.autograd.grad(o2, policy_actions)
+        # (cyzheng): create graph for second order derivatives
+        o1_grads = torch.autograd.grad(
+            o1.sum(), policy_actions, create_graph=True)[0]
+        o2_grads = torch.autograd.grad(
+            o2.sum(), policy_actions, create_graph=True)[0]
         o1_grad_norm = torch.sum(torch.square(o1_grads), dim=-1)
         o2_grad_norm = torch.sum(torch.square(o2_grads), dim=-1)
         o_reg = torch.mean(o1_grad_norm + o2_grad_norm)
@@ -194,6 +199,7 @@ class FBRC:
         #     q1, q2 = self.dist_critic(states, actions)
         #     q = tf.minimum(q1, q2)
         #     actor_loss = tf.reduce_mean(self.alpha * log_probs - q)
+        # TODO (cyzheng): what should we do if actions aren't sampled using reparameterization trick?
         actions, log_probs = self.actor(states, sample=True, with_log_probs=True)
         _, _, q1, q2 = self.critic(states, actions)
         q = torch.min(q1, q2)

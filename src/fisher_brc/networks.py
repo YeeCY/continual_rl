@@ -39,13 +39,14 @@ class BasePolicy(nn.Module):
         # relu_orthogonal = tf.keras.initializers.Orthogonal(relu_gain)
         # near_zero_orthogonal = tf.keras.initializers.Orthogonal(1e-2)
 
-        self.trunk = nn.ModuleList()
+        layers = []
         input_dim = state_dim
         for hidden_dim in hidden_dims:
-            self.trunk.append(nn.Linear(input_dim, hidden_dim))
-            self.trunk.append(nn.ReLU())
+            layers.append(nn.Linear(input_dim, hidden_dim))
+            layers.append(nn.ReLU())
             input_dim = hidden_dim
-        self.trunk.append(nn.Linear(input_dim, action_dim))
+        layers.append(nn.Linear(input_dim, action_dim))
+        self.trunk = nn.Sequential(*layers)
 
         # inputs = tf.keras.Input(shape=(state_dim,))
         # outputs = tf.keras.Sequential(
@@ -67,8 +68,8 @@ class BasePolicy(nn.Module):
         # self.trunk = tf.keras.Model(inputs=inputs, outputs=outputs)
 
         self.action_space = action_space
-        self.action_mean = (action_space.maximum + action_space.minimum) / 2.0
-        self.action_scale = (action_space.maximum + action_space.minimum) / 2.0
+        self.action_mean = (action_space.high[0] + action_space.low[0]) / 2.0
+        self.action_scale = (action_space.high[0] - action_space.low[0]) / 2.0
         self.eps = eps
 
 
@@ -98,9 +99,9 @@ class MixtureGaussianPolicy(BasePolicy):
           states: Batch of states.
           stddev: Standard deviation of sampling distribution.
         """
-        out = self.trunk(states)
+        # out = self.trunk(states)
         # logits, mu, log_std = tf.split(out, num_or_size_splits=3, axis=1)
-        logits, mu, log_std = self.trunk(out).chunk(3, dim=-1)
+        logits, mu, log_std = self.trunk(states).chunk(3, dim=-1)
 
         # log_std = tf.clip_by_value(log_std, LOG_STD_MIN, LOG_STD_MAX)
         # std = tf.exp(log_std)
@@ -123,7 +124,7 @@ class MixtureGaussianPolicy(BasePolicy):
         #         tfp.bijectors.Tanh(),
         #     ]))
         component_distribution = TransformedDistribution(
-            Normal(loc=mu, scale=std),
+            Normal(loc=mu, scale=std * stddev),
             [AffineTransform(loc=self.action_mean, scale=self.action_scale),
              TanhTransform()]
         )
@@ -154,6 +155,8 @@ class MixtureGaussianPolicy(BasePolicy):
             dist = self._get_dist_and_mode(states)
         else:
             dist = self._get_dist_and_mode(states, stddev=0.0)
+        # TODO (chongyi zheng): want to use rsample(), but it is not implemented
+        #  for MixtureSameFamily distribution
         actions = dist.sample()
 
         if with_log_probs:
@@ -161,20 +164,22 @@ class MixtureGaussianPolicy(BasePolicy):
         else:
             return actions
 
-    def log_probs(self, states, actions, out=None, with_entropy=False):
+    def log_probs(self, states, actions, with_entropy=False):
         # actions = tf.clip_by_value(actions, self.action_spec.minimum + self.eps,
         #                            self.action_spec.maximum - self.eps)
-        actions = torch.clamp(actions, self.action_spec.minimum + self.eps,
-                              self.action_spec.maximum - self.eps)
-        dist = self._get_dist_and_mode(states, out)
+        actions = torch.clamp(actions, self.action_space.low[0] + self.eps,
+                              self.action_space.high[0] - self.eps)
+        dist = self._get_dist_and_mode(states)
 
+        # TODO (chongyi zheng): want to use rsample(), but it is not implemented
+        #  for MixtureSameFamily distribution
         sampled_actions = dist.sample()
         # sampled_actions = tf.clip_by_value(sampled_actions,
         #                                    self.action_spec.minimum + self.eps,
         #                                    self.action_spec.maximum - self.eps)
         sampled_actions = torch.clamp(sampled_actions,
-                                      self.action_spec.minimum + self.eps,
-                                      self.action_spec.maximum - self.eps)
+                                      self.action_space.low[0] + self.eps,
+                                      self.action_space.high[0] - self.eps)
 
         if with_entropy:
             return dist.log_prob(actions), -dist.log_prob(sampled_actions)
@@ -204,9 +209,9 @@ class DiagGaussianPolicy(BasePolicy):
           states: Batch of states.
           stddev: Standard deviation of sampling distribution.
         """
-        out = self.trunk(states)
+        # out = self.trunk(states)
         # mu, log_std = tf.split(out, num_or_size_splits=2, axis=1)
-        mu, log_std = torch.chunk(out, 2, dim=-1)
+        mu, log_std = self.trunk(states).chunk(2, dim=-1)
 
         # log_std = tf.clip_by_value(log_std, LOG_STD_MIN, LOG_STD_MAX)
         # std = tf.exp(log_std)
@@ -243,7 +248,7 @@ class DiagGaussianPolicy(BasePolicy):
             dist = self._get_dist_and_mode(states)
         else:
             dist = self._get_dist_and_mode(states, stddev=0.0)
-        actions = dist.sample()
+        actions = dist.rsample()
 
         if with_log_probs:
             return actions, dist.log_prob(actions)
@@ -253,17 +258,17 @@ class DiagGaussianPolicy(BasePolicy):
     def log_probs(self, states, actions, with_entropy=False):
         # actions = tf.clip_by_value(actions, self.action_spec.minimum + self.eps,
         #                            self.action_spec.maximum - self.eps)
-        actions = torch.clamp(actions, self.action_spec.minimum + self.eps,
-                              self.action_spec.maximum - self.eps)
+        actions = torch.clamp(actions, self.action_space.low[0] + self.eps,
+                              self.action_space.high[0] - self.eps)
         dist = self._get_dist_and_mode(states)
 
-        sampled_actions = dist.sample()
+        sampled_actions = dist.rsample()
         # sampled_actions = tf.clip_by_value(sampled_actions,
         #                                    self.action_spec.minimum + self.eps,
         #                                    self.action_spec.maximum - self.eps)
         sampled_actions = torch.clamp(sampled_actions,
-                                      self.action_spec.minimum + self.eps,
-                                      self.action_spec.maximum - self.eps)
+                                      self.action_space.low[0] + self.eps,
+                                      self.action_space.high[0] - self.eps)
 
         if with_entropy:
             return dist.log_prob(actions), -dist.log_prob(sampled_actions)
@@ -306,13 +311,14 @@ class OffsetNet(nn.Module):
 
         # self.main = tf.keras.Model(inputs=inputs, outputs=outputs)
 
-        self.trunk = nn.ModuleList()
-        input_dim = state_dim
+        layers = []
+        input_dim = state_dim + action_dim
         for hidden_dim in hidden_dims:
-            self.trunk.append(nn.Linear(input_dim, hidden_dim))
-            self.trunk.append(nn.ReLU())
+            layers.append(nn.Linear(input_dim, hidden_dim))
+            layers.append(nn.ReLU())
             input_dim = hidden_dim
-        self.trunk.append(nn.Linear(input_dim, action_dim))
+        layers.append(nn.Linear(input_dim, 1))
+        self.trunk = nn.Sequential(*layers)
 
         self.apply(weight_init)
 
@@ -327,7 +333,7 @@ class OffsetNet(nn.Module):
           Two estimates of Q-values.
         """
         x = torch.cat([states, actions], dim=-1)
-        return torch.squeeze(self.trunk(x), dim=1)
+        return torch.squeeze(self.trunk(x), dim=-1)
 
 
 class OffsetCritic(nn.Module):

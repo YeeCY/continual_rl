@@ -24,9 +24,11 @@ class BehavioralCloning:
         self.device = device
 
         if mixture:
-            self.policy = MixtureGaussianPolicy(state_dim, action_space)
+            self.policy = MixtureGaussianPolicy(
+                state_dim, action_space).to(device)
         else:
-            self.policy = DiagGaussianPolicy(state_dim, action_space)
+            self.policy = DiagGaussianPolicy(
+                state_dim, action_space).to(device)
 
         assert len(piecewise_lrs) == len(piecewise_lr_boundaries) + 1
         self.piecewise_lrs = piecewise_lrs

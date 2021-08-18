@@ -4,6 +4,7 @@ import d4rl
 import gym
 import numpy as np
 from torch.utils.data import Dataset, DataLoader
+from torch.utils.data.dataloader import default_collate
 
 
 class D4RLDataset(Dataset):
@@ -22,15 +23,13 @@ class D4RLDataset(Dataset):
                self.not_dones[idx], self.next_states[idx]
 
 
-def create_d4rl_env_and_dataset(
-    task_name,
-    batch_size
-):
+def create_d4rl_env_and_dataset(task_name, batch_size, device):
     """Create gym environment and dataset for d4rl.
 
     Args:
         task_name: Name of d4rl task.
         batch_size: Mini batch size.
+        device: Torch device.
 
     Returns:
     Gym env and dataset.
@@ -51,6 +50,7 @@ def create_d4rl_env_and_dataset(
     #     batch_size,
     #     drop_remainder=True).prefetch(tf.data.experimental.AUTOTUNE)
     dataset = D4RLDataset(states, actions, rewards, not_dones, next_states)
-    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, drop_last=True)
+    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, drop_last=True,
+                            collate_fn=lambda x: [elem.to(device) for elem in default_collate(x)])
 
     return env, dataloader

@@ -45,7 +45,7 @@ def main(args):
     device = torch.device(args.device)
 
     env, dataloader = d4rl_utils.create_d4rl_env_and_dataset(
-        task_name=args.task_name, batch_size=args.batch_size)
+        args.task_name, args.batch_size, device)
 
     # env = gym_wrapper.GymWrapper(gym_env)
     # env = tf_py_environment.TFPyEnvironment(env)
