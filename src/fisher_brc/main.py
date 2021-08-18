@@ -1,34 +1,14 @@
-# coding=utf-8
-# Copyright 2021 The Google Research Authors.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
 """Run training loop for batch rl."""
+
 import os.path as osp
 import argparse
 import tqdm
 
+import torch
 from torch.utils.tensorboard import SummaryWriter
 
 import utils
-# from fisher_brc import behavioral_cloning
-# from fisher_brc import d4rl_utils
-# from fisher_brc import evaluation
-# from fisher_brc import fisher_brc
-# import behavioral_cloning
 import d4rl_utils
-# import evaluation
-# import fisher_brc
 from agent import FBRC
 
 
@@ -62,6 +42,8 @@ def evaluate(env, agent, num_episodes=10):
 
 
 def main(args):
+    device = torch.device(args.device)
+
     env, dataloader = d4rl_utils.create_d4rl_env_and_dataset(
         task_name=args.task_name, batch_size=args.batch_size)
 
@@ -97,13 +79,23 @@ def main(args):
     agent = FBRC(
         env.observation_space,
         env.action_space,
-        target_entropy=-env.action_space.shape[0],
+        device,
         fisher_coeff=args.fisher_coeff,
         reward_bonus=args.reward_bonus,
     )
 
     for i in tqdm.tqdm(range(args.bc_pretraining_steps)):
-        info_dict = agent.bc.update_step(dataset_iter)
+        agent.bc.update_learning_rate(i)
+
+        try:
+            # Samples the batch
+            states, actions, _, _, _ = next(dataset_iter)
+        except StopIteration:
+            # restart the generator if the previous generator is exhausted.
+            dataset_iter = iter(dataloader)
+            states, actions, _, _, _ = next(dataset_iter)
+
+        info_dict = agent.bc.update(states, actions)
 
         if i % args.log_interval == 0:
             for k, v in info_dict.items():
@@ -114,7 +106,15 @@ def main(args):
             #             f'training/{k}', v, step=i - FLAGS.bc_pretraining_steps)
 
     for i in tqdm.tqdm(range(args.num_updates)):
-        info_dict = agent.update_step(dataset_iter)
+        try:
+            # Samples the batch
+            states, actions, rewards, not_dones, next_states = next(dataset_iter)
+        except StopIteration:
+            # restart the generator if the previous generator is exhausted.
+            dataset_iter = iter(dataloader)
+            states, actions, rewards, not_dones, next_states = next(dataset_iter)
+
+        info_dict = agent.update(states, actions, rewards, not_dones, next_states)
 
         if i % args.log_interval == 0:
             # with summary_writer.as_default():
@@ -136,17 +136,18 @@ def main(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('task_name', type=str, default='halfcheetah-expert-v0')
-    parser.add_argument('batch_size', type=int, default=256)
-    parser.add_argument('num_updates', type=int, default=1000000)
-    parser.add_argument('bc_pretraining_steps', type=int, default=1000000)
-    parser.add_argument('num_eval_episodes', type=int, default=10)
-    parser.add_argument('log_interval', type=int, default=1000)
-    parser.add_argument('eval_interval', type=int, default=10000)
-    parser.add_argument('save_dir', type=str, default='./logs')
-    parser.add_argument('fisher_coeff', type=float, default=0.1)
-    parser.add_argument('reward_bonus', type=float, default=5.0)
-    parser.add_argument('seed', type=int, default=42)
+    parser.add_argument('--task_name', type=str, default='halfcheetah-expert-v0')
+    parser.add_argument('--batch_size', type=int, default=256)
+    parser.add_argument('--num_updates', type=int, default=1000000)
+    parser.add_argument('--bc_pretraining_steps', type=int, default=1000000)
+    parser.add_argument('--num_eval_episodes', type=int, default=10)
+    parser.add_argument('--log_interval', type=int, default=1000)
+    parser.add_argument('--eval_interval', type=int, default=10000)
+    parser.add_argument('--save_dir', type=str, default='./logs')
+    parser.add_argument('--fisher_coeff', type=float, default=0.1)
+    parser.add_argument('--reward_bonus', type=float, default=5.0)
+    parser.add_argument('--device', default='cuda', type=str)
+    parser.add_argument('--seed', type=int, default=42)
     args = parser.parse_args()
 
     main(args)

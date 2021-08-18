@@ -1,35 +1,17 @@
-# coding=utf-8
-# Copyright 2021 The Google Research Authors.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
 """Loads D4RL dataset from pickle files."""
-import typing
 
 import d4rl
 import gym
 import numpy as np
-# import tensorflow as tf
-import torch
 from torch.utils.data import Dataset, DataLoader
 
 
 class D4RLDataset(Dataset):
-    def __init__(self, states, actions, rewards, discounts, next_states):
+    def __init__(self, states, actions, rewards, not_dones, next_states):
         self.states = states
         self.actions = actions
         self.rewards = rewards
-        self.discounts = discounts
+        self.not_dones = not_dones
         self.next_states = next_states
 
     def __len__(self):
@@ -37,7 +19,7 @@ class D4RLDataset(Dataset):
 
     def __getitem__(self, idx):
         return self.states[idx], self.actions[idx], self.rewards[idx], \
-               self.discounts[idx], self.next_states[idx]
+               self.not_dones[idx], self.next_states[idx]
 
 
 def create_d4rl_env_and_dataset(
@@ -59,7 +41,7 @@ def create_d4rl_env_and_dataset(
     states = np.array(dataset['observations'], dtype=np.float32)
     actions = np.array(dataset['actions'], dtype=np.float32)
     rewards = np.array(dataset['rewards'], dtype=np.float32)
-    discounts = np.array(np.logical_not(dataset['terminals']), dtype=np.float32)
+    not_dones = np.array(np.logical_not(dataset['terminals']), dtype=np.float32)
     next_states = np.array(dataset['next_observations'], dtype=np.float32)
 
     # TODO (chongyi zheng): Implement dataloader
@@ -68,7 +50,7 @@ def create_d4rl_env_and_dataset(
     #     states.shape[0], reshuffle_each_iteration=True).repeat().batch(
     #     batch_size,
     #     drop_remainder=True).prefetch(tf.data.experimental.AUTOTUNE)
-    dataset = D4RLDataset(states, actions, rewards, discounts, next_states)
+    dataset = D4RLDataset(states, actions, rewards, not_dones, next_states)
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, drop_last=True)
 
     return env, dataloader

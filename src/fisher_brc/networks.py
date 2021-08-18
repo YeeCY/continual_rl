@@ -1,15 +1,8 @@
-# python3
 """Implementation of twin_sac, a mix of TD3 (https://arxiv.org/abs/1802.09477) and SAC (https://arxiv.org/abs/1801.01290, https://arxiv.org/abs/1812.05905).
 
 Overall structure and hyperparameters are taken from TD3. However, the algorithm
 itself represents a version of SAC.
 """
-
-# import tensorflow as tf
-# import tensorflow_probability as tfp
-# from tf_agents.specs.tensor_spec import BoundedTensorSpec
-#
-# tfd = tfp.distributions
 
 import torch
 from torch import nn
@@ -29,7 +22,7 @@ class BasePolicy(nn.Module):
                  state_dim,
                  action_dim,
                  action_space,
-                 hidden_dim=256,
+                 hidden_dims=(256, 256),
                  eps=1e-6):
         """Creates an actor.
 
@@ -46,25 +39,28 @@ class BasePolicy(nn.Module):
         # relu_orthogonal = tf.keras.initializers.Orthogonal(relu_gain)
         # near_zero_orthogonal = tf.keras.initializers.Orthogonal(1e-2)
 
-        # layers = nn.ModuleList()
-        # input_dim = state_dim
-        # for hidden_dim in hidden_dims:
-        #     layers.append(nn.Linear(input_dim, hidden_dim))
-        #     layers.append(nn.ReLU())
-        #     input_dim = hidden_dim
+        self.trunk = nn.ModuleList()
+        input_dim = state_dim
+        for hidden_dim in hidden_dims:
+            self.trunk.append(nn.Linear(input_dim, hidden_dim))
+            self.trunk.append(nn.ReLU())
+            input_dim = hidden_dim
+        self.trunk.append(nn.Linear(input_dim, action_dim))
 
         # inputs = tf.keras.Input(shape=(state_dim,))
         # outputs = tf.keras.Sequential(
         #     layers + [tf.keras.layers.Dense(
         #         action_dim, kernel_initializer=near_zero_orthogonal)]
         # )(inputs)
-        self.trunk = nn.Sequential(
-            nn.Linear(state_dim, hidden_dim),
-            nn.ReLU(),
-            nn.Linear(hidden_dim, hidden_dim),
-            nn.ReLU(),
-            nn.Linear(hidden_dim, action_dim)
-        )
+        # self.trunk = nn.Sequential(
+        #     nn.Linear(state_dim, hidden_dim),
+        #     nn.ReLU(),
+        #     nn.Linear(hidden_dim, hidden_dim),
+        #     nn.ReLU(),
+        #     nn.Linear(hidden_dim, hidden_dim),
+        #     nn.ReLU(),
+        #     nn.Linear(hidden_dim, action_dim)
+        # )
 
         self.apply(weight_init)
 
@@ -82,8 +78,7 @@ class MixtureGaussianPolicy(BasePolicy):
     def __init__(self,
                  state_dim,
                  action_space,
-                 # hidden_dims=(256, 256),
-                 hidden_dim=256,
+                 hidden_dims=(256, 256),
                  num_components=5,
                  log_std_min=LOG_STD_MIN,
                  log_std_max=LOG_STD_MAX):
@@ -91,7 +86,7 @@ class MixtureGaussianPolicy(BasePolicy):
             state_dim,
             num_components * action_space.shape[0] * 3,
             action_space,
-            hidden_dim=hidden_dim)
+            hidden_dims=hidden_dims)
         self._num_components = num_components
         self._log_std_min = log_std_min
         self._log_std_max = log_std_max
@@ -193,11 +188,11 @@ class DiagGaussianPolicy(BasePolicy):
     def __init__(self,
                  state_dim,
                  action_space,
-                 hidden_dim=256,
+                 hidden_dims=(256, 256),
                  log_std_min=LOG_STD_MIN,
                  log_std_max=LOG_STD_MAX):
         super().__init__(state_dim, action_space.shape[0] * 2, action_space,
-                         hidden_dim=hidden_dim)
+                         hidden_dims=hidden_dims)
 
         self._log_std_min = log_std_min
         self._log_std_max = log_std_max
@@ -274,3 +269,107 @@ class DiagGaussianPolicy(BasePolicy):
             return dist.log_prob(actions), -dist.log_prob(sampled_actions)
         else:
             return dist.log_prob(actions)
+
+
+class OffsetNet(nn.Module):
+    """A critic offset network."""
+
+    def __init__(self,
+                 state_dim,
+                 action_dim,
+                 hidden_dims=(256, 256)):
+        """Creates a neural net.
+
+        Args:
+          state_dim: State size.
+          action_dim: Action size.
+          hidden_dims: List of hidden dimensions.
+        """
+        super().__init__()
+        # relu_gain = tf.math.sqrt(2.0)
+        # relu_orthogonal = tf.keras.initializers.Orthogonal(relu_gain)
+        # near_zero_orthogonal = tf.keras.initializers.Orthogonal(1e-2)
+
+        # inputs = tf.keras.Input(shape=(state_dim + action_dim,))
+
+        # layers = []
+        # for hidden_dim in hidden_dims:
+        #     layers.append(
+        #         tf.keras.layers.Dense(
+        #             hidden_dim,
+        #             activation=tf.nn.relu,
+        #             kernel_initializer=relu_orthogonal))
+        # outputs = tf.keras.Sequential(
+        #     layers + [tf.keras.layers.Dense(
+        #         1, kernel_initializer=near_zero_orthogonal)]
+        # )(inputs)
+
+        # self.main = tf.keras.Model(inputs=inputs, outputs=outputs)
+
+        self.trunk = nn.ModuleList()
+        input_dim = state_dim
+        for hidden_dim in hidden_dims:
+            self.trunk.append(nn.Linear(input_dim, hidden_dim))
+            self.trunk.append(nn.ReLU())
+            input_dim = hidden_dim
+        self.trunk.append(nn.Linear(input_dim, action_dim))
+
+        self.apply(weight_init)
+
+    def forward(self, states, actions):
+        """Returns Q-value estimates for given states and actions.
+
+        Args:
+          states: A batch of states.
+          actions: A batch of actions.
+
+        Returns:
+          Two estimates of Q-values.
+        """
+        x = torch.cat([states, actions], dim=-1)
+        return torch.squeeze(self.trunk(x), dim=1)
+
+
+class OffsetCritic(nn.Module):
+    """A critic network that estimates a dual Q-function."""
+
+    def __init__(self,
+                 behavioral_cloner,
+                 state_dim,
+                 action_dim,
+                 hidden_dims=(256, 256)):
+        """Creates networks.
+
+        Args:
+          behavioral_cloner: Behavioral cloning network.
+          state_dim: State size.
+          action_dim: Action size.
+          hidden_dims: List of hidden dimensions.
+        """
+        super().__init__()
+
+        self.behavioral_cloner = behavioral_cloner
+
+        self.offset1 = OffsetNet(state_dim, action_dim, hidden_dims=hidden_dims)
+        self.offset2 = OffsetNet(state_dim, action_dim, hidden_dims=hidden_dims)
+
+    def forward(self, states, actions, detach_behavioral_cloner=False):
+        """Returns Q-value estimates for given states and actions.
+
+        Args:
+          states: A batch of states.
+          actions: A batch of actions.
+          detach_behavioral_cloner: Stop gradients from behavioral cloning network.
+
+        Returns:
+          Two estimates of Q-values.
+        """
+        o1 = self.offset1(states, actions)
+        o2 = self.offset2(states, actions)
+
+        log_probs = self.behavioral_cloner.policy.log_probs(states, actions)
+        if detach_behavioral_cloner:
+            log_probs = log_probs.detach()
+
+        return o1, o2, o1 + log_probs, o2 + log_probs
+
