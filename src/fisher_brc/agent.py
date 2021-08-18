@@ -19,14 +19,14 @@
 """Implementation of DDPG."""
 
 import typing
-import tensorflow as tf
-from tf_agents.specs.tensor_spec import BoundedTensorSpec
-from tf_agents.specs.tensor_spec import TensorSpec
+# import tensorflow as tf
+# from tf_agents.specs.tensor_spec import BoundedTensorSpec
+# from tf_agents.specs.tensor_spec import TensorSpec
 
 # from fisher_brc import behavioral_cloning
 # from fisher_brc import critic
 # from fisher_brc import policies
-import behavioral_cloning
+from behavioral_cloning import BehavioralCloning
 import critic
 import policies
 
@@ -35,8 +35,8 @@ class FBRC:
     """Class performing BRAC training."""
 
     def __init__(self,
-                 observation_spec,
-                 action_spec,
+                 observation_space,
+                 action_space,
                  actor_lr=3e-4,
                  critic_lr=3e-4,
                  alpha_lr=3e-4,
@@ -59,11 +59,11 @@ class FBRC:
           fisher_coeff: Critic regularization weight.
           reward_bonus: Bonus added to the rewards.
         """
-        assert len(observation_spec.shape) == 1
-        state_dim = observation_spec.shape[0]
+        assert len(observation_space.shape) == 1
+        state_dim = observation_space.shape[0]
 
         hidden_dims = (256, 256, 256)
-        self.actor = policies.DiagGuassianPolicy(state_dim, action_spec,
+        self.actor = policies.DiagGuassianPolicy(state_dim, action_space,
                                                  hidden_dims=hidden_dims)
         self.actor_optimizer = tf.keras.optimizers.Adam(learning_rate=actor_lr)
 
@@ -74,8 +74,8 @@ class FBRC:
         self.discount = discount
         self.tau = tau
 
-        self.bc = behavioral_cloning.BehavioralCloning(
-            observation_spec, action_spec, mixture=True)
+        self.bc = BehavioralCloning(
+            observation_space, action_space, mixture=True)
 
         action_dim = action_spec.shape[0]
         self.critic = critic.Critic(state_dim, action_dim, hidden_dims=hidden_dims)

@@ -21,6 +21,23 @@ import gym
 import numpy as np
 # import tensorflow as tf
 import torch
+from torch.utils.data import Dataset, DataLoader
+
+
+class D4RLDataset(Dataset):
+    def __init__(self, states, actions, rewards, discounts, next_states):
+        self.states = states
+        self.actions = actions
+        self.rewards = rewards
+        self.discounts = discounts
+        self.next_states = next_states
+
+    def __len__(self):
+        return len(self.states)
+
+    def __getitem__(self, idx):
+        return self.states[idx], self.actions[idx], self.rewards[idx], \
+               self.discounts[idx], self.next_states[idx]
 
 
 def create_d4rl_env_and_dataset(
@@ -51,5 +68,7 @@ def create_d4rl_env_and_dataset(
     #     states.shape[0], reshuffle_each_iteration=True).repeat().batch(
     #     batch_size,
     #     drop_remainder=True).prefetch(tf.data.experimental.AUTOTUNE)
+    dataset = D4RLDataset(states, actions, rewards, discounts, next_states)
+    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, drop_last=True)
 
-    return env, dataset
+    return env, dataloader

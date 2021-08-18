@@ -62,13 +62,13 @@ def evaluate(env, agent, num_episodes=10):
 
 
 def main(args):
-    env, dataset = d4rl_utils.create_d4rl_env_and_dataset(
+    env, dataloader = d4rl_utils.create_d4rl_env_and_dataset(
         task_name=args.task_name, batch_size=args.batch_size)
 
     # env = gym_wrapper.GymWrapper(gym_env)
     # env = tf_py_environment.TFPyEnvironment(env)
 
-    dataset_iter = iter(dataset)
+    dataset_iter = iter(dataloader)
 
     # tf.random.set_seed(FLAGS.seed)
     utils.set_seed_everywhere(args.seed)
@@ -101,7 +101,6 @@ def main(args):
         fisher_coeff=args.fisher_coeff,
         reward_bonus=args.reward_bonus,
     )
-
 
     for i in tqdm.tqdm(range(args.bc_pretraining_steps)):
         info_dict = agent.bc.update_step(dataset_iter)
