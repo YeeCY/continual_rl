@@ -88,7 +88,15 @@ class FBRC:
     #     return q1 + log_probs, q2 + log_probs
 
     def act(self, states):
-        return self.actor(states, sample=False)
+        if not isinstance(states, torch.Tensor):
+            states = torch.Tensor(states).to(self.device)
+
+        with torch.no_grad():
+            actions = self.actor(states, sample=False)
+
+            assert actions.ndim == 1
+
+        return utils.to_np(actions)
 
     def update_critic(self, states, actions, next_states, rewards, not_dones):
         """Updates critic parameters.

@@ -54,7 +54,15 @@ class BehavioralCloning:
         return torch.exp(self.log_alpha)
 
     def act(self, states):
-        return self.policy(states, sample=False)
+        if not isinstance(states, torch.Tensor):
+            states = torch.Tensor(states).to(self.device)
+
+        with torch.no_grad():
+            actions = self.actor(states, sample=False)
+
+            assert actions.ndim == 1
+
+        return utils.to_np(actions)
 
     def update_learning_rate(self, iters):
         lr = self.piecewise_lrs[0]

@@ -26,16 +26,17 @@ def evaluate(env, agent, num_episodes=10):
     total_timesteps = 0
     total_returns = 0.0
 
+    done = False
     for _ in range(num_episodes):
         episode_return = 0
-        timestep = env.reset()
+        state = env.reset()
 
-        while not timestep.is_last():
-            action = agent.act(timestep.observation)
-            timestep = env.step(action)
+        while not done:
+            action = agent.act(state)
+            state, reward, done, _ = env.step(action)
 
-            total_returns += timestep.reward[0]
-            episode_return += timestep.reward[0]
+            total_returns += reward
+            episode_return += reward
             total_timesteps += 1
 
     return total_returns / num_episodes, total_timesteps / num_episodes
