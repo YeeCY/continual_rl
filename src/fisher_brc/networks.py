@@ -158,6 +158,10 @@ class MixtureGaussianPolicy(BasePolicy):
         # TODO (chongyi zheng): want to use rsample(), but it is not implemented
         #  for MixtureSameFamily distribution
         actions = dist.sample()
+        # (cyzheng): clip actions with epsilon to avoid nan logprobs.
+        actions = torch.clamp(actions,
+                              self.action_space.low[0] + self.eps,
+                              self.action_space.high[0] - self.eps)
 
         if with_log_probs:
             return actions, dist.log_prob(actions)
@@ -249,6 +253,10 @@ class DiagGaussianPolicy(BasePolicy):
         else:
             dist = self._get_dist_and_mode(states, stddev=0.0)
         actions = dist.rsample()
+        # (cyzheng): clip actions with epsilon to avoid nan logprobs.
+        actions = torch.clamp(actions,
+                              self.action_space.low[0] + self.eps,
+                              self.action_space.high[0] - self.eps)
 
         if with_log_probs:
             return actions, dist.log_prob(actions)
