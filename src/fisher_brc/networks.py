@@ -10,6 +10,7 @@ from torch.distributions import Normal, Independent, MixtureSameFamily, Categori
     TransformedDistribution, AffineTransform, TanhTransform
 
 from utils import weight_init
+from utils import gaussian_logprob, squash
 
 LOG_STD_MIN = -20
 LOG_STD_MAX = 2
@@ -206,36 +207,36 @@ class DiagGaussianPolicy(BasePolicy):
         self._log_std_min = log_std_min
         self._log_std_max = log_std_max
 
-    def _get_dist_and_mode(self, states, stddev=1.0):
-        """Returns a tf.Distribution for given states modes of this distribution.
-
-        Args:
-          states: Batch of states.
-          stddev: Standard deviation of sampling distribution.
-        """
-        # out = self.trunk(states)
-        # mu, log_std = tf.split(out, num_or_size_splits=2, axis=1)
-        mu, log_std = self.trunk(states).chunk(2, dim=-1)
-
-        # log_std = tf.clip_by_value(log_std, LOG_STD_MIN, LOG_STD_MAX)
-        # std = tf.exp(log_std)
-        log_std = torch.clamp(log_std, self._log_std_min, self._log_std_max)
-        std = torch.exp(log_std)
-
-        # dist = tfd.TransformedDistribution(
-        #     tfd.MultivariateNormalDiag(loc=mu, scale_diag=std * stddev),
-        #     tfp.bijectors.Chain([
-        #         tfp.bijectors.Shift(shift=self.action_mean),
-        #         tfp.bijectors.Scale(scale=self.action_scale),
-        #         tfp.bijectors.Tanh(),
-        #     ]))
-        distribution = TransformedDistribution(
-            Independent(Normal(loc=mu, scale=std * stddev), 1),
-            [AffineTransform(loc=self.action_mean, scale=self.action_scale),
-             TanhTransform()]
-        )
-
-        return distribution
+    # def _get_dist_and_mode(self, states, stddev=1.0):
+    #     """Returns a tf.Distribution for given states modes of this distribution.
+    #
+    #     Args:
+    #       states: Batch of states.
+    #       stddev: Standard deviation of sampling distribution.
+    #     """
+    #     # out = self.trunk(states)
+    #     # mu, log_std = tf.split(out, num_or_size_splits=2, axis=1)
+    #     mu, log_std = self.trunk(states).chunk(2, dim=-1)
+    #
+    #     # log_std = tf.clip_by_value(log_std, LOG_STD_MIN, LOG_STD_MAX)
+    #     # std = tf.exp(log_std)
+    #     log_std = torch.clamp(log_std, self._log_std_min, self._log_std_max)
+    #     std = torch.exp(log_std)
+    #
+    #     # dist = tfd.TransformedDistribution(
+    #     #     tfd.MultivariateNormalDiag(loc=mu, scale_diag=std * stddev),
+    #     #     tfp.bijectors.Chain([
+    #     #         tfp.bijectors.Shift(shift=self.action_mean),
+    #     #         tfp.bijectors.Scale(scale=self.action_scale),
+    #     #         tfp.bijectors.Tanh(),
+    #     #     ]))
+    #     distribution = TransformedDistribution(
+    #         Independent(Normal(loc=mu, scale=std * stddev), 1),
+    #         [AffineTransform(loc=self.action_mean, scale=self.action_scale),
+    #          TanhTransform()]
+    #     )
+    #
+    #     return distribution
 
     def forward(self, states, sample=False, with_log_probs=False):
         """Computes actions for given inputs.
@@ -248,40 +249,91 @@ class DiagGaussianPolicy(BasePolicy):
         Returns:
           Sampled actions.
         """
+        # if sample:
+        #     dist = self._get_dist_and_mode(states)
+        # else:
+        #     dist = self._get_dist_and_mode(states, stddev=0.0)
+        # actions = dist.rsample()
+        # # (cyzheng): clip actions with epsilon to avoid nan logprobs.
+        # actions = torch.clamp(actions,
+        #                       self.action_space.low[0] + self.eps,
+        #                       self.action_space.high[0] - self.eps)
+
+        # TODO (cyzheng): Does SAC style distribution fix NAN bugs?
+        mu, log_std = self.trunk(states).chunk(2, dim=-1)
+
+        # constrain log_std inside [log_std_min, log_std_max]
+        log_std = torch.tanh(log_std)
+        log_std = self._log_std_min + 0.5 * (
+                self._log_std_max - self._log_std_min
+        ) * (log_std + 1)
+
         if sample:
-            dist = self._get_dist_and_mode(states)
+            std = log_std.exp()
+            noise = torch.randn_like(mu)
+            pi = mu + noise * std
         else:
-            dist = self._get_dist_and_mode(states, stddev=0.0)
-        actions = dist.rsample()
-        # (cyzheng): clip actions with epsilon to avoid nan logprobs.
-        actions = torch.clamp(actions,
-                              self.action_space.low[0] + self.eps,
-                              self.action_space.high[0] - self.eps)
+            pi = None
 
         if with_log_probs:
-            return actions, dist.log_prob(actions)
+            log_pi = gaussian_logprob(noise, log_std)
         else:
-            return actions
+            log_pi = None
+
+        mu, pi, log_pi = squash(mu, pi, log_pi)
+        if log_pi is not None:
+            log_pi = torch.squeeze(log_pi, dim=-1)
+
+        return mu, pi, log_pi
 
     def log_probs(self, states, actions, with_entropy=False):
-        # actions = tf.clip_by_value(actions, self.action_spec.minimum + self.eps,
-        #                            self.action_spec.maximum - self.eps)
-        actions = torch.clamp(actions, self.action_space.low[0] + self.eps,
-                              self.action_space.high[0] - self.eps)
-        dist = self._get_dist_and_mode(states)
+        # # actions = tf.clip_by_value(actions, self.action_spec.minimum + self.eps,
+        # #                            self.action_spec.maximum - self.eps)
+        # actions = torch.clamp(actions, self.action_space.low[0] + self.eps,
+        #                       self.action_space.high[0] - self.eps)
+        # dist = self._get_dist_and_mode(states)
+        #
+        # sampled_actions = dist.rsample()
+        # # sampled_actions = tf.clip_by_value(sampled_actions,
+        # #                                    self.action_spec.minimum + self.eps,
+        # #                                    self.action_spec.maximum - self.eps)
+        # sampled_actions = torch.clamp(sampled_actions,
+        #                               self.action_space.low[0] + self.eps,
+        #                               self.action_space.high[0] - self.eps)
+        #
+        # if with_entropy:
+        #     return dist.log_prob(actions), -dist.log_prob(sampled_actions)
+        # else:
+        #     return dist.log_prob(actions)
 
-        sampled_actions = dist.rsample()
-        # sampled_actions = tf.clip_by_value(sampled_actions,
-        #                                    self.action_spec.minimum + self.eps,
-        #                                    self.action_spec.maximum - self.eps)
-        sampled_actions = torch.clamp(sampled_actions,
-                                      self.action_space.low[0] + self.eps,
-                                      self.action_space.high[0] - self.eps)
+        # TODO (cyzheng): The following block hasn't been debugged
+        mu, log_std = self.trunk(states).chunk(2, dim=-1)
+
+        # constrain log_std inside [log_std_min, log_std_max]
+        log_std = torch.tanh(log_std)
+        log_std = self.log_std_min + 0.5 * (
+                self.log_std_max - self.log_std_min
+        ) * (log_std + 1)
+
+        std = log_std.exp()
+        pi = (actions - mu) / (std + 1e-6)
+        log_pi = gaussian_logprob(pi, log_std)
+
+        mu, _, log_pi = squash(mu, None, log_pi)
+        log_pi = torch.squeeze(log_pi, dim=-1)
 
         if with_entropy:
-            return dist.log_prob(actions), -dist.log_prob(sampled_actions)
+            noise = torch.randn_like(mu)
+            sampled_pi = mu + noise * std
+            sampled_log_pi = gaussian_logprob(sampled_pi, log_std)
+
+            mu, _, sampled_log_pi = squash(mu, None, sampled_log_pi)
+            sampled_log_pi = torch.squeeze(sampled_log_pi, dim=-1)
+            entropy = -sampled_log_pi
         else:
-            return dist.log_prob(actions)
+            entropy = None
+
+        return log_pi, entropy
 
 
 class OffsetNet(nn.Module):

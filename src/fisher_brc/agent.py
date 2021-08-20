@@ -92,7 +92,7 @@ class FBRC:
             states = torch.Tensor(states).to(self.device)
 
         with torch.no_grad():
-            actions = self.actor(states, sample=False)
+            actions, _, _ = self.actor(states, sample=False)
 
             assert actions.ndim == 1
 
@@ -114,7 +114,7 @@ class FBRC:
         # (cyzheng): use entropy augmented target value as SAC which was not used in the official
         # FisherBRC implementation
         with torch.no_grad():
-            next_actions, next_log_probs = self.actor(next_states, sample=True, with_log_probs=True)
+            _, next_actions, next_log_probs = self.actor(next_states, sample=True, with_log_probs=True)
             _, _, next_target_q1, next_target_q2 = self.critic_target(
                 next_states, next_actions)
             target_v = torch.min(
@@ -161,9 +161,10 @@ class FBRC:
 
         _, _, q1, q2 = self.critic(states, actions, detach_behavioral_cloner=True)
 
-        policy_actions = self.actor(states, sample=True)
-        if not policy_actions.requires_grad:
-            policy_actions.requires_grad = True
+        _, policy_actions, _ = self.actor(states, sample=True)
+        # TODO (cyzheng): delete this line
+        # if not policy_actions.requires_grad:
+        #     policy_actions.requires_grad = True
         o1, o2, _, _ = self.critic(states, policy_actions)
         # (cyzheng): create graph for second order derivatives
         o1_grads = torch.autograd.grad(
@@ -208,7 +209,7 @@ class FBRC:
         #     q = tf.minimum(q1, q2)
         #     actor_loss = tf.reduce_mean(self.alpha * log_probs - q)
         # TODO (cyzheng): what should we do if actions aren't sampled using reparameterization trick?
-        actions, log_probs = self.actor(states, sample=True, with_log_probs=True)
+        _, actions, log_probs = self.actor(states, sample=True, with_log_probs=True)
         _, _, q1, q2 = self.critic(states, actions)
         q = torch.min(q1, q2)
         actor_loss = (self.alpha.detach() * log_probs - q).mean()
