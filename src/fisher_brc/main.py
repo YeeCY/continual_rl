@@ -26,9 +26,8 @@ def evaluate(env, agent, num_episodes=10):
     total_timesteps = 0
     total_returns = 0.0
 
-    done = False
     for _ in range(num_episodes):
-        episode_return = 0
+        episode_return, done = 0, False
         state = env.reset()
 
         while not done:
