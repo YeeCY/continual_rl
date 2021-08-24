@@ -119,6 +119,12 @@ def parse_args():
 	parser.add_argument('--sac_si_c', default=1.0, type=float)
 	parser.add_argument('--sac_si_epsilon', default=1e-6, type=float)
 
+	# sac fisher brc
+	parser.add_argument('--sac_fisher_brc_behavior_cloning_hidden_dim', default=256, type=int)
+	parser.add_argument('--sac_fisher_brc_memory_budget', default=10000, type=int)
+	parser.add_argument('--sac_fisher_brc_fisher_coeff', default=1.0, type=float)
+	parser.add_argument('--sac_fisher_brc_reward_bonus', default=5.0, type=float)
+
 	# td3
 	parser.add_argument('--td3_init_steps', default=1000, type=int)
 	parser.add_argument('--td3_num_expl_steps_per_process', default=1000, type=int)

@@ -591,8 +591,66 @@ class MultiHeadSacCriticMlp(nn.Module):
         return q1, q2
 
 
+class SacOffsetCriticMlp(nn.Module):
+    """Critic network with MLP, employes two q-functions."""
+    def __init__(self, behavioral_cloning, obs_shape, action_shape, hidden_dim):
+        super().__init__()
+
+        self.behavioral_cloning = behavioral_cloning
+
+        self.offset1 = QFunction(obs_shape[0], action_shape[0], hidden_dim)
+        self.offset2 = QFunction(obs_shape[0], action_shape[0], hidden_dim)
+
+        self.apply(weight_init)
+
+    def forward(self, obs, action, detach_behavioral_cloning=False, **kwargs):
+        o1 = self.offset1(obs, action)
+        o2 = self.offset2(obs, action)
+
+        log_mu, _ = self.behavioral_cloning.policy.log_probs(obs, action)
+        if detach_behavioral_cloning:
+            log_mu = log_mu.detach()
+
+        return o1, o2, o1 + log_mu, o2 + log_mu
+
+
+class MultiHeadSacOffsetCriticMlp(nn.Module):
+    """Critic network with MLP, employes two q-functions."""
+    def __init__(self, behavioral_cloning, obs_shape, action_shapes, hidden_dim):
+        super().__init__()
+        assert isinstance(action_shapes, list)
+
+        self.behavioral_cloning = behavioral_cloning
+
+        action_dims = [action_shape[0] for action_shape in action_shapes]
+        self.offset1 = MultiHeadQFunction(obs_shape[0], action_dims, hidden_dim)
+        self.offset2 = MultiHeadQFunction(obs_shape[0], action_dims, hidden_dim)
+
+        self.apply(weight_init)
+
+    def common_parameters(self, recurse=True):
+        for name, param in chain(self.Q1.trunk.named_parameters(recurse=recurse),
+                                 self.Q2.trunk.named_parameters(recurse=recurse)):
+            yield param
+
+    def named_common_parameters(self, prefix='', recurse=True):
+        for elem in chain(self.Q1.trunk.named_parameters(prefix=prefix, recurse=recurse),
+                          self.Q2.trunk.named_parameters(prefix=prefix, recurse=recurse)):
+            yield elem
+
+    def forward(self, obs, action, head_idx, detach_behavioral_cloning=False, **kwargs):
+        o1 = self.offset1(obs, action, head_idx)
+        o2 = self.offset2(obs, action, head_idx)
+
+        log_mu, _ = self.behavioral_cloning.policy.log_probs(obs, action)
+        if detach_behavioral_cloning:
+            log_mu = log_mu.detach()
+
+        return o1, o2, o1 + log_mu, o2 + log_mu
+
+
 class MixtureGaussianBehavioralCloningMlp(nn.Module):
-    """Gaussian policy with TanH squashing."""
+    """Mixture of Gaussian policy with TanH squashing."""
 
     def __init__(self,
                  obs_shape,
@@ -643,20 +701,9 @@ class MixtureGaussianBehavioralCloningMlp(nn.Module):
             component_distribution=component_distribution
         )
 
-        # return tfd.Independent(distribution)
         return Independent(distribution, 1)
 
-    def forward(self, obs, sample=False, with_log_probs=False):
-        """Computes actions for given inputs.
-
-        Args:
-          states: Batch of states.
-          sample: Whether to sample actions.
-          with_log_probs: Whether to return log probability of sampled actions.
-
-        Returns:
-          Sampled actions.
-        """
+    def forward(self, obs, sample=False, with_log_probs=False, **kwargs):
         if sample:
             dist = self._get_dist_and_mode(obs)
         else:
@@ -670,7 +717,7 @@ class MixtureGaussianBehavioralCloningMlp(nn.Module):
         else:
             return action, None
 
-    def log_probs(self, obs, action, with_entropy=False):
+    def log_probs(self, obs, action, with_entropy=False, **kwargs):
         dist = self._get_dist_and_mode(obs)
 
         # TODO (chongyi zheng): want to use rsample(), but it is not implemented
@@ -681,6 +728,108 @@ class MixtureGaussianBehavioralCloningMlp(nn.Module):
             return dist.log_prob(action), -dist.log_prob(sampled_action)
         else:
             return dist.log_prob(action), None
+
+
+class MultiHeadGaussianBehavioralCloningMlp(nn.Module):
+    """Multi-headed Gaussian policy with TanH squashing."""
+    def __init__(self,
+                 obs_shape,
+                 action_shapes,
+                 log_std_min,
+                 log_std_max,
+                 hidden_dim):
+        super().__init__()
+        assert isinstance(action_shapes, list)
+
+        self.log_std_min = log_std_min
+        self.log_std_max = log_std_max
+
+        self.trunk = nn.Sequential(
+            nn.Linear(obs_shape[0], hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ReLU(),
+        )
+
+        self.dist_heads = torch.nn.ModuleList()
+        for action_shape in action_shapes:
+            self.dist_heads.append(
+                nn.Linear(hidden_dim, 2 * action_shape[0])
+            )
+
+        self.apply(weight_init)
+
+    def common_parameters(self, recurse=True):
+        for name, param in self.trunk.named_parameters(recurse=recurse):
+            yield param
+
+    def named_common_parameters(self, recurse=True):
+        for elem in self.trunk.named_parameters(prefix='trunk', recurse=recurse):
+            yield elem
+
+    def forward(self, obs, head_idx, sample=False, with_log_probs=False,
+                **kwargs):
+        hidden = self.trunk(obs)
+        mu, log_std = self.dist_heads[head_idx](hidden).chunk(2, dim=-1)
+
+        # constrain log_std inside [log_std_min, log_std_max]
+        log_std = torch.tanh(log_std)
+        log_std = self._log_std_min + 0.5 * (
+                self._log_std_max - self._log_std_min
+        ) * (log_std + 1)
+
+        if sample:
+            std = log_std.exp()
+            noise = torch.randn_like(mu)
+            pi = mu + noise * std
+        else:
+            pi = None
+
+        if with_log_probs:
+            log_pi = gaussian_logprob(noise, log_std)
+        else:
+            log_pi = None
+
+        mu, pi, log_pi = squash(mu, pi, log_pi)
+        if log_pi is not None:
+            log_pi = torch.squeeze(log_pi, dim=-1)
+
+        if sample:
+            action = pi
+        else:
+            action = mu
+
+        return action, log_pi
+
+    def log_probs(self, obs, action, head_idx, with_entropy=False, **kwargs):
+        hidden = self.trunk(obs)
+        mu, log_std = self.dist_heads[head_idx](hidden).chunk(2, dim=-1)
+
+        # constrain log_std inside [log_std_min, log_std_max]
+        log_std = torch.tanh(log_std)
+        log_std = self.log_std_min + 0.5 * (
+                self.log_std_max - self.log_std_min
+        ) * (log_std + 1)
+
+        std = log_std.exp()
+        noise = (action - mu) / (std + 1e-6)
+        log_pi = gaussian_logprob(noise, log_std)
+
+        # squash log_pi
+        log_pi -= torch.log(
+            torch.relu(1 - action.pow(2)) + 1e-6).sum(-1, keepdim=True)
+
+        if with_entropy:
+            sampled_noise = torch.randn_like(mu)
+            sampled_action = mu + sampled_noise * std
+            sampled_log_pi = gaussian_logprob(sampled_action, log_std)
+
+            sampled_log_pi -= torch.log(
+                torch.relu(1 - sampled_action.pow(2)) + 1e-6).sum(-1, keepdim=True)
+
+            return log_pi, -sampled_log_pi
+        else:
+            return log_pi, None
 
 
 class Td3ActorMlp(nn.Module):

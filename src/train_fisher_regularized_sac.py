@@ -369,7 +369,7 @@ def main(args):
                 print(f"Updating SI omega: {infos[0]['task_name']}")
                 agent.update_omegas()
             elif 'agem' in args.algo or 'fisher_brc' in args.algo:
-                if 'fisher_regularized' in args.algo:
+                if 'fisher_brc' in args.algo:
                     print(f"Constructing Fisher BRC memory: {infos[0]['task_name']}")
                     if any(x in args.algo for x in ['mh', 'mi', 'individual']):
                         agent.construct_memory(env, head_idx=task_id)
@@ -377,7 +377,7 @@ def main(args):
                         agent.construct_memory(env)
 
                     print(f"Training Fisher BRC behavioral cloning policy: {infos[0]['task_name']}")
-                    agent.train_bc(args.fisher_brc_bc_train_steps_per_task, step, logger)
+                    agent.train_bc(args.fisher_brc_bc_train_steps_per_task, total_steps, logger)
 
                 elif 'agem_v2' in args.algo:
                     print(f"Constructing AGEM memory: {infos[0]['task_name']}")

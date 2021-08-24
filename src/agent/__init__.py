@@ -8,6 +8,10 @@ from src.agent.sac import MultiHeadSacMlpAgentV2, EwcMultiHeadSacMlpAgentV2, SiM
     OracleAgemV2MultiHeadSacMlpAgentV2, OracleAgemV2MultiInputSacMlpAgentV2, \
     OracleGradAgemV2MultiHeadSacMlpAgentV2, OracleGradAgemV2MultiInputSacMlpAgentV2, \
     OracleActorAgemV2MultiHeadSacMlpAgentV2,  OracleActorAgemV2MultiInputSacMlpAgentV2
+from src.agent.sac import FisherBRCMTBCMlpCriticMultiHeadSacMlpAgent, \
+    FisherBRCMTBCOffsetCriticMultiHeadSacMlpAgent, \
+    FisherBRCMHBCMlpCriticMultiHeadSacMlpAgent, \
+    FisherBRCMHBCOffsetCriticMultiHeadSacMlpAgent
 from src.agent.td3 import Td3MlpAgent, MultiHeadTd3MlpAgent, MultiInputTd3MlpAgent, \
     EwcMultiHeadTd3MlpAgent, EwcMultiInputTd3MlpAgent, \
     SiMultiHeadTd3MlpAgent, SiMultiInputTd3MlpAgent, \
@@ -54,6 +58,10 @@ ALGOS = [
     'oracle_grad_agem_v2_mi_sac_mlp_v2',
     'oracle_actor_agem_v2_mh_sac_mlp_v2',
     'oracle_actor_agem_v2_mi_sac_mlp_v2',
+    'fisher_brc_mt_bc_mlp_critic_mh_sac_mlp',
+    'fisher_brc_mt_bc_offset_critic_mh_sac_mlp',
+    'fisher_brc_mh_bc_mlp_critic_mh_sac_mlp',
+    'fisher_brc_mh_bc_offset_critic_mh_sac_mlp',
     'td3_mlp',
     'mh_td3_mlp',
     'mi_td3_mlp',
@@ -277,6 +285,30 @@ def make_agent(obs_space, action_space, device, args):
             kwargs['agem_memory_budget'] = args.sac_agem_memory_budget
             kwargs['agem_ref_grad_batch_size'] = args.sac_agem_ref_grad_batch_size
             agent = OracleActorAgemV2MultiInputSacMlpAgentV2(**kwargs)
+        elif args.algo == 'fisher_brc_mt_bc_mlp_critic_mh_sac_mlp':
+            kwargs['behavior_cloning_hidden_dim'] = args.sac_fisher_brc_behavior_cloning_hidden_dim
+            kwargs['memory_budget'] = args.sac_fisher_brc_behavior_cloning_hidden_dim
+            kwargs['fisher_coeff'] = args.sac_fisher_brc_memory_budget
+            kwargs['reward_bonus'] = args.sac_fisher_brc_reward_bonus
+            agent = FisherBRCMTBCOffsetCriticMultiHeadSacMlpAgent(**kwargs)
+        elif args.algo == 'fisher_brc_mt_bc_offset_critic_mh_sac_mlp':
+            kwargs['behavior_cloning_hidden_dim'] = args.sac_fisher_brc_behavior_cloning_hidden_dim
+            kwargs['memory_budget'] = args.sac_fisher_brc_behavior_cloning_hidden_dim
+            kwargs['fisher_coeff'] = args.sac_fisher_brc_memory_budget
+            kwargs['reward_bonus'] = args.sac_fisher_brc_reward_bonus
+            agent = FisherBRCMTBCOffsetCriticMultiHeadSacMlpAgent(**kwargs)
+        elif args.algo == 'fisher_brc_mh_bc_mlp_critic_mh_sac_mlp':
+            kwargs['behavior_cloning_hidden_dim'] = args.sac_fisher_brc_behavior_cloning_hidden_dim
+            kwargs['memory_budget'] = args.sac_fisher_brc_behavior_cloning_hidden_dim
+            kwargs['fisher_coeff'] = args.sac_fisher_brc_memory_budget
+            kwargs['reward_bonus'] = args.sac_fisher_brc_reward_bonus
+            agent = FisherBRCMHBCMlpCriticMultiHeadSacMlpAgent(**kwargs)
+        elif args.algo == 'fisher_brc_mh_bc_offset_critic_mh_sac_mlp':
+            kwargs['behavior_cloning_hidden_dim'] = args.sac_fisher_brc_behavior_cloning_hidden_dim
+            kwargs['memory_budget'] = args.sac_fisher_brc_behavior_cloning_hidden_dim
+            kwargs['fisher_coeff'] = args.sac_fisher_brc_memory_budget
+            kwargs['reward_bonus'] = args.sac_fisher_brc_reward_bonus
+            agent = FisherBRCMHBCOffsetCriticMultiHeadSacMlpAgent(**kwargs)
     elif 'td3' in args.algo:
         if isinstance(action_space, list):
             action_range = [[ac.low, ac.high] for ac in action_space]

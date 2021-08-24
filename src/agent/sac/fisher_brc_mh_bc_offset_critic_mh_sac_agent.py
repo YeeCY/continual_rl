@@ -4,11 +4,11 @@ import torch
 import torch.nn.functional as F
 
 from agent.sac.behavioral_cloning import BehavioralCloning
-from agent.network import MultiHeadSacActorMlp, SacOffsetCriticMlp
-from agent.sac import FisherBRCMTBCMlpCriticMultiHeadSacMlpAgent
+from agent.network import MultiHeadSacActorMlp, MultiHeadSacOffsetCriticMlp
+from agent.sac import FisherBRCMHBCMlpCriticMultiHeadSacMlpAgent
 
 
-class FisherBRCMTBCOffsetCriticMultiHeadSacMlpAgent(FisherBRCMTBCMlpCriticMultiHeadSacMlpAgent):
+class FisherBRCMHBCOffsetCriticMultiHeadSacMlpAgent(FisherBRCMHBCMlpCriticMultiHeadSacMlpAgent):
     """multi-task behavioral cloning policy + single modal offset representation for critic"""
     def __init__(
             self,
@@ -52,12 +52,12 @@ class FisherBRCMTBCOffsetCriticMultiHeadSacMlpAgent(FisherBRCMTBCMlpCriticMultiH
             self.actor_log_std_min, self.actor_log_std_max
         ).to(self.device)
 
-        self.critic = SacOffsetCriticMlp(
-            self.behavior_cloning, self.obs_shape, self.action_shape[0],
+        self.critic = MultiHeadSacOffsetCriticMlp(
+            self.behavior_cloning, self.obs_shape, self.action_shape,
             self.critic_hidden_dim
         ).to(self.device)
-        self.critic_target = SacOffsetCriticMlp(
-            self.behavior_cloning, self.obs_shape, self.action_shape[0],
+        self.critic_target = MultiHeadSacOffsetCriticMlp(
+            self.behavior_cloning, self.obs_shape, self.action_shape,
             self.critic_hidden_dim
         ).to(self.device)
 
@@ -85,7 +85,8 @@ class FisherBRCMTBCOffsetCriticMultiHeadSacMlpAgent(FisherBRCMTBCMlpCriticMultiH
     def compute_critic_loss(self, obs, action, reward, next_obs, not_done, **kwargs):
         assert 'prev_obs' in kwargs, "We should use observations of previous tasks " \
                                      "to compute critic fisher regularization"
-        prev_obs = kwargs['prev_obs']
+        prev_obses = kwargs['prev_obs']
+        assert isinstance(prev_obses, list)
 
         with torch.no_grad():
             _, next_policy_action, next_log_pi, _ = self.actor(next_obs, **kwargs)
@@ -98,17 +99,20 @@ class FisherBRCMTBCOffsetCriticMultiHeadSacMlpAgent(FisherBRCMTBCMlpCriticMultiH
             obs, action, detach_behavioral_cloner=True)
 
         # regularize with observations of previous tasks
-        if prev_obs is not None:
-            _, policy_action, _, _ = self.actor(prev_obs, **kwargs)
-            o1, o2, _, _ = self.critic(prev_obs, policy_action)
-            # (cyzheng): create graph for second order derivatives
-            o1_grads = torch.autograd.grad(
-                o1.sum(), policy_action, create_graph=True)[0]
-            o2_grads = torch.autograd.grad(
-                o2.sum(), policy_action, create_graph=True)[0]
-            o1_grad_norm = torch.sum(torch.square(o1_grads), dim=-1)
-            o2_grad_norm = torch.sum(torch.square(o2_grads), dim=-1)
-            o_reg = torch.mean(o1_grad_norm + o2_grad_norm)
+        if prev_obses is not None:
+            o_reg = []
+            for task_id, prev_obs in enumerate(prev_obses):
+                _, policy_action, _, _ = self.actor(prev_obs, **kwargs)
+                o1, o2, _, _ = self.critic(prev_obs, policy_action)
+                # (cyzheng): create graph for second order derivatives
+                o1_grads = torch.autograd.grad(
+                    o1.sum(), policy_action, create_graph=True)[0]
+                o2_grads = torch.autograd.grad(
+                    o2.sum(), policy_action, create_graph=True)[0]
+                o1_grad_norm = torch.sum(torch.square(o1_grads), dim=-1)
+                o2_grad_norm = torch.sum(torch.square(o2_grads), dim=-1)
+                o_reg.append(torch.mean(o1_grad_norm + o2_grad_norm))
+            o_reg = torch.mean(torch.stack(o_reg))
         else:
             o_reg = torch.zeros(device=self.device)
 

@@ -4,7 +4,8 @@ import torch
 import numpy as np
 
 import utils
-from agent.network import MixtureGaussianBehavioralCloningMlp
+from agent.network import MixtureGaussianBehavioralCloningMlp, \
+    MultiHeadGaussianBehavioralCloningMlp
 
 
 class BehavioralCloning:
@@ -12,16 +13,17 @@ class BehavioralCloning:
 
     def __init__(self,
                  obs_shape,
-                 action_shape,
+                 action_shapes,
                  device,
                  hidden_dim=256,
+                 multi_head=False,
                  mixture_components=10,
                  log_std_min=-10,
                  log_std_max=2,
                  piecewise_lrs=(1e-3, 1e-4, 1e-5),
                  piecewise_lr_boundaries=(80000, 90000)):
         self.obs_shape = obs_shape
-        self.action_shape = action_shape
+        self.action_shapes = action_shapes
         self.device = device
         self.hidden_dim = hidden_dim
         self.mixture_components = mixture_components
@@ -32,14 +34,19 @@ class BehavioralCloning:
         self.piecewise_lr_boundaries = piecewise_lr_boundaries
 
         # mixture of gaussian policy
-        self.policy = MixtureGaussianBehavioralCloningMlp(
-            obs_shape, action_shape, log_std_min, log_std_max,
-            hidden_dim, mixture_components).to(device)
+        if multi_head:
+            self.policy = MultiHeadGaussianBehavioralCloningMlp(
+                obs_shape, action_shapes, log_std_min, log_std_max,
+                hidden_dim).to(device)
+        else:
+            self.policy = MixtureGaussianBehavioralCloningMlp(
+                obs_shape, action_shapes[0], log_std_min, log_std_max,
+                hidden_dim, mixture_components).to(device)
 
         # trainable entropy coefficient
         self.log_alpha = torch.tensor(np.log(1.0)).to(self.device)
         self.log_alpha.requires_grad = True
-        self.target_entropy = -np.prod(self.action_shape)
+        self.target_entropy = -np.prod(self.action_shapes[0])
 
         self.policy_optimizer = torch.optim.Adam(self.policy.parameters(), lr=piecewise_lrs[0])
         self.alpha_optimizer = torch.optim.Adam([self.log_alpha], lr=piecewise_lrs[0])
@@ -48,12 +55,12 @@ class BehavioralCloning:
     def alpha(self):
         return torch.exp(self.log_alpha)
 
-    def act(self, obs):
+    def act(self, obs, sample=False, **kwargs):
         if not isinstance(obs, torch.Tensor):
             obs = torch.Tensor(obs).to(self.device)
 
         with torch.no_grad():
-            actions = self.policy(obs, sample=False)
+            actions = self.policy(obs, sample=sample, **kwargs)
 
             assert actions.ndim == 1
 
@@ -71,14 +78,16 @@ class BehavioralCloning:
         for param_group in self.alpha_optimizer.param_groups:
             param_group['lr'] = lr
 
-    def update(self, obses, actions):
+    def update(self, obses, actions, logger, step, **kwargs):
         # update policy
-        log_probs, entropy = self.policy.log_probs(obses, actions, with_entropy=True)
+        log_probs, entropy = self.policy.log_probs(obses, actions, with_entropy=True, **kwargs)
         loss = -torch.mean(self.alpha * entropy + log_probs)
 
         self.policy_optimizer.zero_grad()
         loss.backward()
         self.policy_optimizer.step()
+
+        logger.log('train/bc_loss', loss, step)
 
         # update entropy coefficient
         alpha_loss = (self.alpha * (entropy - self.target_entropy).detach()).mean()
@@ -86,11 +95,3 @@ class BehavioralCloning:
         self.alpha_optimizer.zero_grad()
         alpha_loss.backward()
         self.alpha_optimizer.step()
-
-        return {
-            'bc_actor_loss': loss,
-            'bc_alpha': self.alpha,
-            'bc_alpha_loss': alpha_loss,
-            'bc_log_probs': log_probs.mean(),
-            'bc_entropy': entropy.mean(),
-        }
