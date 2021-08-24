@@ -2,10 +2,12 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.distributions import Normal, Independent
+from torch.distributions import Normal, Independent, \
+    TransformedDistribution, TanhTransform, \
+    MixtureSameFamily, Categorical
+
 from itertools import chain
 from collections import OrderedDict
-
 
 from src.agent.encoder import PixelEncoder, DqnEncoder
 from src.utils import weight_init, SquashedNormal, gaussian_logprob, squash, DiagGaussian
@@ -587,6 +589,98 @@ class MultiHeadSacCriticMlp(nn.Module):
         q2 = self.Q2(obs, action, head_idx)
 
         return q1, q2
+
+
+class MixtureGaussianBehavioralCloningMlp(nn.Module):
+    """Gaussian policy with TanH squashing."""
+
+    def __init__(self,
+                 obs_shape,
+                 action_shape,
+                 log_std_min,
+                 log_std_max,
+                 hidden_dim,
+                 num_components):
+        super().__init__()
+
+        self.log_std_min = log_std_min
+        self.log_std_max = log_std_max
+        self.num_components = num_components
+
+        self.trunk = nn.Sequential(
+            nn.Linear(obs_shape[0], hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, num_components * action_shape[0] * 3)
+        )
+
+        self.apply(weight_init)
+
+    def _get_dist_and_mode(self, states, stddev=1.0):
+        """Returns a tf.Distribution for given states modes of this distribution.
+
+        Args:
+          states: Batch of states.
+          stddev: Standard deviation of sampling distribution.
+        """
+        logits, mu, log_std = self.trunk(states).chunk(3, dim=-1)
+        log_std = torch.clamp(log_std, self._log_std_min, self._log_std_max)
+        std = torch.exp(log_std)
+
+        shape = [std.shape[0], -1, self._num_components]
+        logits = logits.view(*shape)
+        mu = mu.view(*shape)
+        std = std.view(*shape)
+
+        component_distribution = TransformedDistribution(
+            Normal(loc=mu, scale=std * stddev),
+            [TanhTransform()]
+        )
+
+        distribution = MixtureSameFamily(
+            mixture_distribution=Categorical(logits=logits),
+            component_distribution=component_distribution
+        )
+
+        # return tfd.Independent(distribution)
+        return Independent(distribution, 1)
+
+    def forward(self, obs, sample=False, with_log_probs=False):
+        """Computes actions for given inputs.
+
+        Args:
+          states: Batch of states.
+          sample: Whether to sample actions.
+          with_log_probs: Whether to return log probability of sampled actions.
+
+        Returns:
+          Sampled actions.
+        """
+        if sample:
+            dist = self._get_dist_and_mode(obs)
+        else:
+            dist = self._get_dist_and_mode(obs, stddev=0.0)
+        # TODO (chongyi zheng): want to use rsample(), but it is not implemented
+        #  for MixtureSameFamily distribution
+        action = dist.sample()
+
+        if with_log_probs:
+            return action, dist.log_prob(action)
+        else:
+            return action, None
+
+    def log_probs(self, obs, action, with_entropy=False):
+        dist = self._get_dist_and_mode(obs)
+
+        # TODO (chongyi zheng): want to use rsample(), but it is not implemented
+        #  for MixtureSameFamily distribution
+        sampled_action = dist.sample()
+
+        if with_entropy:
+            return dist.log_prob(action), -dist.log_prob(sampled_action)
+        else:
+            return dist.log_prob(action), None
 
 
 class Td3ActorMlp(nn.Module):
