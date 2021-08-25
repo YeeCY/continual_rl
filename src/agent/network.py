@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.distributions import Normal, Independent, \
-    TransformedDistribution, TanhTransform, \
+    TransformedDistribution, AffineTransform, TanhTransform, \
     MixtureSameFamily, Categorical
 
 from itertools import chain
@@ -358,7 +358,7 @@ class MultiHeadSacActorMlp(nn.Module):
         # constrain log_std inside [log_std_min, log_std_max]
         log_std = torch.tanh(log_std)
         log_std = self.log_std_min + 0.5 * (
-                self.log_std_max - self.log_std_min
+            self.log_std_max - self.log_std_min
         ) * (log_std + 1)
 
         if compute_pi:
@@ -658,7 +658,8 @@ class MixtureGaussianBehavioralCloningMlp(nn.Module):
                  log_std_min,
                  log_std_max,
                  hidden_dim,
-                 num_components):
+                 num_components,
+                 action_range=(-1.0, 1.0)):
         super().__init__()
 
         self.log_std_min = log_std_min
@@ -675,6 +676,10 @@ class MixtureGaussianBehavioralCloningMlp(nn.Module):
 
         self.apply(weight_init)
 
+        self.action_range = action_range
+        self.action_mean = (action_range[0] + action_range[1]) / 2.0
+        self.action_scale = (action_range[0] - action_range[1]) / 2.0
+
     def _get_dist_and_mode(self, states, stddev=1.0):
         """Returns a tf.Distribution for given states modes of this distribution.
 
@@ -683,17 +688,18 @@ class MixtureGaussianBehavioralCloningMlp(nn.Module):
           stddev: Standard deviation of sampling distribution.
         """
         logits, mu, log_std = self.trunk(states).chunk(3, dim=-1)
-        log_std = torch.clamp(log_std, self._log_std_min, self._log_std_max)
+        log_std = torch.clamp(log_std, self.log_std_min, self.log_std_max)
         std = torch.exp(log_std)
 
-        shape = [std.shape[0], -1, self._num_components]
+        shape = [std.shape[0], 1, -1, self.num_components]
         logits = logits.view(*shape)
         mu = mu.view(*shape)
         std = std.view(*shape)
 
         component_distribution = TransformedDistribution(
             Normal(loc=mu, scale=std * stddev),
-            [TanhTransform()]
+            [AffineTransform(loc=self.action_mean, scale=self.action_scale),
+             TanhTransform()]
         )
 
         distribution = MixtureSameFamily(
@@ -711,6 +717,9 @@ class MixtureGaussianBehavioralCloningMlp(nn.Module):
         # TODO (chongyi zheng): want to use rsample(), but it is not implemented
         #  for MixtureSameFamily distribution
         action = dist.sample()
+        action = torch.clamp(action,
+                             self.action_range[0] + 1e-6,
+                             self.action_range[1] - 1e-6)
 
         if with_log_probs:
             return action, dist.log_prob(action)
@@ -718,16 +727,24 @@ class MixtureGaussianBehavioralCloningMlp(nn.Module):
             return action, None
 
     def log_probs(self, obs, action, with_entropy=False, **kwargs):
+        action = torch.clamp(action,
+                             self.action_range[0] + 1e-6,
+                             self.action_range[1] - 1e-6)
+
         dist = self._get_dist_and_mode(obs)
 
         # TODO (chongyi zheng): want to use rsample(), but it is not implemented
         #  for MixtureSameFamily distribution
         sampled_action = dist.sample()
+        sampled_action = torch.clamp(sampled_action,
+                                     self.action_range[0] + 1e-6,
+                                     self.action_range[1] - 1e-6)
 
         if with_entropy:
-            return dist.log_prob(action), -dist.log_prob(sampled_action)
+            return torch.unsqueeze(dist.log_prob(action), dim=-1), \
+                   torch.unsqueeze(-dist.log_prob(sampled_action), dim=-1)
         else:
-            return dist.log_prob(action), None
+            return torch.unsqueeze(dist.log_prob(action), dim=-1), None
 
 
 class MultiHeadGaussianBehavioralCloningMlp(nn.Module):

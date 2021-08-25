@@ -31,23 +31,24 @@ class FisherBRCMTBCMlpCriticMultiHeadSacMlpAgent(SacMlpAgent):
             critic_tau=0.005,
             critic_target_update_freq=2,
             batch_size=128,
-            behavior_cloning_hidden_dim=256,
+            behavioral_cloning_hidden_dim=256,
             memory_budget=10000,
             fisher_coeff=1.0,
             reward_bonus=5.0,
     ):
         assert isinstance(action_shape, list)
         assert isinstance(action_range, list)
-        super().__init__(
-            obs_shape, action_shape, action_range, device, actor_hidden_dim, critic_hidden_dim, discount,
-            init_temperature, alpha_lr, actor_lr, actor_log_std_min, actor_log_std_max, actor_update_freq, critic_lr,
-            critic_tau, critic_target_update_freq, batch_size)
 
-        self.behavior_cloning_hidden_dim = behavior_cloning_hidden_dim
+        self.behavioral_cloning_hidden_dim = behavioral_cloning_hidden_dim
         self.memory_budget = memory_budget
         self.fisher_coeff = fisher_coeff
         # TODO (cyzheng): reward bonus is not used currently
         self.reward_bonus = reward_bonus
+
+        super().__init__(
+            obs_shape, action_shape, action_range, device, actor_hidden_dim, critic_hidden_dim, discount,
+            init_temperature, alpha_lr, actor_lr, actor_log_std_min, actor_log_std_max, actor_update_freq, critic_lr,
+            critic_tau, critic_target_update_freq, batch_size)
 
         self.task_count = 0
         self.memories = {}
@@ -65,6 +66,11 @@ class FisherBRCMTBCMlpCriticMultiHeadSacMlpAgent(SacMlpAgent):
         if hasattr(self, 'actor') and hasattr(self, 'critic') \
                 and hasattr(self, 'optimizer'):
             return
+
+        self.behavioral_cloning = BehavioralCloning(
+            self.obs_shape, self.action_shape, self.device, self.behavioral_cloning_hidden_dim,
+            multi_head=False, log_std_min=self.actor_log_std_min, log_std_max=self.actor_log_std_max
+        )
 
         self.actor = MultiHeadSacActorMlp(
             self.obs_shape, self.action_shape, self.actor_hidden_dim,
@@ -84,11 +90,6 @@ class FisherBRCMTBCMlpCriticMultiHeadSacMlpAgent(SacMlpAgent):
         self.log_alpha.requires_grad = True
         # set target entropy to -|A|
         self.target_entropy = -np.prod(self.action_shape[0])
-
-        self.behavior_cloning = BehavioralCloning(
-            self.obs_shape, self.action_shape, self.device, self.behavior_cloning_hidden_dim,
-            multi_head=False, log_std_min=self.actor_log_std_min, log_std_max=self.actor_log_std_max
-        )
 
         # sac optimizers
         self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), lr=self.actor_lr)
@@ -164,26 +165,27 @@ class FisherBRCMTBCMlpCriticMultiHeadSacMlpAgent(SacMlpAgent):
 
         # merge transitions in memories
         self.union_memory = {}
-        for mem in self.memories:
+        for mem in self.memories.values():
             for k, v in mem.items():
-                self.union_memory[k] = np.concatenate([
-                    self.union_memory.get(k, default=np.empty([0] + v.shape[1:])),
-                    v], axis=0)
+                self.union_memory[k] = torch.cat([
+                    self.union_memory.get(
+                        k, torch.empty([0] + list(v.shape[1:]), device=self.device)),
+                    v], dim=0)
 
         self.task_count += 1
 
     def train_bc(self, train_steps, step, logger):
-        for train_step in train_steps:
-            self.behavior_cloning.update_learning_rate(step)
+        for train_step in range(train_steps):
+            self.behavioral_cloning.update_learning_rate(train_step)
 
             obses, actions, _, _, _ = self._sample_prev_transitions(
                 self.batch_size)
-            self.behavior_cloning.update(obses, actions, logger, train_step + step)
+            self.behavioral_cloning.update(obses, actions, logger, train_step + step)
 
     def compute_critic_loss(self, obs, action, reward, next_obs, not_done, **kwargs):
         assert 'prev_obs' in kwargs, "We should use observations of previous tasks " \
                                      "to compute critic fisher regularization"
-        prev_obs = kwargs['prev_obs']
+        prev_obs = kwargs.pop('prev_obs')
 
         with torch.no_grad():
             _, next_policy_action, next_log_pi, _ = self.actor(next_obs, **kwargs)
@@ -197,13 +199,9 @@ class FisherBRCMTBCMlpCriticMultiHeadSacMlpAgent(SacMlpAgent):
         if prev_obs is not None:
             _, policy_action, _, _ = self.actor(prev_obs, **kwargs)
             reg_Q1, reg_Q2 = self.critic(prev_obs, policy_action)
-            log_mu, _ = self.behavior_cloning.policy.log_probs(prev_obs, policy_action)
+            log_mu, _ = self.behavioral_cloning.policy.log_probs(prev_obs, policy_action)
 
             # (cyzheng) reference: equation 10 in http://arxiv.org/abs/2103.08050.
-            # TODO (cyzheng): rsample for MixtureSameFamily distribution isn't implemented
-            #  in PyTorch but we need to compute gradient w.r.t. action
-            if not log_mu.requires_grad:
-                log_mu.requires_grad = True
             mu_grads = torch.autograd.grad(log_mu.sum(), policy_action)[0]
             # (cyzheng): create graph for second order derivatives
             reg_Q1_grads = torch.autograd.grad(
@@ -214,7 +212,7 @@ class FisherBRCMTBCMlpCriticMultiHeadSacMlpAgent(SacMlpAgent):
             grad_diff2_norm = torch.sum(torch.square(mu_grads - reg_Q2_grads), dim=-1)
             q_reg = torch.mean(grad_diff1_norm + grad_diff2_norm)
         else:
-            q_reg = torch.zeros(device=self.device)
+            q_reg = torch.tensor(0, device=self.device)
 
         critic_loss = F.mse_loss(current_Q1, target_Q) + F.mse_loss(current_Q2, target_Q) + \
                       self.fisher_coeff * q_reg

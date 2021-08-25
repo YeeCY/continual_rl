@@ -138,6 +138,7 @@ def main(args):
     utils.make_dir(args.work_dir)
     model_dir = utils.make_dir(os.path.join(args.work_dir, 'model'))
     video_dir = utils.make_dir(os.path.join(args.work_dir, 'video'))
+    misc_dir = utils.make_dir(os.path.join(args.work_dir, 'misc'))
     video = VideoRecorder(video_dir if args.save_video else None, args.env_type,
                           height=448, width=448, camera_id=args.video_camera_id)
 
@@ -191,6 +192,10 @@ def main(args):
                     log_frequency=args.log_freq,
                     action_repeat=args.action_repeat,
                     save_tb=args.save_tb)
+    misc_logger = Logger(misc_dir,
+                         log_frequency=args.log_freq,
+                         action_repeat=args.action_repeat,
+                         save_tb=args.save_tb)
 
     # log arguments
     args_dict = vars(args)
@@ -377,7 +382,8 @@ def main(args):
                         agent.construct_memory(env)
 
                     print(f"Training Fisher BRC behavioral cloning policy: {infos[0]['task_name']}")
-                    agent.train_bc(args.fisher_brc_bc_train_steps_per_task, total_steps, logger)
+                    agent.train_bc(args.sac_fisher_brc_bc_train_steps_per_task, total_steps, misc_logger)
+                    misc_logger.dump(total_steps, ty='train', save=True)
 
                 elif 'agem_v2' in args.algo:
                     print(f"Constructing AGEM memory: {infos[0]['task_name']}")
