@@ -202,6 +202,27 @@ CURVE_FORMAT = {
         'style': '-',
         'label': 'cmaml_budget5000',
     },
+
+    'fisher_brc_mh_bc_mlp_critic': {
+        'color': [0, 178, 238],
+        'style': '-',
+        'label': 'fisher_brc_mh_bc_mlp_critic',
+    },
+    'fisher_brc_mh_bc_offset_critic': {
+        'color': [204, 153, 255],
+        'style': '-',
+        'label': 'fisher_brc_mh_bc_offset_critic',
+    },
+    'fisher_brc_mt_bc_mlp_critic': {
+        'color': [139, 101, 8],
+        'style': '-',
+        'label': 'fisher_brc_mt_bc_mlp_critic',
+    },
+    'fisher_brc_mt_bc_offset_critic': {
+        'color': [0, 100, 0],
+        'style': '-',
+        'label': 'fisher_brc_mt_bc_offset_critic',
+    },
 }
 
 
