@@ -29,7 +29,7 @@ for seed in "${seeds[@]}"; do
       handle-pull-side-v2 \
       window-open-v2 \
     --env_type metaworld \
-    --algo oracle_actor_agem_v2_mh_sac_mlp_v2 \
+    --algo agem_v2_grad_norm_reg_critic_mh_sac_mlp_v2 \
     --train_steps_per_task 1000000 \
     --eval_freq 20 \
     --discount 0.99 \
