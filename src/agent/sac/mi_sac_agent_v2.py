@@ -58,7 +58,7 @@ class MultiInputSacMlpAgentV2(SacMlpAgent):
         self.log_alpha = torch.tensor(np.log(self.init_temperature)).to(self.device)
         self.log_alpha.requires_grad = True
         # set target entropy to -|A|
-        self.target_entropy = -np.prod(self.action_shape)
+        self.target_entropy = -np.prod(self.action_shape[0])
 
         # sac optimizers
         self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), lr=self.actor_lr)

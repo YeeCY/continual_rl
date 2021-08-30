@@ -181,7 +181,7 @@ def make_agent(obs_space, action_space, device, args):
         elif args.algo == 'ewc_sac_mlp':
             kwargs['ewc_lambda'] = args.sac_ewc_lambda
             kwargs['ewc_estimate_fisher_iters'] = args.sac_ewc_estimate_fisher_iters
-            kwargs['ewc_estimate_fisher_batch_size'] = args.sac_ewc_estimate_fisher_batch_size
+            kwargs['ewc_estimate_fisher_batch_size'] = args.sac_ewc_estimate_fisher_sample_num
             kwargs['online_ewc'] = args.sac_online_ewc
             kwargs['online_ewc_gamma'] = args.sac_online_ewc_gamma
             agent = EwcSacMlpAgent(**kwargs)
@@ -204,28 +204,28 @@ def make_agent(obs_space, action_space, device, args):
         elif args.algo == 'ewc_mh_sac_mlp':
             kwargs['ewc_lambda'] = args.sac_ewc_lambda
             kwargs['ewc_estimate_fisher_iters'] = args.sac_ewc_estimate_fisher_iters
-            kwargs['ewc_estimate_fisher_batch_size'] = args.sac_ewc_estimate_fisher_batch_size
+            kwargs['ewc_estimate_fisher_batch_size'] = args.sac_ewc_estimate_fisher_sample_num
             kwargs['online_ewc'] = args.sac_online_ewc
             kwargs['online_ewc_gamma'] = args.sac_online_ewc_gamma
             agent = EwcMultiHeadSacMlpAgent(**kwargs)
         elif args.algo == 'ewc_mh_sac_mlp_v2':
             kwargs['ewc_lambda'] = args.sac_ewc_lambda
             kwargs['ewc_estimate_fisher_iters'] = args.sac_ewc_estimate_fisher_iters
-            kwargs['ewc_estimate_fisher_batch_size'] = args.sac_ewc_estimate_fisher_batch_size
+            kwargs['ewc_estimate_fisher_batch_size'] = args.sac_ewc_estimate_fisher_sample_num
             kwargs['online_ewc'] = args.sac_online_ewc
             kwargs['online_ewc_gamma'] = args.sac_online_ewc_gamma
             agent = EwcMultiHeadSacMlpAgentV2(**kwargs)
         elif args.algo == 'ewc_v2_mh_sac_mlp_v2':
             kwargs['ewc_lambda'] = args.sac_ewc_lambda
             kwargs['ewc_estimate_fisher_iters'] = args.sac_ewc_estimate_fisher_iters
-            kwargs['ewc_estimate_fisher_rollout_steps'] = args.sac_ewc_estimate_fisher_rollout_steps
+            kwargs['ewc_estimate_fisher_sample_num'] = args.sac_ewc_estimate_fisher_sample_num
             kwargs['online_ewc'] = args.sac_online_ewc
             kwargs['online_ewc_gamma'] = args.sac_online_ewc_gamma
             agent = EwcV2MultiHeadSacMlpAgentV2(**kwargs)
         elif args.algo == 'ewc_v2_mi_sac_mlp_v2':
             kwargs['ewc_lambda'] = args.sac_ewc_lambda
             kwargs['ewc_estimate_fisher_iters'] = args.sac_ewc_estimate_fisher_iters
-            kwargs['ewc_estimate_fisher_rollout_steps'] = args.sac_ewc_estimate_fisher_rollout_steps
+            kwargs['ewc_estimate_fisher_sample_num'] = args.sac_ewc_estimate_fisher_sample_num
             kwargs['online_ewc'] = args.sac_online_ewc
             kwargs['online_ewc_gamma'] = args.sac_online_ewc_gamma
             agent = EwcV2MultiInputSacMlpAgentV2(**kwargs)

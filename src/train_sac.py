@@ -59,9 +59,9 @@ def evaluate(train_env, eval_env, agent, video, num_episodes, logger, step):
                             episode_successes.append(info.get('success', False))
                             episode_rewards.append(info['episode']['r'])
 
-            if 'ewc_v2' in args.algo:
-                kl_div = agent.kl_with_optimal_actor(task_id)
-                logger.log('eval/kl_divergence', kl_div, step)
+            # if 'ewc_v2' in args.algo:
+            #     kl_div = agent.kl_with_optimal_actor(task_id)
+            #     logger.log('eval/kl_divergence', kl_div, step)
 
             # for episode in range(num_episodes):
             #     episode_reward = 0
@@ -417,28 +417,32 @@ def main(args):
 
             if 'ewc' in args.algo:
                 print(f"Estimating EWC fisher: {infos[0]['task_name']}")
-                if 'ewc_v2' in args.algo:
-                    if any(x in args.algo for x in ['mh', 'mi', 'individual']):
-                        agent.estimate_fisher(env, head_idx=task_id)
-                    else:
-                        agent.estimate_fisher(env)
+                if any(x in args.algo for x in ['mh', 'mi', 'individual']):
+                    agent.estimate_fisher(env=env, replay_buffer=replay_buffer,
+                                          head_idx=task_id,
+                                          sample_src=args.sac_ewc_estimate_fisher_sample_src)
                 else:
-                    if any(x in args.algo for x in ['mh', 'mi', 'individual']):
-                        agent.estimate_fisher(replay_buffer, head_idx=task_id)
-                    else:
-                        agent.estimate_fisher(replay_buffer)
+                    agent.estimate_fisher(env=env, replay_buffer=replay_buffer,
+                                          sample_src=args.sac_ewc_estimate_fisher_sample_src)
             elif 'si' in args.algo:
                 print(f"Updating SI omega: {infos[0]['task_name']}")
                 agent.update_omegas()
             elif 'agem' in args.algo:
                 print(f"Constructing AGEM memory: {infos[0]['task_name']}")
-                if 'agem_v2' in args.algo:
-                    if any(x in args.algo for x in ['mh', 'mi', 'individual']):
-                        agent.construct_memory(env, head_idx=task_id)
-                    else:
-                        agent.construct_memory(env)
+                if any(x in args.algo for x in ['mh', 'mi', 'individual']):
+                    agent.construct_memory(env=env, replay_buffer=replay_buffer,
+                                           head_idx=task_id,
+                                           sample_src=args.sac_agem_memory_sample_src)
                 else:
-                    agent.construct_memory(replay_buffer)
+                    agent.construct_memory(env=env, replay_buffer=replay_buffer,
+                                           sample_src=args.sac_agem_memory_sample_src)
+                # if 'agem_v2' in args.algo:
+                #     if any(x in args.algo for x in ['mh', 'mi', 'individual']):
+                #         agent.construct_memory(env, head_idx=task_id)
+                #     else:
+                #         agent.construct_memory(env)
+                # else:
+                #     agent.construct_memory(replay_buffer)
 
             agent.reset(reset_critic=args.reset_agent)
 

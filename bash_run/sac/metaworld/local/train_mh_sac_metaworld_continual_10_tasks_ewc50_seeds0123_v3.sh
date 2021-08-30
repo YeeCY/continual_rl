@@ -34,7 +34,7 @@ for seed in "${seeds[@]}"; do
     --sac_num_train_iters 1000 \
     --sac_ewc_lambda 50 \
     --sac_ewc_estimate_fisher_iters 50 \
-    --sac_ewc_estimate_fisher_batch_size 500 \
+    --sac_ewc_estimate_fisher_sample_num 500 \
     --seed $seed \
     --work_dir $PROJECT_DIR/vec_logs/mh_sac_mlp_metaworld_10_tasks_v3/ewc_lambda50/$seed \
     > $PROJECT_DIR/terminal_logs/mh_sac_mlp_metaworld_10_tasks_v3-ewc_lambda50-seed"$seed".log 2>&1 &

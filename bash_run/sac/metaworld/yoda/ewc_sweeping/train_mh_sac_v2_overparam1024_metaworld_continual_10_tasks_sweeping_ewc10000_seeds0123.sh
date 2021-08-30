@@ -40,7 +40,7 @@ for seed in "${seeds[@]}"; do
     --sac_num_train_iters 1000 \
     --sac_ewc_lambda 10000 \
     --sac_ewc_estimate_fisher_iters 10 \
-    --sac_ewc_estimate_fisher_batch_size 1000 \
+    --sac_ewc_estimate_fisher_sample_num 1000 \
     --seed $seed \
     --work_dir $PROJECT_DIR/vec_logs/mh_sac_mlp_v2_overparam1024_metaworld_10_tasks_sweeping_ewc/ewc_lambda10000/$seed \
     > $PROJECT_DIR/terminal_logs/mh_sac_mlp_v2_overparam1024_metaworld_10_tasks_sweeping_ewc-ewc_lambda10000-seed"$seed".log 2>&1 &

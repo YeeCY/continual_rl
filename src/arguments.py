@@ -106,12 +106,16 @@ def parse_args():
 	# sac ewc
 	parser.add_argument('--sac_ewc_lambda', default=5000, type=float)
 	parser.add_argument('--sac_ewc_estimate_fisher_iters', default=50, type=int)
-	parser.add_argument('--sac_ewc_estimate_fisher_batch_size', default=1000, type=int)
-	parser.add_argument('--sac_ewc_estimate_fisher_rollout_steps', default=1000, type=int)
+	# parser.add_argument('--sac_ewc_estimate_fisher_sample_num', default=1000, type=int)
+	parser.add_argument('--sac_ewc_estimate_fisher_sample_src', default='rollout', type=str,
+						choices=['rollout', 'replay_buffer', 'hybrid'])
+	parser.add_argument('--sac_ewc_estimate_fisher_sample_num', default=1000, type=int)
 	parser.add_argument('--sac_online_ewc', default=False, action='store_true')
 	parser.add_argument('--sac_online_ewc_gamma', default=1.0, type=float)
 
 	# sac agem
+	parser.add_argument('--sac_agem_memory_sample_src', default='rollout', type=str,
+						choices=['rollout', 'replay_buffer', 'hybrid'])
 	parser.add_argument('--sac_agem_memory_budget', default=5000, type=int)
 	parser.add_argument('--sac_agem_ref_grad_batch_size', default=500, type=int)
 
@@ -146,7 +150,7 @@ def parse_args():
 	parser.add_argument('--td3_ewc_lambda', default=5000, type=float)
 	parser.add_argument('--td3_ewc_estimate_fisher_iters', default=50, type=int)
 	parser.add_argument('--td3_ewc_estimate_fisher_batch_size', default=1000, type=int)
-	parser.add_argument('--td3_ewc_estimate_fisher_rollout_steps', default=1000, type=int)
+	parser.add_argument('--td3_ewc_estimate_fisher_sample_num', default=1000, type=int)
 	parser.add_argument('--td3_online_ewc', default=False, action='store_true')
 	parser.add_argument('--td3_online_ewc_gamma', default=1.0, type=float)
 
