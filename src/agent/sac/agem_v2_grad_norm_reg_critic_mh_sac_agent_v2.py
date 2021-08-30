@@ -1,5 +1,5 @@
 import torch
-import numpy as np
+import torch.nn.functional as F
 
 from agent.sac import AgemV2MultiHeadSacMlpAgentV2
 

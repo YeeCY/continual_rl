@@ -186,9 +186,73 @@ class AgemV2SacMlpAgentV2(SacMlpAgent):
             self.agem_memories[self.agem_task_count]['next_obses'] = next_obses
             self.agem_memories[self.agem_task_count]['not_dones'] = not_dones
             self.agem_memories[self.agem_task_count]['log_pis'] = log_pis
-            self.agem_memories[self.agem_task_count]['actor_Q'] = actor_Q
+            self.agem_memories[self.agem_task_count]['qs'] = actor_Q
         elif sample_src == 'hybrid':
-            pass
+            for _ in range(memory_size_per_task // 2):
+                with utils.eval_mode(self):
+                    # compute log_pi and Q for later gradient projection
+                    _, action, log_pi, _ = self.actor(
+                        torch.Tensor(obs).to(device=self.device),
+                        compute_pi=True, compute_log_pi=True, **kwargs)
+                    actor_Q1, actor_Q2 = self.critic(
+                        torch.Tensor(obs).to(device=self.device), action, **kwargs)
+                    actor_Q = torch.min(actor_Q1, actor_Q2) - self.alpha.detach() * log_pi
+
+                    if 'head_idx' in kwargs:
+                        action = utils.to_np(
+                            action.clamp(*self.action_range[kwargs['head_idx']]))
+                    else:
+                        action = utils.to_np(action.clamp(*self.action_range))
+
+                next_obs, reward, done, _ = env.step(action)
+
+                self.agem_memories[self.agem_task_count]['obses'].append(obs)
+                self.agem_memories[self.agem_task_count]['actions'].append(action)
+                self.agem_memories[self.agem_task_count]['rewards'].append(reward)
+                self.agem_memories[self.agem_task_count]['next_obses'].append(next_obs)
+                not_done = np.array([not done_ for done_ in done], dtype=np.float32)
+                self.agem_memories[self.agem_task_count]['not_dones'].append(not_done)
+                self.agem_memories[self.agem_task_count]['log_pis'].append(log_pi)
+                self.agem_memories[self.agem_task_count]['qs'].append(actor_Q)
+
+                obs = next_obs
+
+            rollout_obses = torch.Tensor(self.agem_memories[self.agem_task_count]['obses']).to(device=self.device)
+            rollout_actions = torch.Tensor(
+                self.agem_memories[self.agem_task_count]['actions']).to(device=self.device)
+            rollout_rewards = torch.Tensor(
+                self.agem_memories[self.agem_task_count]['rewards']).to(device=self.device).unsqueeze(-1)
+            rollout_next_obses = torch.Tensor(
+                self.agem_memories[self.agem_task_count]['next_obses']).to(device=self.device)
+            rollout_not_dones = torch.Tensor(
+                self.agem_memories[self.agem_task_count]['not_dones']).to(device=self.device).unsqueeze(-1)
+            rollout_log_pis = torch.cat(
+                self.agem_memories[self.agem_task_count]['log_pis']).unsqueeze(-1)
+            rollout_qs = torch.cat(
+                self.agem_memories[self.agem_task_count]['qs']).unsqueeze(-1)
+
+            obses, actions, rewards, next_obses, not_dones = replay_buffer.sample(
+                memory_size_per_task)
+            with utils.eval_mode(self):
+                log_pis = self.actor.compute_log_probs(obses, actions, **kwargs)
+                actor_Q1, actor_Q2 = self.critic(
+                    obses, actions, **kwargs)
+                actor_Q = torch.min(actor_Q1, actor_Q2) - self.alpha.detach() * log_pis
+
+            self.agem_memories[self.agem_task_count]['obses'] = \
+                torch.cat([rollout_obses, obses], dim=0)
+            self.agem_memories[self.agem_task_count]['actions'] = \
+                torch.cat([rollout_actions, actions], dim=0)
+            self.agem_memories[self.agem_task_count]['rewards'] = \
+                torch.cat([rollout_rewards, rewards], dim=0)
+            self.agem_memories[self.agem_task_count]['next_obses'] = \
+                torch.cat([rollout_next_obses, next_obses], dim=0)
+            self.agem_memories[self.agem_task_count]['not_dones'] = \
+                torch.cat([rollout_not_dones, not_dones], dim=0)
+            self.agem_memories[self.agem_task_count]['log_pis'] = \
+                torch.cat([rollout_log_pis, log_pis], dim=0)
+            self.agem_memories[self.agem_task_count]['qs'] = \
+                torch.cat([rollout_qs, actor_Q], dim=0)
         else:
             raise ValueError("Unknown sample source!")
 

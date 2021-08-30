@@ -82,11 +82,12 @@ class EwcV2SacMlpAgentV2(SacMlpAgent):
 
         fishers = {}
         # TODO (chongyi zheng): save trajectory for KL divergence
-        obs = env.reset()
         for _ in range(self.ewc_estimate_fisher_iters):
+            obs = env.reset()
             samples = {
                 'obs': [],
                 'action': [],
+                'reward': [],
                 'next_obs': [],
                 'not_done': [],
             }
@@ -99,6 +100,7 @@ class EwcV2SacMlpAgentV2(SacMlpAgent):
 
                     samples['obs'].append(obs)
                     samples['action'].append(action)
+                    samples['reward'].append(reward)
                     samples['next_obs'].append(next_obs)
                     not_done = [not done_ for done_ in done]
                     samples['not_done'].append(not_done)
@@ -106,13 +108,17 @@ class EwcV2SacMlpAgentV2(SacMlpAgent):
                     obs = next_obs
                 samples['obs'] = torch.Tensor(samples['obs']).to(device=self.device)
                 samples['action'] = torch.Tensor(samples['action']).to(device=self.device)
+                samples['reward'] = torch.Tensor(
+                    samples['reward']).to(device=self.device).unsqueeze(-1)
                 samples['next_obs'] = torch.Tensor(samples['next_obs']).to(device=self.device)
-                samples['not_dones'] = torch.Tensor(samples['not_done']).to(device=self.device)
+                samples['not_dones'] = torch.Tensor(
+                    samples['not_done']).to(device=self.device).unsqueeze(-1)
             elif sample_src == 'replay_buffer':
                 obs, action, reward, next_obs, not_done = replay_buffer.sample(
                     self.ewc_estimate_fisher_sample_num)
                 samples['obs'] = obs
                 samples['action'] = action
+                samples['reward'] = reward
                 samples['next_obs'] = next_obs
                 samples['not_done'] = not_done
             elif sample_src == 'hybrid':
@@ -124,57 +130,30 @@ class EwcV2SacMlpAgentV2(SacMlpAgent):
 
                     samples['obs'].append(obs)
                     samples['action'].append(action)
+                    samples['reward'].append(reward)
                     samples['next_obs'].append(next_obs)
                     not_done = [not done_ for done_ in done]
                     samples['not_done'].append(not_done)
 
                     obs = next_obs
 
+                rollout_obs = torch.Tensor(samples['obs']).to(device=self.device)
+                rollout_action = torch.Tensor(samples['action']).to(device=self.device)
+                rollout_reward = torch.Tensor(
+                    samples['reward']).to(device=self.device).unsqueeze(-1)
+                rollout_next_obs = torch.Tensor(samples['next_obs']).to(device=self.device)
+                rollout_not_done = torch.Tensor(
+                    samples['not_done']).to(device=self.device).unsqueeze(-1)
+
                 obs, action, reward, next_obs, not_done = replay_buffer.sample(
                     self.ewc_estimate_fisher_sample_num - self.ewc_estimate_fisher_sample_num // 2)
-                samples['obs'] = torch.cat([samples['obs'], obs], dim=0)
-                samples['action'] = torch.cat([samples['action'], action], dim=0)
-                samples['next_obs'] = torch.cat([samples['next_obs'], next_obs], dim=0)
-                samples['not_done'] = torch.cat([samples['not_done'], not_done], dim=0)
+                samples['obs'] = torch.cat([rollout_obs, obs], dim=0)
+                samples['action'] = torch.cat([rollout_action, action], dim=0)
+                samples['reward'] = torch.cat([rollout_reward, reward], dim=0)
+                samples['next_obs'] = torch.cat([rollout_next_obs, next_obs], dim=0)
+                samples['not_done'] = torch.cat([rollout_not_done, not_done], dim=0)
             else:
                 raise ValueError("Unknown sample source!")
-
-            # for evaluation only
-            # self.task_samples[self.ewc_task_count].append(samples)
-
-        # self.task_rollouts[self.ewc_task_count] = []
-        # obs = env.reset()
-        # for _ in range(self.ewc_estimate_fisher_iters):
-        #     rollout = {
-        #         'obs': [],
-        #         'action': [],
-        #         'next_obs': [],
-        #         'done': [],
-        #         'mu': [],
-        #         'log_std': [],
-        #     }
-        #     for _ in range(self.ewc_estimate_fisher_sample_num):
-        #         with utils.eval_mode(self):
-        #             # action = self.act(obs, sample=True, **kwargs)
-        #             # compute log_pi and Q for later gradient projection
-        #             mu, action, log_pi, log_std = self.actor(
-        #                 torch.Tensor(obs).to(device=self.device),
-        #                 compute_pi=True, compute_log_pi=True, **kwargs)
-        #
-        #             action = utils.to_np(action.clamp(*self.action_range))
-        #
-        #         next_obs, reward, done, _ = env.step(action)
-        #
-        #         rollout['obs'].append(obs)
-        #         rollout['action'].append(action)
-        #         rollout['next_obs'].append(next_obs)
-        #         rollout['done'].append(done)
-        #         rollout['mu'].append(mu)
-        #         rollout['log_std'].append(log_std)
-        #
-        #         obs = next_obs
-        #
-        #     self.task_rollouts[self.ewc_task_count].append(rollout)
 
             _, actor_loss, _ = self.compute_actor_and_alpha_loss(
                 samples['obs'],
