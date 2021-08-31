@@ -301,14 +301,16 @@ def plot(ax, data, task_names, algos, curve_format=CURVE_FORMAT):
             for idx in range(len(algo_data['y'])):
                 algo_data['y'][idx] = algo_data['y'][idx][:y_len]
 
+            # (cyzheng): remember to separate seeds!!!!
             # normalize via oracle returns
-            y_mean = np.mean(np.array(algo_data['y']) / oracle_return, axis=0)
+            # y_mean = np.mean(np.array(algo_data['y']) / oracle_return, axis=0)
+            y = np.array(algo_data['y']) / oracle_return
             if algo not in algo_norm_data:
                 algo_norm_data[algo] = {}
                 algo_norm_data[algo]['x'] = algo_data['x']
-                algo_norm_data[algo]['y'] = [y_mean]
+                algo_norm_data[algo]['y'] = [y]
             else:
-                algo_norm_data[algo]['y'].append(y_mean)
+                algo_norm_data[algo]['y'].append(y)
 
     for algo in algos:
         if algo not in algo_norm_data:
@@ -320,15 +322,19 @@ def plot(ax, data, task_names, algos, curve_format=CURVE_FORMAT):
             continue
 
         y_len = 1E10
-        for y in algo_data['y']:
-            y_len = min(len(y), y_len)
+        for task_y in algo_data['y']:
+            y_len = min(task_y.shape[1], y_len)
 
         x = algo_data['x'][:y_len]
-        for idx in range(len(algo_data['y'])):
-            algo_data['y'][idx] = algo_data['y'][idx][:y_len]
+        for task_idx in range(len(algo_data['y'])):
+            algo_data['y'][task_idx] = algo_data['y'][task_idx][:, :y_len]
 
-        y_mean = np.mean(np.array(algo_data['y']), axis=0)
-        y_std = np.std(np.array(algo_data['y']), axis=0)
+        # average normalized y over different tasks
+        avg_norm_y = np.mean(np.array(algo_data['y']), axis=0)
+
+        # average over seed for single curve
+        y_mean = np.mean(avg_norm_y, axis=0)
+        y_std = np.std(avg_norm_y, axis=0)
         y_mean = window_smooth(y_mean)
         y_std = window_smooth(y_std)
 
@@ -426,6 +432,7 @@ if __name__ == '__main__':
     parser.add_argument('--algos', type=str, nargs='+',
                         default=['sgd', 'ewc', 'si'])
     parser.add_argument('--seeds', type=int, nargs='+', default=[0, 1, 2, 3, 4, 5, 6])
+    parser.add_argument('--steps_per_task', type=int, default=500000)
     parser.add_argument('--max_timesteps', type=int, default=np.iinfo(np.int).max)
     parser.add_argument('--statistics', type=str, nargs='+',
                         default=['episode_reward'])
