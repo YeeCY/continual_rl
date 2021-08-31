@@ -228,6 +228,36 @@ CURVE_FORMAT = {
         'style': '-',
         'label': 'fisher_brc_mt_bc_offset_critic',
     },
+    'agem_ref_grad_batch_size4500_hybrid': {
+        'color': [0, 178, 238],
+        'style': '-',
+        'label': 'agem_ref_grad_batch_size4500_hybrid',
+    },
+    'agem_ref_grad_batch_size4500_replay_buffer': {
+        'color': [204, 153, 255],
+        'style': '-',
+        'label': 'agem_ref_grad_batch_size4500_replay_buffer',
+    },
+    'agem_ref_grad_batch_size4500_rollout': {
+        'color': [139, 101, 8],
+        'style': '-',
+        'label': 'agem_ref_grad_batch_size4500_rollout',
+    },
+    'ewc_lambda5000_hybrid': {
+        'color': [0, 100, 0],
+        'style': '-',
+        'label': 'ewc_lambda5000_hybrid',
+    },
+    'ewc_lambda5000_replay_buffer': {
+        'color': [55, 126, 184],
+        'style': '-',
+        'label': 'ewc_lambda5000_replay_buffer'
+    },
+    'ewc_lambda5000_rollout': {
+        'color': [180, 180, 180],
+        'style': '-',
+        'label': 'ewc_lambda5000_rollout'
+    },
 }
 
 
