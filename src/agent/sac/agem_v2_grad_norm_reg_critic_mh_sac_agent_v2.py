@@ -36,6 +36,8 @@ class AgemV2GradNormRegCriticMultiHeadSacMlpAgentV2(AgemV2MultiHeadSacMlpAgentV2
 
         self.critic_grad_norm_reg_coeff = critic_grad_norm_reg_coeff
 
+    ### (cyzheng): we use ppo style critic loss for AGEM gradient projection here.
+
     def compute_critic_loss(self, obs, action, reward, next_obs, not_done, **kwargs):
         with torch.no_grad():
             _, next_policy_action, next_log_pi, _ = self.actor(next_obs, **kwargs)
