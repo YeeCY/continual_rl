@@ -258,6 +258,22 @@ CURVE_FORMAT = {
         'style': '-',
         'label': 'ewc_lambda5000_rollout'
     },
+
+    'ewc_lambda5000_hybrid_100_fisher_iters_grad_norm_coeff_1.0': {
+        'color': [0, 0, 0],
+        'style': '-',
+        'label': 'ewc_lambda5000_hybrid_100_fisher_iters_grad_norm_coeff_1.0'
+    },
+    'ewc_lambda5000_hybrid_100_fisher_iters_grad_norm_coeff_10.0': {
+        'color': [255, 0, 0],
+        'style': '-',
+        'label': 'ewc_lambda5000_hybrid_100_fisher_iters_grad_norm_coeff_10.0'
+    },
+    'ewc_lambda5000_hybrid_100_fisher_iters_grad_norm_coeff_100.0': {
+        'color': [255, 0, 255],
+        'style': '-',
+        'label': 'ewc_lambda5000_hybrid_100_fisher_iters_grad_norm_coeff_100.0'
+    }
 }
 
 

@@ -36,8 +36,8 @@ for seed in "${seeds[@]}"; do
     --sac_ewc_estimate_fisher_iters 100 \
     --sac_ewc_estimate_fisher_sample_num 1000 \
     --sac_ewc_estimate_fisher_sample_src hybrid \
-    --sac_ewc_critic_grad_norm_reg_coeff 100.0 \
+    --sac_ewc_critic_grad_norm_reg_coeff 0.1 \
     --seed $seed \
-    --work_dir $PROJECT_DIR/vec_logs/grad_norm_reg_critic_mi_sac_mlp_metaworld_10_tasks/ewc_lambda5000_hybrid_100_fisher_iters_grad_norm_coeff_100.0/$seed \
-    > $PROJECT_DIR/terminal_logs/grad_norm_reg_critic_mi_sac_mlp_metaworld_10_tasks-ewc_lambda5000_hybrid_100_fisher_iters_grad_norm_coeff_100.0-seed"$seed".log 2>&1 &
+    --work_dir $PROJECT_DIR/vec_logs/grad_norm_reg_critic_mi_sac_mlp_metaworld_10_tasks/ewc_lambda5000_hybrid_100_fisher_iters_grad_norm_coeff_0.1/$seed \
+    > $PROJECT_DIR/terminal_logs/grad_norm_reg_critic_mi_sac_mlp_metaworld_10_tasks-ewc_lambda5000_hybrid_100_fisher_iters_grad_norm_coeff_0.1-seed"$seed".log 2>&1 &
 done
