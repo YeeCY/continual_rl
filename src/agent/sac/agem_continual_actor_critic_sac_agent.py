@@ -304,7 +304,7 @@ class AgemContinualActorCriticSacMlpAgent(SacMlpAgent):
 
         logger.log('train/batch_reward', reward.mean(), step)
 
-        ref_critic_grad, ref_actor_grad, ref_alpha_grad = self._compute_ref_grad()
+        ref_critic_grad, ref_actor_grad = self._compute_ref_grad()
 
         critic_loss = self.compute_critic_loss(obs, action, reward, next_obs, not_done, **kwargs)
         self.update_critic(critic_loss, logger, step, ref_critic_grad=ref_critic_grad)
