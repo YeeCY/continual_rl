@@ -75,9 +75,11 @@ class EwcV2MultiInputSacMlpAgentV2(MultiInputSacMlpAgentV2, EwcV2SacMlpAgentV2):
                     obs = next_obs
                 samples['obs'] = torch.Tensor(samples['obs']).to(device=self.device)
                 samples['action'] = torch.Tensor(samples['action']).to(device=self.device)
-                samples['reward'] = torch.Tensor(samples['reward']).to(device=self.device)
+                samples['reward'] = torch.Tensor(
+                    samples['reward']).to(device=self.device).unsqueeze(-1)
                 samples['next_obs'] = torch.Tensor(samples['next_obs']).to(device=self.device)
-                samples['not_dones'] = torch.Tensor(samples['not_done']).to(device=self.device)
+                samples['not_dones'] = torch.Tensor(
+                    samples['not_done']).to(device=self.device).unsqueeze(-1)
             elif sample_src == 'replay_buffer':
                 obs, action, reward, next_obs, not_done = replay_buffer.sample(
                     self.ewc_estimate_fisher_sample_num)
@@ -104,9 +106,11 @@ class EwcV2MultiInputSacMlpAgentV2(MultiInputSacMlpAgentV2, EwcV2SacMlpAgentV2):
 
                 rollout_obs = torch.Tensor(samples['obs']).to(device=self.device)
                 rollout_action = torch.Tensor(samples['action']).to(device=self.device)
-                rollout_reward = torch.Tensor(samples['reward']).to(device=self.device)
+                rollout_reward = torch.Tensor(
+                    samples['reward']).to(device=self.device).unsqueeze(-1)
                 rollout_next_obs = torch.Tensor(samples['next_obs']).to(device=self.device)
-                rollout_not_done = torch.Tensor(samples['not_done']).to(device=self.device)
+                rollout_not_done = torch.Tensor(
+                    samples['not_done']).to(device=self.device).unsqueeze(-1)
 
                 obs, action, reward, next_obs, not_done = replay_buffer.sample(
                     self.ewc_estimate_fisher_sample_num - self.ewc_estimate_fisher_sample_num // 2)

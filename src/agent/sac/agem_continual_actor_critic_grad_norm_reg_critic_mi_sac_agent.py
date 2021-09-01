@@ -53,7 +53,7 @@ class AgemContinualActorCriticGradNormRegCriticMultiInputSacMlpAgent(
 
         # gradient norm regularization
         _, policy_action, _, _ = self.actor(obs, **kwargs)
-        reg_Q1, reg_Q2 = self.critic(obs, policy_action)
+        reg_Q1, reg_Q2 = self.critic(obs, policy_action, **kwargs)
 
         # (cyzheng) reference: equation 10 in http://arxiv.org/abs/2103.08050.
         # (cyzheng): create graph for second order derivatives

@@ -50,7 +50,7 @@ class AgemContinualActorCriticSacMlpAgent(SacMlpAgent):
 
     def _compute_ref_grad(self):
         if not self.agem_memories:
-            return None
+            return None, None
 
         ref_critic_grad = []
         ref_actor_grad = []
