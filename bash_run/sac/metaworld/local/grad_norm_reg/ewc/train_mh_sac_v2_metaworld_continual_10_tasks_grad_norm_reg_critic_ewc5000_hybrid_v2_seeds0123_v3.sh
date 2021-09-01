@@ -1,7 +1,7 @@
 #!/bin/bash
 
 SCRIPT_DIR=$(dirname "$BASH_SOURCE")
-PROJECT_DIR=$(realpath "$SCRIPT_DIR/../../../../..")
+PROJECT_DIR=$(realpath "$SCRIPT_DIR/../../../../../..")
 
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/.mujoco/mujoco200/bin
 export PYTHONPATH=$PROJECT_DIR
@@ -24,20 +24,20 @@ for seed in "${seeds[@]}"; do
       handle-pull-side-v2 \
       window-open-v2 \
     --env_type metaworld \
-    --algo agem_v2_grad_norm_reg_critic_mh_sac_mlp_v2 \
+    --algo ewc_v2_grad_norm_reg_critic_mh_sac_mlp_v2 \
     --train_steps_per_task 500000 \
     --eval_freq 10 \
     --discount 0.99 \
-    --sac_actor_hidden_dim 256 \
     --sac_init_steps 1000 \
     --sac_num_expl_steps_per_process 1000 \
     --sac_num_processes 1 \
     --sac_num_train_iters 1000 \
-    --sac_agem_memory_budget 9000 \
-    --sac_agem_ref_grad_batch_size 4500 \
-    --sac_agem_memory_sample_src hybrid \
-    --sac_agem_critic_grad_norm_reg_coeff 1.0 \
+    --sac_ewc_lambda 5000 \
+    --sac_ewc_estimate_fisher_iters 10 \
+    --sac_ewc_estimate_fisher_sample_num 1000 \
+    --sac_ewc_estimate_fisher_sample_src hybrid \
+    --sac_ewc_critic_grad_norm_reg_coeff 1.0 \
     --seed $seed \
-    --work_dir $PROJECT_DIR/vec_logs/grad_norm_reg_critic_mh_sac_mlp_v2_metaworld_10_tasks/agem_ref_grad_batch_size4500_hybrid/$seed \
-    > $PROJECT_DIR/terminal_logs/grad_norm_reg_critic_mh_sac_mlp_v2_metaworld_10_tasks-agem_ref_grad_batch_size4500_hybrid-seed"$seed".log 2>&1 &
+    --work_dir $PROJECT_DIR/vec_logs/grad_norm_reg_critic_mh_sac_mlp_v2_metaworld_10_tasks/ewc_lambda5000_hybrid/$seed \
+    > $PROJECT_DIR/terminal_logs/grad_norm_reg_critic_mh_sac_mlp_v2_metaworld_10_tasks-ewc_lambda5000_hybrid-seed"$seed".log 2>&1 &
 done

@@ -11,9 +11,14 @@ from src.agent.sac import MultiHeadSacMlpAgentV2, EwcMultiHeadSacMlpAgentV2, SiM
 from src.agent.sac import FisherBRCMTBCMlpCriticMultiHeadSacMlpAgent, \
     FisherBRCMTBCOffsetCriticMultiHeadSacMlpAgent, \
     FisherBRCMHBCMlpCriticMultiHeadSacMlpAgent, \
-    FisherBRCMHBCOffsetCriticMultiHeadSacMlpAgent, \
-    EwcV2GradNormRegCriticMultiHeadSacMlpAgentV2, \
-    AgemV2GradNormRegCriticMultiHeadSacMlpAgentV2
+    FisherBRCMHBCOffsetCriticMultiHeadSacMlpAgent
+from src.agent.sac import EwcV2GradNormRegCriticMultiHeadSacMlpAgentV2, \
+    EwcV2GradNormRegCriticMultiInputSacMlpAgentV2, \
+    AgemV2GradNormRegCriticMultiHeadSacMlpAgentV2, \
+    AgemContinualActorCriticMultiHeadSacMlpAgent, \
+    AgemContinualActorCriticMultiInputSacMlpAgent, \
+    AgemContinualActorCriticGradNormRegCriticMultiHeadSacMlpAgent, \
+    AgemContinualActorCriticGradNormRegCriticMultiInputSacMlpAgent
 from src.agent.td3 import Td3MlpAgent, MultiHeadTd3MlpAgent, MultiInputTd3MlpAgent, \
     EwcMultiHeadTd3MlpAgent, EwcMultiInputTd3MlpAgent, \
     SiMultiHeadTd3MlpAgent, SiMultiInputTd3MlpAgent, \
@@ -58,6 +63,10 @@ ALGOS = [
     'agem_v2_mi_sac_mlp_v2',
     'agem_v2_grad_norm_reg_critic_mh_sac_mlp_v2',
     'agem_v2_grad_norm_reg_critic_mi_sac_mlp_v2',
+    'agem_continual_actor_critic_mh_sac_mlp',
+    'agem_continual_actor_critic_mi_sac_mlp',
+    'agem_continual_actor_critic_grad_norm_reg_critic_mh_sac_mlp',
+    'agem_continual_actor_critic_grad_norm_reg_critic_mi_sac_mlp',
     'oracle_agem_v2_mh_sac_mlp_v2',
     'oracle_agem_v2_mi_sac_mlp_v2',
     'oracle_grad_agem_v2_mh_sac_mlp_v2',
@@ -244,13 +253,13 @@ def make_agent(obs_space, action_space, device, args):
             kwargs['critic_grad_norm_reg_coeff'] = args.sac_ewc_critic_grad_norm_reg_coeff
             agent = EwcV2GradNormRegCriticMultiHeadSacMlpAgentV2(**kwargs)
         elif args.algo == 'ewc_v2_grad_norm_reg_critic_mi_sac_mlp_v2':
-            # kwargs['ewc_lambda'] = args.sac_ewc_lambda
-            # kwargs['ewc_estimate_fisher_iters'] = args.sac_ewc_estimate_fisher_iters
-            # kwargs['ewc_estimate_fisher_sample_num'] = args.sac_ewc_estimate_fisher_sample_num
-            # kwargs['online_ewc'] = args.sac_online_ewc
-            # kwargs['online_ewc_gamma'] = args.sac_online_ewc_gamma
-            # kwargs['critic_grad_norm_reg_coeff'] = args.sac_ewc_critic_grad_norm_reg_coeff
-            # agent = EwcV2GradNormRegCriticMultiHeadSacMlpAgentV2(**kwargs)
+            kwargs['ewc_lambda'] = args.sac_ewc_lambda
+            kwargs['ewc_estimate_fisher_iters'] = args.sac_ewc_estimate_fisher_iters
+            kwargs['ewc_estimate_fisher_sample_num'] = args.sac_ewc_estimate_fisher_sample_num
+            kwargs['online_ewc'] = args.sac_online_ewc
+            kwargs['online_ewc_gamma'] = args.sac_online_ewc_gamma
+            kwargs['critic_grad_norm_reg_coeff'] = args.sac_ewc_critic_grad_norm_reg_coeff
+            agent = EwcV2GradNormRegCriticMultiInputSacMlpAgentV2(**kwargs)
             pass
         elif args.algo == 'si_mh_sac_mlp':
             kwargs['si_c'] = args.sac_si_c
@@ -281,6 +290,24 @@ def make_agent(obs_space, action_space, device, args):
             kwargs['agem_ref_grad_batch_size'] = args.sac_agem_ref_grad_batch_size
             kwargs['critic_grad_norm_reg_coeff'] = args.sac_agem_critic_grad_norm_reg_coeff
             agent = AgemV2GradNormRegCriticMultiHeadSacMlpAgentV2(**kwargs)
+        elif args.algo == 'agem_continual_actor_critic_mh_sac_mlp':
+            kwargs['agem_memory_budget'] = args.sac_agem_memory_budget
+            kwargs['agem_ref_grad_batch_size'] = args.sac_agem_ref_grad_batch_size
+            agent = AgemContinualActorCriticMultiHeadSacMlpAgent(**kwargs)
+        elif args.algo == 'agem_continual_actor_critic_mi_sac_mlp':
+            kwargs['agem_memory_budget'] = args.sac_agem_memory_budget
+            kwargs['agem_ref_grad_batch_size'] = args.sac_agem_ref_grad_batch_size
+            agent = AgemContinualActorCriticMultiInputSacMlpAgent(**kwargs)
+        elif args.algo == 'agem_continual_actor_critic_grad_norm_reg_critic_mh_sac_mlp':
+            kwargs['agem_memory_budget'] = args.sac_agem_memory_budget
+            kwargs['agem_ref_grad_batch_size'] = args.sac_agem_ref_grad_batch_size
+            kwargs['critic_grad_norm_reg_coeff'] = args.sac_agem_critic_grad_norm_reg_coeff
+            agent = AgemContinualActorCriticGradNormRegCriticMultiHeadSacMlpAgent(**kwargs)
+        elif args.algo == 'agem_continual_actor_critic_grad_norm_reg_critic_mi_sac_mlp':
+            kwargs['agem_memory_budget'] = args.sac_agem_memory_budget
+            kwargs['agem_ref_grad_batch_size'] = args.sac_agem_ref_grad_batch_size
+            kwargs['critic_grad_norm_reg_coeff'] = args.sac_agem_critic_grad_norm_reg_coeff
+            agent = AgemContinualActorCriticGradNormRegCriticMultiInputSacMlpAgent(**kwargs)
         elif args.algo == 'agem_v2_mh_sac_mlp_v2':
             kwargs['agem_memory_budget'] = args.sac_agem_memory_budget
             kwargs['agem_ref_grad_batch_size'] = args.sac_agem_ref_grad_batch_size

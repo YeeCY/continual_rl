@@ -71,6 +71,35 @@ class MultiHeadQFunction(nn.Module):
         return self.heads[head_idx](hidden)
 
 
+class MultiInputQFunction(nn.Module):
+    """MLP for q-function."""
+    def __init__(self, obs_dim, action_dims, hidden_dim):
+        super().__init__()
+        assert isinstance(action_dims, list)
+
+        self.trunk = nn.Sequential(
+            nn.Linear(obs_dim + action_dims[0], hidden_dim),
+            nn.ReLU(),
+        )
+
+        self.heads = torch.nn.ModuleList()
+        for _ in action_dims:
+            self.heads.append(nn.Sequential(
+                nn.Linear(hidden_dim, hidden_dim),
+                nn.ReLU(),
+                nn.Linear(hidden_dim, hidden_dim),
+                nn.ReLU(),
+                nn.Linear(hidden_dim, 1)
+            ))
+
+    def forward(self, obs, action, head_idx):
+        assert obs.size(0) == action.size(0)
+
+        obs_action = torch.cat([obs, action], dim=-1)
+        hidden = self.trunk(obs_action)
+        return self.heads[head_idx](hidden)
+
+
 class RotFunction(nn.Module):
     """MLP for rotation prediction."""
     def __init__(self, obs_dim, hidden_dim):
@@ -571,6 +600,35 @@ class MultiHeadSacCriticMlp(nn.Module):
         action_dims = [action_shape[0] for action_shape in action_shapes]
         self.Q1 = MultiHeadQFunction(obs_shape[0], action_dims, hidden_dim)
         self.Q2 = MultiHeadQFunction(obs_shape[0], action_dims, hidden_dim)
+
+        self.apply(weight_init)
+
+    def common_parameters(self, recurse=True):
+        for name, param in chain(self.Q1.trunk.named_parameters(recurse=recurse),
+                                 self.Q2.trunk.named_parameters(recurse=recurse)):
+            yield param
+
+    def named_common_parameters(self, prefix='', recurse=True):
+        for elem in chain(self.Q1.trunk.named_parameters(prefix=prefix, recurse=recurse),
+                          self.Q2.trunk.named_parameters(prefix=prefix, recurse=recurse)):
+            yield elem
+
+    def forward(self, obs, action, head_idx):
+        q1 = self.Q1(obs, action, head_idx)
+        q2 = self.Q2(obs, action, head_idx)
+
+        return q1, q2
+
+
+class MultiInputSacCriticMlp(nn.Module):
+    """Critic network with MLP, employes two q-functions."""
+    def __init__(self, obs_shape, action_shapes, hidden_dim):
+        super().__init__()
+        assert isinstance(action_shapes, list)
+
+        action_dims = [action_shape[0] for action_shape in action_shapes]
+        self.Q1 = MultiInputQFunction(obs_shape[0], action_dims, hidden_dim)
+        self.Q2 = MultiInputQFunction(obs_shape[0], action_dims, hidden_dim)
 
         self.apply(weight_init)
 

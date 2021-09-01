@@ -1,12 +1,11 @@
 import torch
 import numpy as np
-from collections.abc import Iterable
 
 import utils
 from agent.sac.base_sac_agent import SacMlpAgent
 
 
-class AgemV2SacMlpAgentV2(SacMlpAgent):
+class AgemContinualActorCriticSacMlpAgent(SacMlpAgent):
     """Adapt from https://github.com/GMvandeVen/continual-learning"""
     def __init__(self,
                  obs_shape,
@@ -14,7 +13,7 @@ class AgemV2SacMlpAgentV2(SacMlpAgent):
                  action_range,
                  device,
                  actor_hidden_dim=400,
-                 critic_hidden_dim=256,
+                 critic_hidden_dim=400,
                  discount=0.99,
                  init_temperature=0.01,
                  alpha_lr=1e-3,
@@ -53,24 +52,32 @@ class AgemV2SacMlpAgentV2(SacMlpAgent):
         if not self.agem_memories:
             return None
 
+        ref_critic_grad = []
         ref_actor_grad = []
         for memory in self.agem_memories.values():
             idxs = np.random.randint(
                 0, len(memory['obses']), size=self.agem_ref_grad_batch_size // self.agem_task_count
             )
 
-            obses, actions, rewards, next_obses, not_dones, old_log_pis, qs = \
+            obs, action, reward, next_obs, not_done = \
                 memory['obses'][idxs], memory['actions'][idxs], memory['rewards'][idxs], \
-                memory['next_obses'][idxs], memory['not_dones'][idxs], memory['log_pis'], \
-                memory['qs']
+                memory['next_obses'][idxs], memory['not_dones'][idxs]
 
-            # (chongyi zheng): use PPO style gradient projection loss for actor
-            log_pis = self.actor.compute_log_probs(obses, actions)
-            ratio = torch.exp(log_pis - old_log_pis.detach())  # importance sampling ratio
-            proj_actor_loss = (ratio * qs.detach()).mean()
+            critic_loss = self.compute_critic_loss(obs, action, reward, next_obs, not_done)
+            self.critic_optimizer.zero_grad()  # clear current gradient
+            critic_loss.backward()
 
+            single_ref_critic_grad = []
+            for param in self.critic.parameters():
+                if param.requires_grad:
+                    single_ref_critic_grad.append(param.grad.detach().clone().flatten())
+            single_ref_critic_grad = torch.cat(single_ref_critic_grad)
+            self.critic_optimizer.zero_grad()
+
+            _, actor_loss, alpha_loss = self.compute_actor_and_alpha_loss(
+                obs, compute_alpha_loss=False)
             self.actor_optimizer.zero_grad()  # clear current gradient
-            proj_actor_loss.backward()
+            actor_loss.backward()
 
             single_ref_actor_grad = []
             for param in self.actor.parameters():
@@ -79,10 +86,12 @@ class AgemV2SacMlpAgentV2(SacMlpAgent):
             single_ref_actor_grad = torch.cat(single_ref_actor_grad)
             self.actor_optimizer.zero_grad()
 
+            ref_critic_grad.append(single_ref_critic_grad)
             ref_actor_grad.append(single_ref_actor_grad)
+        ref_critic_grad = torch.stack(ref_critic_grad).mean(dim=0)
         ref_actor_grad = torch.stack(ref_actor_grad).mean(dim=0)
 
-        return ref_actor_grad
+        return ref_critic_grad, ref_actor_grad
 
     def _project_grad(self, parameters, ref_grad):
         assert isinstance(parameters, list), "'parameters' must be a list"
@@ -258,7 +267,18 @@ class AgemV2SacMlpAgentV2(SacMlpAgent):
 
         self.agem_task_count += 1
 
-    def update_actor_and_alpha(self, log_pi, actor_loss, logger, step, alpha_loss=None, ref_actor_grad=None):
+    def update_critic(self, critic_loss, logger, step, ref_critic_grad=None):
+        # Optimize the critic
+        logger.log('train_critic/loss', critic_loss, step)
+        self.critic_optimizer.zero_grad()
+        critic_loss.backward()
+
+        self._project_grad(list(self.critic.parameters()), ref_critic_grad)
+
+        self.critic_optimizer.step()
+
+    def update_actor_and_alpha(self, log_pi, actor_loss, logger, step, alpha_loss=None, ref_actor_grad=None,
+                               ref_alpha_grad=None):
         logger.log('train_actor/loss', actor_loss, step)
         logger.log('train/target_entropy', self.target_entropy, step)
         logger.log('train/entropy', -log_pi.mean(), step)
@@ -284,11 +304,12 @@ class AgemV2SacMlpAgentV2(SacMlpAgent):
 
         logger.log('train/batch_reward', reward.mean(), step)
 
+        ref_critic_grad, ref_actor_grad, ref_alpha_grad = self._compute_ref_grad()
+
         critic_loss = self.compute_critic_loss(obs, action, reward, next_obs, not_done, **kwargs)
-        self.update_critic(critic_loss, logger, step)
+        self.update_critic(critic_loss, logger, step, ref_critic_grad=ref_critic_grad)
 
         if step % self.actor_update_freq == 0:
-            ref_actor_grad = self._compute_ref_grad()
             log_pi, actor_loss, alpha_loss = self.compute_actor_and_alpha_loss(obs, **kwargs)
             self.update_actor_and_alpha(log_pi, actor_loss, logger, step, alpha_loss=alpha_loss,
                                         ref_actor_grad=ref_actor_grad)

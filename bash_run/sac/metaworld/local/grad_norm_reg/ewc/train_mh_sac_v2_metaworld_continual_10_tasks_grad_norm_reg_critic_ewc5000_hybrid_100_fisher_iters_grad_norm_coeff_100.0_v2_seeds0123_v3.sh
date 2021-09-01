@@ -1,7 +1,7 @@
 #!/bin/bash
 
 SCRIPT_DIR=$(dirname "$BASH_SOURCE")
-PROJECT_DIR=$(realpath "$SCRIPT_DIR/../../../../..")
+PROJECT_DIR=$(realpath "$SCRIPT_DIR/../../../../../..")
 
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/.mujoco/mujoco200/bin
 export PYTHONPATH=$PROJECT_DIR
@@ -36,8 +36,8 @@ for seed in "${seeds[@]}"; do
     --sac_ewc_estimate_fisher_iters 100 \
     --sac_ewc_estimate_fisher_sample_num 1000 \
     --sac_ewc_estimate_fisher_sample_src hybrid \
-    --sac_ewc_critic_grad_norm_reg_coeff 10.0 \
+    --sac_ewc_critic_grad_norm_reg_coeff 100.0 \
     --seed $seed \
-    --work_dir $PROJECT_DIR/vec_logs/grad_norm_reg_critic_mh_sac_mlp_v2_metaworld_10_tasks/ewc_lambda5000_hybrid_100_fisher_iters_grad_norm_coeff_10.0/$seed \
-    > $PROJECT_DIR/terminal_logs/grad_norm_reg_critic_mh_sac_mlp_v2_metaworld_10_tasks-ewc_lambda5000_hybrid_100_fisher_iters_grad_norm_coeff_10.0-seed"$seed".log 2>&1 &
+    --work_dir $PROJECT_DIR/vec_logs/grad_norm_reg_critic_mh_sac_mlp_v2_metaworld_10_tasks/ewc_lambda5000_hybrid_100_fisher_iters_grad_norm_coeff_100.0/$seed \
+    > $PROJECT_DIR/terminal_logs/grad_norm_reg_critic_mh_sac_mlp_v2_metaworld_10_tasks-ewc_lambda5000_hybrid_100_fisher_iters_grad_norm_coeff_100.0-seed"$seed".log 2>&1 &
 done

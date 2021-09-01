@@ -1,7 +1,7 @@
 #!/bin/bash
 
 SCRIPT_DIR=$(dirname "$BASH_SOURCE")
-PROJECT_DIR=$(realpath "$SCRIPT_DIR/../../../../..")
+PROJECT_DIR=$(realpath "$SCRIPT_DIR/../../../../../..")
 
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/.mujoco/mujoco200/bin
 export PYTHONPATH=$PROJECT_DIR
@@ -29,6 +29,7 @@ for seed in "${seeds[@]}"; do
     --eval_freq 10 \
     --discount 0.99 \
     --sac_actor_hidden_dim 256 \
+    --sac_critic_hidden_dim 256 \
     --sac_init_steps 1000 \
     --sac_num_expl_steps_per_process 1000 \
     --sac_num_processes 1 \

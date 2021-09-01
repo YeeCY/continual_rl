@@ -5,10 +5,10 @@ import torch
 import utils
 
 from agent.sac.base_sac_agent import SacMlpAgent
-from agent.network import MultiHeadSacActorMlp, MultiHeadSacCriticMlp
+from agent.network import MultiInputSacActorMlp, MultiInputSacCriticMlp
 
 
-class MultiHeadSacMlpAgent(SacMlpAgent):
+class MultiInputSacMlpAgent(SacMlpAgent):
     def __init__(
             self,
             obs_shape,
@@ -41,16 +41,16 @@ class MultiHeadSacMlpAgent(SacMlpAgent):
                 and hasattr(self, 'optimizer'):
             return
 
-        self.actor = MultiHeadSacActorMlp(
+        self.actor = MultiInputSacActorMlp(
             self.obs_shape, self.action_shape, self.actor_hidden_dim,
             self.actor_log_std_min, self.actor_log_std_max
         ).to(self.device)
 
-        self.critic = MultiHeadSacCriticMlp(
+        self.critic = MultiInputSacCriticMlp(
             self.obs_shape, self.action_shape, self.critic_hidden_dim
         ).to(self.device)
 
-        self.critic_target = MultiHeadSacCriticMlp(
+        self.critic_target = MultiInputSacCriticMlp(
             self.obs_shape, self.action_shape, self.critic_hidden_dim
         ).to(self.device)
 
