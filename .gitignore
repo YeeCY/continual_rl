@@ -9,3 +9,6 @@ results
 terminal_logs/*.log
 terminal_logs/trash
 logs
+rl-trained-agents
+distilled-agents
+exp_data
