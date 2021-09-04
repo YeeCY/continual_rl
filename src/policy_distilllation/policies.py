@@ -16,7 +16,7 @@ def _weight_init(module):
 
 class Policy(nn.Module):
     def __init__(self, input_size, output_size, hidden_sizes=(),
-                 nonlinearity=F.relu, init_std=0.1, min_std=1e-6):
+                 nonlinearity=F.relu, init_std=0.1, min_std=1e-6, device=None):
 
         super(Policy, self).__init__()
         self.input_size = input_size
@@ -25,6 +25,7 @@ class Policy(nn.Module):
         self.nonlinearity = nonlinearity
         self.min_log_std = np.log(min_std)
         self.num_layers = len(hidden_sizes) + 1
+        self.device = device
 
         self.is_disc_action = False
 
@@ -37,6 +38,8 @@ class Policy(nn.Module):
         self.sigma = nn.Parameter(torch.Tensor(output_size))
         self.sigma.data.fill_(np.log(init_std))
         self.apply(_weight_init)
+
+        self.to(device)
 
     def forward(self, input, params=None):
         if params is None:
@@ -62,14 +65,24 @@ class Policy(nn.Module):
         pi = self.forward(state)
         return pi.scale
 
-    def select_action(self, state):
-        pi = self.forward(state)
-        action = pi.sample()
-        return action
+    # def select_action(self, state):
+    #     pi = self.forward(state)
+    #     action = pi.sample()
+    #     return action
 
     def mean_action(self, state):
         pi = self.forward(state)
         return pi.loc
+
+    def predict(self, state, deterministic=False):
+        if not isinstance(state, torch.Tensor):
+            state = torch.as_tensor(state, device=self.device)
+
+        pi = self.forward(state)
+        if deterministic:
+            return pi.loc.cpu().detach().numpy(), None
+        else:
+            return pi.sample().cpu().detach().numpy(), None
 
 
 class Value(nn.Module):

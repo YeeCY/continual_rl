@@ -74,7 +74,7 @@ def main(args):
             if iter % args.log_interval == 0:  # for logging
                 writer.add_scalar('{} loss'.format(args.loss_metric), loss, iter)
                 print('Epoch {} | Itr {} | {} loss: {:.2f}'.format(epoch, iter,
-                                                                   args.loss_metric, loss.numpy()))
+                                                                   args.loss_metric, loss.item()))
             if iter % args.eval_interval == 0:
                 average_reward = student.eval()
                 student.save('{}/student_{}_{:.2f}.pkl'.format(path_to_save, iter, average_reward))

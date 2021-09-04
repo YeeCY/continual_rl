@@ -24,11 +24,13 @@ class Student:
 
         num_inputs = self.env.observation_space.shape[0]
         num_actions = self.env.action_space.shape[0]
+
         self.learner_batch_size = args.learner_batch_size
         self.learner_eval_steps = args.learner_eval_steps
         self.loss_metric = args.loss_metric
-        self.policy = Policy(num_inputs, num_actions, hidden_sizes=(args.hidden_size, ) * args.num_layers).to(
-            args.device)
+        self.policy = Policy(num_inputs, num_actions, hidden_sizes=(args.hidden_size, ) * args.num_layers,
+                             device=args.device)
+
         self.agents = AgentCollection([self.env], [self.policy], render=args.render, num_agents=1)
         self.optimizer = Adam(self.policy.parameters(), lr=args.lr)
 
@@ -63,7 +65,7 @@ class Student:
         return loss
 
     def eval(self):
-        _, logs = self.agents.collect_samples(self.learner_eval_steps, exercise=True)
+        _, logs = self.agents.collect_samples(self.learner_eval_steps, verbose=False)
         rewards = [log['avg_reward'] for log in logs]
         average_reward = np.array(rewards).mean()
         return average_reward
@@ -78,27 +80,28 @@ class Teacher:
         self.envs = envs
         self.policies = policies
         self.expert_batch_size = args.sample_batch_size
-        self.agents = AgentCollection(self.envs, self.policies, render=args.render, num_agents=args.agent_count)
+        self.agents = AgentCollection(self.envs, self.policies,
+                                      render=args.render, num_agents=args.agent_count)
 
     def get_expert_sample(self):
         return self.agents.get_expert_sample(self.expert_batch_size)
 
 
-class TrainedStudent:
-    def __init__(self, args, optimizer=None):
-        self.env, _ = load_env_and_model(args.env, args.algo, args.folder)
-        self.testing_batch_size = args.testing_batch_size
-
-        self.policy = self.load(args.path_to_student)
-        self.agents = AgentCollection([self.env], [self.policy], render=args.render, num_agents=1)
-
-    def test(self):
-        memories, logs = self.agents.collect_samples(self.testing_batch_size, exercise=True)
-        rewards = [log['avg_reward'] for log in logs]
-        average_reward = np.array(rewards).mean()
-        return average_reward
-
-    def load(self, ckp_name):
-        with gzip.open(ckp_name, 'rb') as f:
-            loaded_data = pickle.load(f)
-        return loaded_data
+# class TrainedStudent:
+#     def __init__(self, args, optimizer=None):
+#         self.env, _ = load_env_and_model(args.env, args.algo, args.folder)
+#         self.testing_batch_size = args.testing_batch_size
+#
+#         self.policy = self.load(args.path_to_student)
+#         self.agents = AgentCollection([self.env], [self.policy], render=args.render, num_agents=1)
+#
+#     def test(self):
+#         memories, logs = self.agents.collect_samples(self.testing_batch_size, exercise=True)
+#         rewards = [log['avg_reward'] for log in logs]
+#         average_reward = np.array(rewards).mean()
+#         return average_reward
+#
+#     def load(self, ckp_name):
+#         with gzip.open(ckp_name, 'rb') as f:
+#             loaded_data = pickle.load(f)
+#         return loaded_data

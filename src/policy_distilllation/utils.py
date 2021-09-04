@@ -326,7 +326,7 @@ def load_env_and_model(env_id, algo, folder):
     return env, model
 
 
-def sample_generator(env, model, render=True, min_batch_size=10000, id_=0):
+def sample_generator(env, model, render=True, min_batch_size=10000, id_=0, verbose=False):
     log = dict()
     # memory = Memory()
     buffer = ReplayBuffer(
@@ -355,15 +355,16 @@ def sample_generator(env, model, render=True, min_batch_size=10000, id_=0):
         episode_reward += reward[0]
         ep_len += 1
 
-        not_done = 0 if done else 1
+        not_done = [0] if done else [1]
         buffer.add(obs, action, not_done, next_obs, reward, info)
         obs = next_obs
 
         if done:
             # NOTE: for env using VecNormalize, the mean reward
             # is a normalized reward when `--norm_reward` flag is passed
-            print(f"Episode Reward: {episode_reward:.2f}")
-            print("Episode Length", ep_len)
+            if verbose:
+                print(f"Episode Reward: {episode_reward:.2f}")
+                print("Episode Length", ep_len)
             episode_rewards.append(episode_reward)
             episode_lengths.append(ep_len)
             episode_reward = 0.0
@@ -397,18 +398,18 @@ class AgentCollection:
         self.num_agents = num_agents
         self.num_teachers = len(policies)
 
-    def collect_samples(self, min_batch_size, exercise=False):
+    def collect_samples(self, min_batch_size, verbose=True):
         # print("collect_samples called!!")
         results = []
         for i in range(self.num_teachers):
-            if not exercise:
-                results.append(
-                    sample_generator(self.envs[i], self.policies[i], self.render, min_batch_size, i)
-                )
-            else:
-                results.append(
-                    self.exercise(self.envs[i], self.policies[i], self.render, min_batch_size, i)
-                )
+            results.append(
+                sample_generator(self.envs[i], self.policies[i], self.render, min_batch_size, i,
+                                 verbose)
+            )
+            # else:
+            #     results.append(
+            #         self.exercise(self.envs[i], self.policies[i], self.render, min_batch_size, i)
+            #     )
         worker_logs = [None] * self.num_agents
         worker_memories = [None] * self.num_agents
         # print(len(result_ids))
@@ -422,7 +423,7 @@ class AgentCollection:
 
     def get_expert_sample(self, batch_size, deterministic=True):
         # print("get_expert_sample called!!")
-        buffers, logs = self.collect_samples(batch_size)  # (cyzheng): only one teacher worker
+        buffers, logs = self.collect_samples(batch_size, verbose=True)  # (cyzheng): only one teacher worker
         teacher_rewards = [log['avg_reward'] for log in logs if log is not None]
         teacher_average_reward = np.array(teacher_rewards).mean()
         # TODO better implementation of dataset and sampling
@@ -444,65 +445,70 @@ class AgentCollection:
                     policy.predict(obses.to('cpu').numpy(),
                                    deterministic=deterministic)[0]
                 ).to(policy.device)
-                stds = policy.get_std()
+                # use dummy std for SAC as well now
+                stds = 1e-6 * torch.ones_like(mus, device=policy.device)
 
             dataset += [(obs, mu, std) for obs, mu, std in zip(obses, mus, stds)]
         return dataset, teacher_average_reward
 
-    def exercise(self, env, policy, render=True, min_batch_size=10000, pid=0):
-        torch.randn(pid)
-        log = dict()
-        # memory = Memory()
-        buffer = ReplayBuffer(
-            obs_space=env.observation_space,
-            action_space=env.action_space,
-            capacity=min_batch_size,
-            device=policy.device,
-            optimize_memory_usage=True,
-        )
-        num_steps = 0
-        total_reward = 0
-        min_reward = 1e6
-        max_reward = -1e6
-        num_episodes = 0
-
-        while num_steps < min_batch_size:
-            state = env.reset()
-            reward_episode = 0
-
-            for t in range(1000):
-                state_var = torch.Tensor(state).unsqueeze(0)
-                with torch.no_grad():
-                    action = policy.mean_action(state_var.to(torch.float))[0].numpy()
-                next_state, reward, done, info = env.step(action)
-                reward_episode += reward
-
-                not_done = 0 if done else 1
-
-                buffer.add(state, action, not_done, next_state, reward, info)
-
-                if render:
-                    env.render()
-                if done:
-                    break
-
-                state = next_state
-
-            # log states
-            num_steps += (t + 1)
-            num_episodes += 1
-            total_reward += reward_episode
-            min_reward = min(min_reward, reward_episode)
-            max_reward = max(max_reward, reward_episode)
-            print("reward_episode: %f"%reward_episode)
-            print("num_steps: %d"%num_steps)
-
-
-        log['num_steps'] = num_steps
-        log['num_episodes'] = num_episodes
-        log['total_reward'] = total_reward
-        log['avg_reward'] = total_reward / num_episodes
-        log['max_reward'] = max_reward
-        log['min_reward'] = min_reward
-
-        return pid, buffer, log
+    # def exercise(self, env, policy, render=True, min_batch_size=10000, pid=0):
+    #     log = dict()
+    #     buffer = ReplayBuffer(
+    #         obs_space=env.observation_space,
+    #         action_space=env.action_space,
+    #         capacity=min_batch_size,
+    #         device=self.device,
+    #         optimize_memory_usage=True,
+    #     )
+    #
+    #     num_steps = 0
+    #     num_episodes = 0
+    #
+    #     # main loop to enjoy for n_timesteps..
+    #     episode_rewards, episode_lengths = [], []
+    #     obs = env.reset()
+    #     episode_reward = 0.0
+    #     ep_len = 0
+    #     while num_steps < min_batch_size:
+    #         if render:
+    #             env.render()
+    #
+    #         obs = torch.Tensor(obs).unsqueeze(0)
+    #         with torch.no_grad():
+    #             action = policy.mean_action(obs)[0].item()
+    #         next_obs, reward, done, info = env.step(action)
+    #
+    #         episode_reward += reward[0]
+    #         ep_len += 1
+    #
+    #         not_done = 0 if done else 1
+    #         buffer.add(obs, action, not_done, next_obs, reward, info)
+    #         obs = next_obs
+    #
+    #         if done:
+    #             # NOTE: for env using VecNormalize, the mean reward
+    #             # is a normalized reward when `--norm_reward` flag is passed
+    #             print(f"Episode Reward: {episode_reward:.2f}")
+    #             print("Episode Length", ep_len)
+    #             episode_rewards.append(episode_reward)
+    #             episode_lengths.append(ep_len)
+    #             episode_reward = 0.0
+    #             ep_len = 0
+    #
+    #             num_episodes += 1
+    #
+    #             obs = env.reset()
+    #
+    #         num_steps += 1
+    #     total_reward = sum(episode_rewards)
+    #     min_reward = min(episode_rewards)
+    #     max_reward = max(episode_rewards)
+    #
+    #     log['num_steps'] = num_steps
+    #     log['num_episodes'] = num_episodes
+    #     log['total_reward'] = total_reward
+    #     log['avg_reward'] = total_reward / num_episodes
+    #     log['max_reward'] = max_reward
+    #     log['min_reward'] = min_reward
+    #
+    #     return pid, buffer, log
