@@ -17,6 +17,11 @@ CURVE_FORMAT = {
         'style': '-',
         'label': 'SGD',
     },
+    'ewc_lambda50': {
+        'color': [0, 178, 238],
+        'style': '-',
+        'label': 'ewc_lambda50',
+    },
     'ewc_lambda100': {
         'color': [0, 178, 238],
         'style': '-',
