@@ -355,13 +355,14 @@ def main(args):
                             agent.update(replay_buffer, logger, total_steps)
 
                 end_time = time.time()
-                print("FPS: ", int(task_steps / (end_time - start_time)))
+                if task_epoch % args.log_freq == 0:
+                    print("FPS: ", int(task_steps / (end_time - start_time)))
 
-                logger.log('train/recent_success', np.mean(recent_success), total_steps)
-                logger.log('train/recent_episode_reward', np.mean(recent_episode_reward), total_steps)
-                logger.log('train/episode', episode, total_steps)
-                log_info = {'train/task_name': infos[0]['task_name']}
-                logger.dump(total_steps, ty='train', save=(task_steps > args.sac_init_steps), info=log_info)
+                    logger.log('train/recent_success', np.mean(recent_success), total_steps)
+                    logger.log('train/recent_episode_reward', np.mean(recent_episode_reward), total_steps)
+                    logger.log('train/episode', episode, total_steps)
+                    log_info = {'train/task_name': infos[0]['task_name']}
+                    logger.dump(total_steps, ty='train', save=(task_steps > args.sac_init_steps), info=log_info)
 
                 # if done:
                 #     success = np.any(episode_successes).astype(np.float)

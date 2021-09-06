@@ -7,10 +7,10 @@ from torch.distributions.kl import kl_divergence
 import utils
 
 from agent.sac.base_sac_agent import SacMlpAgent
-from agent.network import MultiHeadSacActorMlp, SacCriticMlp
+from agent.network import MultiInputSacActorMlp, SacCriticMlp
 
 
-class DistilledActorMultiHeadSacMlpAgent(SacMlpAgent):
+class DistilledActorMultiInputSacMlpAgent(SacMlpAgent):
     def __init__(
             self,
             obs_shape,
@@ -55,12 +55,12 @@ class DistilledActorMultiHeadSacMlpAgent(SacMlpAgent):
                 and hasattr(self, 'optimizer'):
             return
 
-        self.actor = MultiHeadSacActorMlp(
+        self.actor = MultiInputSacActorMlp(
             self.obs_shape, self.action_shape, self.actor_hidden_dim,
             self.actor_log_std_min, self.actor_log_std_max
         ).to(self.device)
 
-        self.distilled_actor = MultiHeadSacActorMlp(
+        self.distilled_actor = MultiInputSacActorMlp(
             self.obs_shape, self.action_shape, self.actor_hidden_dim,
             self.actor_log_std_min, self.actor_log_std_max
         ).to(self.device)

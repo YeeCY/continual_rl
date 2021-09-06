@@ -19,7 +19,8 @@ from src.agent.sac import EwcV2GradNormRegCriticMultiHeadSacMlpAgentV2, \
     AgemContinualActorCriticMultiInputSacMlpAgent, \
     AgemContinualActorCriticGradNormRegCriticMultiHeadSacMlpAgent, \
     AgemContinualActorCriticGradNormRegCriticMultiInputSacMlpAgent, \
-    DistilledActorMultiHeadSacMlpAgent
+    DistilledActorMultiHeadSacMlpAgent, \
+    DistilledActorMultiInputSacMlpAgent
 from src.agent.td3 import Td3MlpAgent, MultiHeadTd3MlpAgent, MultiInputTd3MlpAgent, \
     EwcMultiHeadTd3MlpAgent, EwcMultiInputTd3MlpAgent, \
     SiMultiHeadTd3MlpAgent, SiMultiInputTd3MlpAgent, \
@@ -58,6 +59,7 @@ ALGOS = [
     'si_mh_sac_mlp_v2',
     'si_mi_sac_mlp_v2',
     'distilled_actor_mh_sac_mlp',
+    'distilled_actor_mi_sac_mlp',
     'agem_mh_sac_mlp',
     'agem_mh_sac_mlp_v2',
     'agem_mi_sac_mlp_v2',
@@ -281,6 +283,12 @@ def make_agent(obs_space, action_space, device, args):
             kwargs['distill_batch_size'] = args.sac_distill_batch_size
             kwargs['distill_memory_budget_per_task'] = args.sac_distill_memory_budget_per_task
             agent = DistilledActorMultiHeadSacMlpAgent(**kwargs)
+        elif args.algo == 'distilled_actor_mi_sac_mlp':
+            kwargs['distill_epochs'] = args.sac_distill_epochs
+            kwargs['distill_iters_per_epoch'] = args.sac_distill_iters_per_epoch
+            kwargs['distill_batch_size'] = args.sac_distill_batch_size
+            kwargs['distill_memory_budget_per_task'] = args.sac_distill_memory_budget_per_task
+            agent = DistilledActorMultiInputSacMlpAgent(**kwargs)
         elif args.algo == 'agem_mh_sac_mlp':
             kwargs['agem_memory_budget'] = args.sac_agem_memory_budget
             kwargs['agem_ref_grad_batch_size'] = args.sac_agem_ref_grad_batch_size
