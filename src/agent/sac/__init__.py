@@ -49,3 +49,6 @@ from agent.sac.agem_continual_actor_critic_grad_norm_reg_critic_mh_sac_agent imp
     AgemContinualActorCriticGradNormRegCriticMultiHeadSacMlpAgent
 from agent.sac.agem_continual_actor_critic_grad_norm_reg_critic_mi_sac_agent import \
     AgemContinualActorCriticGradNormRegCriticMultiInputSacMlpAgent
+
+from agent.sac.distilled_actor_mh_sac_agent import \
+    DistilledActorMultiHeadSacMlpAgent

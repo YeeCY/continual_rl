@@ -231,7 +231,7 @@ class AgemV2SacMlpAgentV2(SacMlpAgent):
                 self.agem_memories[self.agem_task_count]['qs']).unsqueeze(-1)
 
             obses, actions, rewards, next_obses, not_dones = replay_buffer.sample(
-                memory_size_per_task)
+                memory_size_per_task - memory_size_per_task // 2)
             with utils.eval_mode(self):
                 log_pis = self.actor.compute_log_probs(obses, actions, **kwargs)
                 actor_Q1, actor_Q2 = self.critic(

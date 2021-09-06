@@ -132,6 +132,14 @@ def parse_args():
 	parser.add_argument('--sac_fisher_brc_reward_bonus', default=5.0, type=float)
 	parser.add_argument('--sac_fisher_brc_bc_train_steps_per_task', default=100000, type=int)
 
+	# sac distill
+	parser.add_argument('--sac_distill_sample_src', default='rollout', type=str,
+						choices=['rollout', 'replay_buffer', 'hybrid'])
+	parser.add_argument('--sac_distill_epochs', default=10, type=int)
+	parser.add_argument('--sac_distill_iters_per_epoch', default=250, type=int)
+	parser.add_argument('--sac_distill_batch_size', default=1000, type=int)
+	parser.add_argument('--sac_distill_memory_budget_per_task', default=50000, type=int)
+
 	# td3
 	parser.add_argument('--td3_init_steps', default=1000, type=int)
 	parser.add_argument('--td3_num_expl_steps_per_process', default=1000, type=int)

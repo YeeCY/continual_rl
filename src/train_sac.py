@@ -2,12 +2,10 @@ import torch
 import numpy as np
 import os
 from collections import deque
-import copy
 
 
 from arguments import parse_args
-from environment import make_atari_env, make_single_metaworld_env, \
-    make_continual_metaworld_env, make_continual_vec_envs
+from environment import make_continual_vec_envs
 from environment.metaworld_utils import MultiEnvWrapper
 from environment.env_utils import get_vec_normalize
 from agent import make_agent
@@ -18,7 +16,8 @@ from logger import Logger
 from video import VideoRecorder
 
 
-def evaluate(train_env, eval_env, agent, video, num_episodes, logger, step):
+def evaluate(train_env, eval_env, agent, video, num_episodes, logger, step,
+             **act_kwargs):
     """Evaluate agent"""
     if isinstance(train_env, MultiEnvWrapper) and isinstance(eval_env, MultiEnvWrapper):
         assert (train_env.env_names is not None) and (eval_env.env_names is not None), \
@@ -42,9 +41,9 @@ def evaluate(train_env, eval_env, agent, video, num_episodes, logger, step):
                 with utils.eval_mode(agent):
                     with utils.eval_mode(agent):
                         if any(x in args.algo for x in ['mh', 'mi', 'individual']):
-                            action = agent.act(obs, sample=False, head_idx=task_id)
+                            action = agent.act(obs, sample=False, head_idx=task_id, **act_kwargs)
                         else:
-                            action = agent.act(obs, sample=False)
+                            action = agent.act(obs, sample=False, **act_kwargs)
 
                     obs, _, done, infos = eval_env.step(action)
                     video.record(eval_env.env)  # use actually vector env
@@ -254,6 +253,13 @@ def main(args):
                     action_repeat=args.action_repeat,
                     save_tb=args.save_tb)
 
+    if 'distilled' in args.algo:
+        distill_dir = utils.make_dir(os.path.join(args.work_dir, 'distill'))
+        distill_logger = Logger(distill_dir,
+                                log_frequency=args.log_freq,
+                                action_repeat=args.action_repeat,
+                                save_tb=args.save_tb)
+
     # log arguments
     args_dict = vars(args)
     logger.log_and_dump_arguments(args_dict)
@@ -293,6 +299,10 @@ def main(args):
                     print('Evaluating:', args.work_dir)
                     logger.log('eval/episode', episode, total_steps)
                     evaluate(env, eval_env, agent, video, args.num_eval_episodes, logger, total_steps)
+
+                    if 'distilled' in args.algo:
+                        evaluate(env, eval_env, agent, video, args.num_eval_episodes, distill_logger,
+                                 total_steps, use_distilled_actor=True)
 
                 # # (chongyi zheng): force reset outside done = True when step reach train_steps_per_task
                 # if task_step >= train_steps_per_task:
@@ -443,6 +453,20 @@ def main(args):
                 #         agent.construct_memory(env)
                 # else:
                 #     agent.construct_memory(replay_buffer)
+            elif 'distilled' in args.algo:
+                print(f"Distill actor: {infos[0]['task_name']}")
+                if any(x in args.algo for x in ['mh', 'mi', 'individual']):
+                    agent.distill(env=env, replay_buffer=replay_buffer,
+                                  head_idx=task_id,
+                                  sample_src=args.sac_distill_sample_src,
+                                  total_steps=total_steps,
+                                  logger=distill_logger)
+                else:
+                    agent.distill(env=env, replay_buffer=replay_buffer,
+                                  sample_src=args.sac_distill_sample_src,
+                                  total_steps=total_steps,
+                                  logger=distill_logger)
+                distill_logger.dump(total_steps, ty='train', save=True)
 
             agent.reset(reset_critic=args.reset_agent)
 

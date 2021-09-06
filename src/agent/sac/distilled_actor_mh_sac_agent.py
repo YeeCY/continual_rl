@@ -1,6 +1,8 @@
 import copy
 import numpy as np
 import torch
+from torch.distributions import Independent, Normal
+from torch.distributions.kl import kl_divergence
 
 import utils
 
@@ -8,7 +10,7 @@ from agent.sac.base_sac_agent import SacMlpAgent
 from agent.network import MultiHeadSacActorMlp, SacCriticMlp
 
 
-class MultiHeadSacMlpAgentV2(SacMlpAgent):
+class DistilledActorMultiHeadSacMlpAgent(SacMlpAgent):
     def __init__(
             self,
             obs_shape,
@@ -28,9 +30,10 @@ class MultiHeadSacMlpAgentV2(SacMlpAgent):
             critic_tau=0.005,
             critic_target_update_freq=2,
             batch_size=128,
-            distill_epochs=10,  # (cyzheng): refresh data every epoch
-            distill_iters_per_epoch=250,
+            distill_epochs=200,  # (cyzheng): refresh data every epoch
+            distill_iters_per_epoch=50,
             distill_batch_size=1000,
+            distill_memory_budget_per_task=50000,
     ):
         assert isinstance(action_shape, list)
         assert isinstance(action_range, list)
@@ -42,6 +45,10 @@ class MultiHeadSacMlpAgentV2(SacMlpAgent):
         self.distill_epochs = distill_epochs
         self.distill_iters_per_epoch = distill_iters_per_epoch
         self.distill_batch_size = distill_batch_size
+        self.distill_memory_budget_per_task = distill_memory_budget_per_task
+
+        self.task_count = 0
+        self.memories = []
 
     def _setup_agent(self):
         if hasattr(self, 'actor') and hasattr(self, 'critic') \
@@ -83,12 +90,40 @@ class MultiHeadSacMlpAgentV2(SacMlpAgent):
         # save initial parameters
         self._critic_init_state = copy.deepcopy(self.critic.state_dict())
 
-    def act(self, obs, sample=False, **kwargs):
+    def _train_distilled_actor(self, dataset, step, logger):
+        losses = []
+        for subset in dataset:
+            random_idxs = np.random.randint(0, self.distill_memory_budget_per_task,
+                                            size=self.distill_batch_size)
+            batch_obses = torch.Tensor(subset['obses'][random_idxs]).to(self.device)
+            batch_mus = torch.Tensor(subset['mus'][random_idxs]).to(self.device)
+            batch_log_stds = torch.Tensor(subset['log_stds'][random_idxs]).to(self.device)
+            task_id = subset['task_id']
+
+            mus, _, _, log_stds = self.distilled_actor(
+                batch_obses, task_id,
+                compute_pi=True, compute_log_pi=True)
+
+            actor_dists = Independent(Normal(loc=batch_mus, scale=batch_log_stds.exp()), 1)
+            distilled_actor_dists = Independent(Normal(loc=mus, scale=log_stds.exp()), 1)
+            losses.append(torch.mean(kl_divergence(actor_dists, distilled_actor_dists)))
+        loss = torch.mean(torch.stack(losses))
+
+        logger.log('train/distillation_loss', loss, step)
+
+        self.distilled_actor_optimizer.zero_grad()
+        loss.backward()
+        self.distilled_actor_optimizer.step()
+
+    def act(self, obs, sample=False, use_distilled_actor=False, **kwargs):
         if not isinstance(obs, torch.Tensor):
             obs = torch.Tensor(obs).to(self.device)
 
         with torch.no_grad():
-            mu, pi, _, _ = self.actor(obs, compute_log_pi=False, **kwargs)
+            if use_distilled_actor:
+                mu, pi, _, _ = self.distilled_actor(obs, compute_log_pi=False, **kwargs)
+            else:
+                mu, pi, _, _ = self.actor(obs, compute_log_pi=False, **kwargs)
             action = pi if sample else mu
             assert 'head_idx' in kwargs
             action = action.clamp(*self.action_range[kwargs['head_idx']])
@@ -100,152 +135,109 @@ class MultiHeadSacMlpAgentV2(SacMlpAgent):
         sample_src = kwargs.pop('sample_src', 'rollout')
         env = kwargs.pop('env')
         replay_buffer = kwargs.pop('replay_buffer')
+        total_steps = kwargs.pop('total_steps')
+        logger = kwargs.pop('logger')
 
-    def distill(self, **kwargs):
-        sample_src = kwargs.pop('sample_src', 'rollout')
-        env = kwargs.pop('env')
-        replay_buffer = kwargs.pop('replay_buffer')
+        for epoch in range(self.distill_epochs):
+            # collect samples
+            dataset = {
+                'obses': [],
+                'actions': [],
+                'mus': [],
+                'log_stds': [],
+                'task_id': self.task_count,
+            }
+            obs = env.reset()
+            if sample_src == 'rollout':
+                for _ in range(self.distill_memory_budget_per_task):
+                    with utils.eval_mode(self):
+                        # compute log_pi and Q for later gradient projection
+                        mu, action, _, log_std = self.actor(
+                            torch.Tensor(obs).to(device=self.device),
+                            compute_pi=True, compute_log_pi=True, **kwargs)
 
-        # memory_size_per_task = self.agem_memory_budget // (self.agem_task_count + 1)
-        # self._adjust_memory_size(memory_size_per_task)
+                        if 'head_idx' in kwargs:
+                            action = utils.to_np(
+                                action.clamp(*self.action_range[kwargs['head_idx']]))
+                        else:
+                            action = utils.to_np(action.clamp(*self.action_range))
 
-        obs = env.reset()
-        # self.agem_memories[self.agem_task_count] = {
-        #     'obses': [],
-        #     'actions': [],
-        #     'rewards': [],
-        #     'next_obses': [],
-        #     'not_dones': [],
-        #     'log_pis': [],
-        #     'qs': [],
-        # }
-        if sample_src == 'rollout':
-            for _ in range(memory_size_per_task):
+                    next_obs, reward, done, _ = env.step(action)
+
+                    # TODO (cyzheng): note we save numpy array instead of tensor to save GPU memory
+                    dataset['obses'].append(obs)
+                    dataset['actions'].append(action)
+                    dataset['mus'].append(utils.to_np(mu))
+                    dataset['log_stds'].append(utils.to_np(log_std))
+
+                    obs = next_obs
+
+                dataset['obses'] = np.stack(dataset['obses'])
+                dataset['actions'] = np.stack(dataset['actions'])
+                dataset['mus'] = np.stack(dataset['mus'])
+                dataset['log_stds'] = np.stack(dataset['log_stds'])
+            elif sample_src == 'replay_buffer':
+                obses, _, _, _, _ = replay_buffer.sample(self.distill_memory_budget_per_task)
                 with utils.eval_mode(self):
-                    # compute log_pi and Q for later gradient projection
-                    _, action, log_pi, _ = self.actor(
-                        torch.Tensor(obs).to(device=self.device),
-                        compute_pi=True, compute_log_pi=True, **kwargs)
-                    actor_Q1, actor_Q2 = self.critic(
-                        torch.Tensor(obs).to(device=self.device), action, **kwargs)
-                    actor_Q = torch.min(actor_Q1, actor_Q2) - self.alpha.detach() * log_pi
+                    mus, actions, _, log_stds = self.actor(
+                        obses, compute_pi=True, compute_log_pi=True, **kwargs)
 
-                    if 'head_idx' in kwargs:
-                        action = utils.to_np(
-                            action.clamp(*self.action_range[kwargs['head_idx']]))
-                    else:
-                        action = utils.to_np(action.clamp(*self.action_range))
+                dataset['obses'] = utils.to_np(obses)
+                dataset['actions'] = utils.to_np(actions)
+                dataset['mus'] = utils.to_np(mus)
+                dataset['log_stds'] = utils.to_np(log_stds)
+            elif sample_src == 'hybrid':
+                for _ in range(self.distill_memory_budget_per_task // 2):
+                    with utils.eval_mode(self):
+                        # compute log_pi and Q for later gradient projection
+                        mu, action, _, log_std = self.actor(
+                            torch.Tensor(obs).to(device=self.device),
+                            compute_pi=True, compute_log_pi=True, **kwargs)
 
-                next_obs, reward, done, _ = env.step(action)
+                        if 'head_idx' in kwargs:
+                            action = utils.to_np(
+                                action.clamp(*self.action_range[kwargs['head_idx']]))
+                        else:
+                            action = utils.to_np(action.clamp(*self.action_range))
 
-                self.agem_memories[self.agem_task_count]['obses'].append(obs)
-                self.agem_memories[self.agem_task_count]['actions'].append(action)
-                self.agem_memories[self.agem_task_count]['rewards'].append(reward)
-                self.agem_memories[self.agem_task_count]['next_obses'].append(next_obs)
-                not_done = np.array([not done_ for done_ in done], dtype=np.float32)
-                self.agem_memories[self.agem_task_count]['not_dones'].append(not_done)
-                self.agem_memories[self.agem_task_count]['log_pis'].append(log_pi)
-                self.agem_memories[self.agem_task_count]['qs'].append(actor_Q)
+                    next_obs, reward, done, _ = env.step(action)
 
-                obs = next_obs
+                    # TODO (cyzheng): note we save numpy array instead of tensor to save GPU memory
+                    dataset['obses'].append(obs)
+                    dataset['actions'].append(action)
+                    dataset['mus'].append(utils.to_np(mu))
+                    dataset['log_stds'].append(utils.to_np(log_std))
 
-            self.agem_memories[self.agem_task_count]['obses'] = torch.Tensor(
-                self.agem_memories[self.agem_task_count]['obses']).to(device=self.device)
-            self.agem_memories[self.agem_task_count]['actions'] = torch.Tensor(
-                self.agem_memories[self.agem_task_count]['actions']).to(device=self.device)
-            self.agem_memories[self.agem_task_count]['rewards'] = torch.Tensor(
-                self.agem_memories[self.agem_task_count]['rewards']).to(device=self.device).unsqueeze(-1)
-            self.agem_memories[self.agem_task_count]['next_obses'] = torch.Tensor(
-                self.agem_memories[self.agem_task_count]['next_obses']).to(device=self.device)
-            self.agem_memories[self.agem_task_count]['not_dones'] = torch.Tensor(
-                self.agem_memories[self.agem_task_count]['not_dones']).to(device=self.device).unsqueeze(-1)
-            self.agem_memories[self.agem_task_count]['log_pis'] = torch.cat(
-                self.agem_memories[self.agem_task_count]['log_pis']).unsqueeze(-1)
-            self.agem_memories[self.agem_task_count]['qs'] = torch.cat(
-                self.agem_memories[self.agem_task_count]['qs']).unsqueeze(-1)
-        elif sample_src == 'replay_buffer':
-            obses, actions, rewards, next_obses, not_dones = replay_buffer.sample(
-                memory_size_per_task)
-            with utils.eval_mode(self):
-                log_pis = self.actor.compute_log_probs(obses, actions, **kwargs)
-                actor_Q1, actor_Q2 = self.critic(
-                    obses, actions, **kwargs)
-                actor_Q = torch.min(actor_Q1, actor_Q2) - self.alpha.detach() * log_pis
+                    obs = next_obs
 
-            self.agem_memories[self.agem_task_count]['obses'] = obses
-            self.agem_memories[self.agem_task_count]['actions'] = actions
-            self.agem_memories[self.agem_task_count]['rewards'] = rewards
-            self.agem_memories[self.agem_task_count]['next_obses'] = next_obses
-            self.agem_memories[self.agem_task_count]['not_dones'] = not_dones
-            self.agem_memories[self.agem_task_count]['log_pis'] = log_pis
-            self.agem_memories[self.agem_task_count]['qs'] = actor_Q
-        elif sample_src == 'hybrid':
-            for _ in range(memory_size_per_task // 2):
+                rollout_obses = np.stack(dataset['obses'])
+                rollout_actions = np.stack(dataset['actions'])
+                rollout_mus = np.stack(dataset['mus'])
+                rollout_log_stds = np.stack(dataset['log_stds'])
+
+                obses, _, _, _, _ = replay_buffer.sample(
+                    self.distill_memory_budget_per_task - self.distill_memory_budget_per_task // 2)
                 with utils.eval_mode(self):
-                    # compute log_pi and Q for later gradient projection
-                    _, action, log_pi, _ = self.actor(
-                        torch.Tensor(obs).to(device=self.device),
-                        compute_pi=True, compute_log_pi=True, **kwargs)
-                    actor_Q1, actor_Q2 = self.critic(
-                        torch.Tensor(obs).to(device=self.device), action, **kwargs)
-                    actor_Q = torch.min(actor_Q1, actor_Q2) - self.alpha.detach() * log_pi
+                    mus, actions, _, log_stds = self.actor(
+                        obses, compute_pi=True, compute_log_pi=True, **kwargs)
 
-                    if 'head_idx' in kwargs:
-                        action = utils.to_np(
-                            action.clamp(*self.action_range[kwargs['head_idx']]))
-                    else:
-                        action = utils.to_np(action.clamp(*self.action_range))
+                dataset['obses'] = np.concatenate([rollout_obses, utils.to_np(obses)])
+                dataset['actions'] = np.concatenate([rollout_actions, utils.to_np(actions)])
+                dataset['mus'] = np.concatenate([rollout_mus, utils.to_np(mus)])
+                dataset['log_stds'] = np.concatenate([rollout_log_stds, utils.to_np(log_stds)])
+            else:
+                raise ValueError("Unknown sample source!")
 
-                next_obs, reward, done, _ = env.step(action)
+            for iter in range(self.distill_iters_per_epoch):
+                # TODO (cyzheng): convert previous task memory batch size to an argument
+                if self.task_count > 0:
+                    prev_task_dataset = np.random.choice(self.memories, 3)
+                else:
+                    prev_task_dataset = []
+                self._train_distilled_actor([dataset] + prev_task_dataset,
+                                            total_steps + epoch * self.distill_iters_per_epoch + iter,
+                                            logger)
 
-                self.agem_memories[self.agem_task_count]['obses'].append(obs)
-                self.agem_memories[self.agem_task_count]['actions'].append(action)
-                self.agem_memories[self.agem_task_count]['rewards'].append(reward)
-                self.agem_memories[self.agem_task_count]['next_obses'].append(next_obs)
-                not_done = np.array([not done_ for done_ in done], dtype=np.float32)
-                self.agem_memories[self.agem_task_count]['not_dones'].append(not_done)
-                self.agem_memories[self.agem_task_count]['log_pis'].append(log_pi)
-                self.agem_memories[self.agem_task_count]['qs'].append(actor_Q)
+        self.memories.append(dataset)
+        self.task_count += 1
 
-                obs = next_obs
-
-            rollout_obses = torch.Tensor(self.agem_memories[self.agem_task_count]['obses']).to(device=self.device)
-            rollout_actions = torch.Tensor(
-                self.agem_memories[self.agem_task_count]['actions']).to(device=self.device)
-            rollout_rewards = torch.Tensor(
-                self.agem_memories[self.agem_task_count]['rewards']).to(device=self.device).unsqueeze(-1)
-            rollout_next_obses = torch.Tensor(
-                self.agem_memories[self.agem_task_count]['next_obses']).to(device=self.device)
-            rollout_not_dones = torch.Tensor(
-                self.agem_memories[self.agem_task_count]['not_dones']).to(device=self.device).unsqueeze(-1)
-            rollout_log_pis = torch.cat(
-                self.agem_memories[self.agem_task_count]['log_pis']).unsqueeze(-1)
-            rollout_qs = torch.cat(
-                self.agem_memories[self.agem_task_count]['qs']).unsqueeze(-1)
-
-            obses, actions, rewards, next_obses, not_dones = replay_buffer.sample(
-                memory_size_per_task)
-            with utils.eval_mode(self):
-                log_pis = self.actor.compute_log_probs(obses, actions, **kwargs)
-                actor_Q1, actor_Q2 = self.critic(
-                    obses, actions, **kwargs)
-                actor_Q = torch.min(actor_Q1, actor_Q2) - self.alpha.detach() * log_pis
-
-            self.agem_memories[self.agem_task_count]['obses'] = \
-                torch.cat([rollout_obses, obses], dim=0)
-            self.agem_memories[self.agem_task_count]['actions'] = \
-                torch.cat([rollout_actions, actions], dim=0)
-            self.agem_memories[self.agem_task_count]['rewards'] = \
-                torch.cat([rollout_rewards, rewards], dim=0)
-            self.agem_memories[self.agem_task_count]['next_obses'] = \
-                torch.cat([rollout_next_obses, next_obses], dim=0)
-            self.agem_memories[self.agem_task_count]['not_dones'] = \
-                torch.cat([rollout_not_dones, not_dones], dim=0)
-            self.agem_memories[self.agem_task_count]['log_pis'] = \
-                torch.cat([rollout_log_pis, log_pis], dim=0)
-            self.agem_memories[self.agem_task_count]['qs'] = \
-                torch.cat([rollout_qs, actor_Q], dim=0)
-        else:
-            raise ValueError("Unknown sample source!")
-
-        self.agem_task_count += 1
