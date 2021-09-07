@@ -478,7 +478,6 @@ if __name__ == '__main__':
     parser.add_argument('--algos', type=str, nargs='+',
                         default=['sgd', 'ewc', 'si'])
     parser.add_argument('--seeds', type=int, nargs='+', default=[0, 1, 2, 3, 4, 5, 6])
-    parser.add_argument('--steps_per_task', type=int, default=500000)
     parser.add_argument('--max_timesteps', type=int, default=np.iinfo(np.int).max)
     parser.add_argument('--statistics', type=str, nargs='+',
                         default=['episode_reward'])
