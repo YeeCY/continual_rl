@@ -289,7 +289,13 @@ CURVE_FORMAT = {
         'color': [255, 0, 255],
         'style': '-',
         'label': 'agem_continual_actor_critic_ref_grad_bz5000_large_mem_hybrid'
-    }
+    },
+
+    'distilled_actor_no_forgetting_reg': {
+        'color': [255, 0, 0],
+        'style': '-',
+        'label': 'distilled_actor_no_forgetting_reg'
+    },
 }
 
 
@@ -385,7 +391,10 @@ def main(args):
                 data[algo] = {}
 
                 for seed in seeds:
-                    data_path = osp.join(data_dir, exp_name, algo, str(seed), 'eval.csv')
+                    if 'distilled' in algo:
+                        data_path = osp.join(data_dir, exp_name, algo, str(seed), 'distill', 'eval.csv')
+                    else:
+                        data_path = osp.join(data_dir, exp_name, algo, str(seed), 'eval.csv')
                     data_path = os.path.abspath(data_path)
 
                     try:
