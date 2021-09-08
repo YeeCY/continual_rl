@@ -281,12 +281,12 @@ CURVE_FORMAT = {
     },
 
     'agem_continual_actor_critic_grad_norm_reg_critic_ref_grad_bz5000_large_mem_hybrid': {
-        'color': [255, 0, 0],
+        'color': [220, 220, 0],
         'style': '-',
         'label': 'agem_continual_actor_critic_grad_norm_reg_critic_ref_grad_bz5000_large_mem_hybrid'
     },
     'agem_continual_actor_critic_ref_grad_bz5000_large_mem_hybrid': {
-        'color': [255, 0, 255],
+        'color': [0, 255, 0],
         'style': '-',
         'label': 'agem_continual_actor_critic_ref_grad_bz5000_large_mem_hybrid'
     },
