@@ -24,7 +24,7 @@ for seed in "${seeds[@]}"; do
       handle-pull-side-v2 \
       window-open-v2 \
     --env_type metaworld \
-    --algo agem_continual_actor_critic_mi_sac_mlp \
+    --algo agem_continual_actor_critic_grad_norm_reg_critic_prioritized_memory_mh_sac_mlp \
     --train_steps_per_task 500000 \
     --eval_freq 10 \
     --discount 0.99 \
@@ -37,7 +37,8 @@ for seed in "${seeds[@]}"; do
     --sac_agem_memory_budget 5000 \
     --sac_agem_ref_grad_batch_size 5000 \
     --sac_agem_memory_sample_src hybrid \
+    --sac_agem_critic_grad_norm_reg_coeff 1.0 \
     --seed $seed \
-    --work_dir $PROJECT_DIR/vec_logs/grad_norm_reg_critic_mi_sac_mlp_metaworld_10_tasks/agem_continual_actor_critic_ref_grad_bz5000_large_mem_hybrid/$seed \
-    > $PROJECT_DIR/terminal_logs/grad_norm_reg_critic_mi_sac_mlp_metaworld_10_tasks-agem_continual_actor_critic_ref_grad_bz5000_large_mem_hybrid-seed"$seed".log 2>&1 &
+    --work_dir $PROJECT_DIR/vec_logs/grad_norm_reg_critic_mh_sac_mlp_metaworld_10_tasks/agem_continual_actor_critic_grad_norm_reg_critic_prioritized_memory_ref_grad_bz5000_large_mem_hybrid/$seed \
+    > $PROJECT_DIR/terminal_logs/grad_norm_reg_critic_mh_sac_mlp_metaworld_10_tasks-agem_continual_actor_critic_grad_norm_reg_critic_prioritized_memory_ref_grad_bz5000_large_mem_hybrid-seed"$seed".log 2>&1 &
 done

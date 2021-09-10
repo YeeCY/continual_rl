@@ -36,9 +36,9 @@ class AgemContinualActorCriticGradNormRegCriticMultiHeadSacMlpAgent(
                                                               critic_tau, critic_target_update_freq, batch_size,
                                                               agem_memory_budget, agem_ref_grad_batch_size)
 
-        self.critic_grad_norm_reg_coeff = critic_grad_norm_reg_coeff
+        # TODO (cyzheng): agem_memory_budget is the memory budget for each task here
 
-    ### (cyzheng): we use ppo style critic loss for AGEM gradient projection here.
+        self.critic_grad_norm_reg_coeff = critic_grad_norm_reg_coeff
 
     def compute_critic_loss(self, obs, action, reward, next_obs, not_done, **kwargs):
         with torch.no_grad():

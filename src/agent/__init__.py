@@ -19,6 +19,8 @@ from src.agent.sac import EwcV2GradNormRegCriticMultiHeadSacMlpAgentV2, \
     AgemContinualActorCriticMultiInputSacMlpAgent, \
     AgemContinualActorCriticGradNormRegCriticMultiHeadSacMlpAgent, \
     AgemContinualActorCriticGradNormRegCriticMultiInputSacMlpAgent, \
+    AgemContinualActorCriticGradNormRegCriticPrioritizedMemoryMultiHeadSacMlpAgent, \
+    AgemContinualActorCriticGradNormRegCriticPrioritizedMemoryMultiInputSacMlpAgent, \
     DistilledActorMultiHeadSacMlpAgent, \
     DistilledActorMultiInputSacMlpAgent
 from src.agent.td3 import Td3MlpAgent, MultiHeadTd3MlpAgent, MultiInputTd3MlpAgent, \
@@ -71,6 +73,8 @@ ALGOS = [
     'agem_continual_actor_critic_mi_sac_mlp',
     'agem_continual_actor_critic_grad_norm_reg_critic_mh_sac_mlp',
     'agem_continual_actor_critic_grad_norm_reg_critic_mi_sac_mlp',
+    'agem_continual_actor_critic_grad_norm_reg_critic_prioritized_memory_mh_sac_mlp',
+    'agem_continual_actor_critic_grad_norm_reg_critic_prioritized_memory_mi_sac_mlp',
     'oracle_agem_v2_mh_sac_mlp_v2',
     'oracle_agem_v2_mi_sac_mlp_v2',
     'oracle_grad_agem_v2_mh_sac_mlp_v2',
@@ -324,6 +328,16 @@ def make_agent(obs_space, action_space, device, args):
             kwargs['agem_ref_grad_batch_size'] = args.sac_agem_ref_grad_batch_size
             kwargs['critic_grad_norm_reg_coeff'] = args.sac_agem_critic_grad_norm_reg_coeff
             agent = AgemContinualActorCriticGradNormRegCriticMultiInputSacMlpAgent(**kwargs)
+        elif args.algo == 'agem_continual_actor_critic_grad_norm_reg_critic_prioritized_memory_mh_sac_mlp':
+            kwargs['agem_memory_budget'] = args.sac_agem_memory_budget
+            kwargs['agem_ref_grad_batch_size'] = args.sac_agem_ref_grad_batch_size
+            kwargs['critic_grad_norm_reg_coeff'] = args.sac_agem_critic_grad_norm_reg_coeff
+            agent = AgemContinualActorCriticGradNormRegCriticPrioritizedMemoryMultiHeadSacMlpAgent(**kwargs)
+        elif args.algo == 'agem_continual_actor_critic_grad_norm_reg_critic_prioritized_memory_mi_sac_mlp':
+            kwargs['agem_memory_budget'] = args.sac_agem_memory_budget
+            kwargs['agem_ref_grad_batch_size'] = args.sac_agem_ref_grad_batch_size
+            kwargs['critic_grad_norm_reg_coeff'] = args.sac_agem_critic_grad_norm_reg_coeff
+            agent = AgemContinualActorCriticGradNormRegCriticPrioritizedMemoryMultiInputSacMlpAgent(**kwargs)
         elif args.algo == 'agem_v2_mh_sac_mlp_v2':
             kwargs['agem_memory_budget'] = args.sac_agem_memory_budget
             kwargs['agem_ref_grad_batch_size'] = args.sac_agem_ref_grad_batch_size

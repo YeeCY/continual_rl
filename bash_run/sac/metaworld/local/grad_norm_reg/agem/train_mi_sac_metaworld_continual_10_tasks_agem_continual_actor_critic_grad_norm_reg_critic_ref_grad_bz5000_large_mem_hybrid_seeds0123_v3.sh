@@ -34,7 +34,7 @@ for seed in "${seeds[@]}"; do
     --sac_num_expl_steps_per_process 1000 \
     --sac_num_processes 1 \
     --sac_num_train_iters 1000 \
-    --sac_agem_memory_budget 20000 \
+    --sac_agem_memory_budget 5000 \
     --sac_agem_ref_grad_batch_size 5000 \
     --sac_agem_memory_sample_src hybrid \
     --sac_agem_critic_grad_norm_reg_coeff 1.0 \
