@@ -280,6 +280,11 @@ CURVE_FORMAT = {
         'label': 'ewc_lambda5000_hybrid_100_fisher_iters_grad_norm_coeff_0.1'
     },
 
+    'agem_continual_actor_critic_grad_norm_reg_critic_prioritized_memory_ref_grad_bz5000_large_mem_hybrid': {
+        'color': [0, 255, 255],
+        'style': '-',
+        'label': 'agem_continual_actor_critic_grad_norm_reg_critic_prioritized_memory_ref_grad_bz5000_large_mem_hybrid'
+    },
     'agem_continual_actor_critic_grad_norm_reg_critic_ref_grad_bz5000_large_mem_hybrid': {
         'color': [220, 220, 0],
         'style': '-',
