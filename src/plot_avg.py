@@ -301,6 +301,22 @@ CURVE_FORMAT = {
         'style': '-',
         'label': 'distilled_actor_no_forgetting_reg'
     },
+
+    'task_embedding_hypernet_actor_reg_coeff0.1': {
+        'color': [0, 255, 255],
+        'style': '-',
+        'label': 'task_embedding_hypernet_actor_reg_coeff0.1'
+    },
+    'task_embedding_hypernet_actor_reg_coeff0.01': {
+        'color': [220, 220, 0],
+        'style': '-',
+        'label': 'task_embedding_hypernet_actor_reg_coeff0.01'
+    },
+    'task_embedding_hypernet_actor_reg_coeff1.0': {
+        'color': [0, 255, 0],
+        'style': '-',
+        'label': 'task_embedding_hypernet_actor_reg_coeff1.0'
+    },
 }
 
 
