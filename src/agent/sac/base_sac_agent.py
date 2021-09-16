@@ -88,8 +88,8 @@ class SacMlpAgent:
         self.critic.train(training)
         self.critic_target.train(training)
 
-    def reset(self, reset_critic=False):
-        if reset_critic:
+    def reset(self, **kwargs):
+        if kwargs.get('reset_critic', False):
             self.critic.load_state_dict(self._critic_init_state)
 
         self.reset_target_critic()

@@ -24,7 +24,7 @@ class FBRC:
                  tau=0.005,
                  fisher_coeff=1.0,
                  reward_bonus=5.0):
-        """Creates networks."""
+        """Creates nets."""
         assert len(observation_space.shape) == 1
         state_dim = observation_space.shape[0]
 

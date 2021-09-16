@@ -140,6 +140,12 @@ def parse_args():
 	parser.add_argument('--sac_distill_batch_size', default=1000, type=int)
 	parser.add_argument('--sac_distill_memory_budget_per_task', default=50000, type=int)
 
+	# sac hypernet
+	parser.add_argument('--sac_hypernet_hidden_dim', default=128, type=int)
+	parser.add_argument('--sac_hypernet_task_embedding_dim', default=16, type=int)
+	parser.add_argument('--sac_hypernet_reg_coeff', default=0.1, type=float)
+	parser.add_argument('--sac_hypernet_first_order', default=True, type=int)
+
 	# td3
 	parser.add_argument('--td3_init_steps', default=1000, type=int)
 	parser.add_argument('--td3_num_expl_steps_per_process', default=1000, type=int)

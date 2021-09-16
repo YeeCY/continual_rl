@@ -58,3 +58,6 @@ from agent.sac.distilled_actor_mh_sac_agent import \
     DistilledActorMultiHeadSacMlpAgent
 from agent.sac.distilled_actor_mi_sac_agent import \
     DistilledActorMultiInputSacMlpAgent
+
+from agent.sac.task_embedding_hypernet_actor_sac_agent import \
+    TaskEmbeddingHyperNetActorSacMlpAgent

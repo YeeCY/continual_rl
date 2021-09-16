@@ -37,10 +37,13 @@ def evaluate(train_env, eval_env, agent, video, num_episodes, logger, step,
             obs = eval_env.reset(sample_task=True)
             video.record(eval_env.env)  # use actually vector env
 
+            if 'task_embedding_hypernet' in args.algo:
+                agent.infer_weights(task_id)
+
             while len(episode_rewards) < num_episodes:
                 with utils.eval_mode(agent):
                     with utils.eval_mode(agent):
-                        if any(x in args.algo for x in ['mh', 'mi', 'individual']):
+                        if any(x in args.algo for x in ['mh', 'mi', 'individual', 'hypernet']):
                             action = agent.act(obs, sample=False, head_idx=task_id, **act_kwargs)
                         else:
                             action = agent.act(obs, sample=False, **act_kwargs)
@@ -95,6 +98,10 @@ def evaluate(train_env, eval_env, agent, video, num_episodes, logger, step,
             # log_info = {
             #     'eval/task_name': task_name
             # }
+
+            if 'task_embedding_hypernet' in args.algo:
+                agent.clear_weights()
+
             if len(episode_successes) > 0:
                 logger.log('eval/success_rate', np.mean(episode_successes), step)
             logger.log('eval/episode_reward', np.mean(episode_rewards), step)
@@ -242,7 +249,7 @@ def main(args):
     agent = make_agent(
         obs_space=env.observation_space,
         action_space=[env.action_space for _ in range(env.num_tasks)]
-        if any(x in args.algo for x in ['mh', 'mi', 'individual'])
+        if any(x in args.algo for x in ['mh', 'mi', 'individual', 'hypernet'])
         else env.action_space,
         device=device,
         args=args
@@ -303,6 +310,9 @@ def main(args):
                     if 'distilled' in args.algo:
                         evaluate(env, eval_env, agent, video, args.num_eval_episodes, distill_logger,
                                  total_steps, use_distilled_actor=True)
+                    # elif 'hypernet_actor' in args.algo:
+                    #     evaluate(env, eval_env, agent, video, args.num_eval_episodes, logger,
+                    #              total_steps)
 
                 # # (chongyi zheng): force reset outside done = True when step reach train_steps_per_task
                 # if task_step >= train_steps_per_task:
@@ -318,13 +328,15 @@ def main(args):
                 #     agent.reset_target_critic()
                 #     replay_buffer.reset()
 
+                if 'task_embedding_hypernet' in args.algo:
+                    agent.infer_weights(task_id)
                 for step in range(args.sac_num_expl_steps_per_process):
                     if task_steps < args.sac_init_steps:
                         action = np.array([env.action_space.sample()
                                            for _ in range(env.unwrapped.num_envs)])
                     else:
                         with utils.eval_mode(agent):
-                            if any(x in args.algo for x in ['mh', 'mi', 'individual']):
+                            if any(x in args.algo for x in ['mh', 'mi', 'individual', 'hypernet']):
                                 action = agent.act(obs, sample=True, head_idx=task_id)
                             else:
                                 action = agent.act(obs, sample=True)
@@ -344,12 +356,15 @@ def main(args):
 
                     obs = next_obs
 
+                if 'task_embedding_hypernet' in args.algo:
+                    agent.clear_weights()
+
                 task_steps += args.sac_num_expl_steps_per_process * args.sac_num_processes
                 total_steps += args.sac_num_expl_steps_per_process * args.sac_num_processes
 
                 if task_steps >= args.sac_init_steps:
                     for _ in range(args.sac_num_train_iters):
-                        if any(x in args.algo for x in ['mh', 'mi', 'individual']):
+                        if any(x in args.algo for x in ['mh', 'mi', 'individual', 'hypernet']):
                             agent.update(replay_buffer, logger, total_steps, head_idx=task_id)
                         else:
                             agent.update(replay_buffer, logger, total_steps)
@@ -426,50 +441,53 @@ def main(args):
                 # episode_step += 1
                 # total_steps += 1
 
-            if 'ewc' in args.algo:
-                print(f"Estimating EWC fisher: {infos[0]['task_name']}")
-                if any(x in args.algo for x in ['mh', 'mi', 'individual']):
-                    agent.estimate_fisher(env=env, replay_buffer=replay_buffer,
-                                          head_idx=task_id,
-                                          sample_src=args.sac_ewc_estimate_fisher_sample_src)
-                else:
-                    agent.estimate_fisher(env=env, replay_buffer=replay_buffer,
-                                          sample_src=args.sac_ewc_estimate_fisher_sample_src)
-            elif 'si' in args.algo:
-                print(f"Updating SI omega: {infos[0]['task_name']}")
-                agent.update_omegas()
-            elif 'agem' in args.algo:
-                print(f"Constructing AGEM memory: {infos[0]['task_name']}")
-                if any(x in args.algo for x in ['mh', 'mi', 'individual']):
-                    agent.construct_memory(env=env, replay_buffer=replay_buffer,
-                                           head_idx=task_id,
-                                           sample_src=args.sac_agem_memory_sample_src)
-                else:
-                    agent.construct_memory(env=env, replay_buffer=replay_buffer,
-                                           sample_src=args.sac_agem_memory_sample_src)
-                # if 'agem_v2' in args.algo:
-                #     if any(x in args.algo for x in ['mh', 'mi', 'individual']):
-                #         agent.construct_memory(env, head_idx=task_id)
-                #     else:
-                #         agent.construct_memory(env)
-                # else:
-                #     agent.construct_memory(replay_buffer)
-            elif 'distilled' in args.algo:
-                print(f"Distill actor: {infos[0]['task_name']}")
-                if any(x in args.algo for x in ['mh', 'mi', 'individual']):
-                    agent.distill(env=env, replay_buffer=replay_buffer,
-                                  head_idx=task_id,
-                                  sample_src=args.sac_distill_sample_src,
-                                  total_steps=total_steps,
-                                  logger=distill_logger)
-                else:
-                    agent.distill(env=env, replay_buffer=replay_buffer,
-                                  sample_src=args.sac_distill_sample_src,
-                                  total_steps=total_steps,
-                                  logger=distill_logger)
-                distill_logger.dump(total_steps, ty='train', save=True)
+            if task_id < env.num_tasks - 1:
+                if 'ewc' in args.algo:
+                    print(f"Estimating EWC fisher: {infos[0]['task_name']}")
+                    if any(x in args.algo for x in ['mh', 'mi', 'individual', 'hypernet']):
+                        agent.estimate_fisher(env=env, replay_buffer=replay_buffer,
+                                              head_idx=task_id,
+                                              sample_src=args.sac_ewc_estimate_fisher_sample_src)
+                    else:
+                        agent.estimate_fisher(env=env, replay_buffer=replay_buffer,
+                                              sample_src=args.sac_ewc_estimate_fisher_sample_src)
+                elif 'si' in args.algo:
+                    print(f"Updating SI omega: {infos[0]['task_name']}")
+                    agent.update_omegas()
+                elif 'agem' in args.algo:
+                    print(f"Constructing AGEM memory: {infos[0]['task_name']}")
+                    if any(x in args.algo for x in ['mh', 'mi', 'individual', 'hypernet']):
+                        agent.construct_memory(env=env, replay_buffer=replay_buffer,
+                                               head_idx=task_id,
+                                               sample_src=args.sac_agem_memory_sample_src)
+                    else:
+                        agent.construct_memory(env=env, replay_buffer=replay_buffer,
+                                               sample_src=args.sac_agem_memory_sample_src)
+                    # if 'agem_v2' in args.algo:
+                    #     if any(x in args.algo for x in ['mh', 'mi', 'individual', 'hypernet]):
+                    #         agent.construct_memory(env, head_idx=task_id)
+                    #     else:
+                    #         agent.construct_memory(env)
+                    # else:
+                    #     agent.construct_memory(replay_buffer)
+                elif 'distilled' in args.algo:
+                    print(f"Distill actor: {infos[0]['task_name']}")
+                    if any(x in args.algo for x in ['mh', 'mi', 'individual', 'hypernet']):
+                        agent.distill(env=env, replay_buffer=replay_buffer,
+                                      head_idx=task_id,
+                                      sample_src=args.sac_distill_sample_src,
+                                      total_steps=total_steps,
+                                      logger=distill_logger)
+                    else:
+                        agent.distill(env=env, replay_buffer=replay_buffer,
+                                      sample_src=args.sac_distill_sample_src,
+                                      total_steps=total_steps,
+                                      logger=distill_logger)
+                    distill_logger.dump(total_steps, ty='train', save=True)
+                elif 'task_embedding_hypernet':
+                    agent.construct_hypernet_targets()
 
-            agent.reset(reset_critic=args.reset_agent)
+                agent.reset(reset_critic=args.reset_agent)
 
     print('Final evaluating:', args.work_dir)
     evaluate(env, eval_env, agent, video, args.num_eval_episodes, logger, total_steps)

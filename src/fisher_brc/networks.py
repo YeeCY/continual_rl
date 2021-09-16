@@ -404,7 +404,7 @@ class OffsetCritic(nn.Module):
                  state_dim,
                  action_dim,
                  hidden_dims=(256, 256)):
-        """Creates networks.
+        """Creates nets.
 
         Args:
           behavioral_cloner: Behavioral cloning network.

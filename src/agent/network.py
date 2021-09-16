@@ -346,6 +346,40 @@ class SacActorMlp(nn.Module):
         return log_pi
 
 
+class SacTaskOneHotHyperNetMlp(nn.Module):
+    def __init__(self, onehot_dim, output_dim, hidden_dim):
+        super().__init__()
+
+        self.onehot_dim = onehot_dim
+
+        # self.log_std_min = log_std_min
+        # self.log_std_max = log_std_max
+
+        # self.trunk = nn.Sequential(
+        #     nn.Linear(obs_shape[0], hidden_dim),
+        #     nn.ReLU(),
+        #     nn.Linear(hidden_dim, hidden_dim),
+        #     nn.ReLU(),
+        #     nn.Linear(hidden_dim, 2 * action_shape[0])
+        # )
+
+        # (chongyi zheng): add another layer
+        self.trunk = nn.Sequential(
+            nn.Linear(onehot_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, output_dim)
+        )
+        self.apply(weight_init)
+
+    def forward(self, task_idx):
+        onehot = torch.zeros(self.onehot_dim)
+        onehot[task_idx] = 1.0
+
+        return self.trunk(onehot)
+
+
 class MultiHeadSacActorMlp(nn.Module):
     """torch.distributions implementation of an diagonal Gaussian policy with MLP"""
     def __init__(self, obs_shape, action_shapes, hidden_dim, log_std_min, log_std_max):
