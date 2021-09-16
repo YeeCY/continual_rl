@@ -144,7 +144,7 @@ def parse_args():
 	parser.add_argument('--sac_hypernet_hidden_dim', default=128, type=int)
 	parser.add_argument('--sac_hypernet_task_embedding_dim', default=16, type=int)
 	parser.add_argument('--sac_hypernet_reg_coeff', default=0.1, type=float)
-	parser.add_argument('--sac_hypernet_first_order', default=True, type=int)
+	parser.add_argument('--sac_hypernet_first_order', default=True, type=str2bool)
 
 	# td3
 	parser.add_argument('--td3_init_steps', default=1000, type=int)
