@@ -33,6 +33,7 @@ class TaskEmbeddingHyperNetActorSacMlpAgent(SacMlpAgent):
             hypernet_hidden_dim=128,
             hypernet_task_embedding_dim=16,
             hypernet_reg_coeff=0.01,
+            hypernet_on_the_fly_reg=False,
             hypernet_first_order=True,
     ):
         assert isinstance(action_shape, list)
@@ -41,6 +42,7 @@ class TaskEmbeddingHyperNetActorSacMlpAgent(SacMlpAgent):
         self.hypernet_hidden_dim = hypernet_hidden_dim
         self.hypernet_task_embedding_dim = hypernet_task_embedding_dim
         self.hypernet_reg_coeff = hypernet_reg_coeff
+        self.hypernet_on_the_fly_reg = hypernet_on_the_fly_reg
         self.hypernet_first_order = hypernet_first_order
 
         self.task_count = 0
@@ -321,7 +323,12 @@ class TaskEmbeddingHyperNetActorSacMlpAgent(SacMlpAgent):
         reg_loss = []
         for i in range(num_regs):
             predicted_weights = self.hypernet(i, weights=hypernet_weights)
-            target_weights = self.target_weights[i]
+            if self.hypernet_on_the_fly_reg:
+                with utils.eval_mode(self):
+                    with torch.no_grad():
+                        target_weights = self.hypernet(i)
+            else:
+                target_weights = self.target_weights[i]
             predicted_ws = torch.cat([w.view(-1) for w in predicted_weights.values()])
             target_ws = torch.cat([w.view(-1) for w in target_weights.values()])
             reg_loss.append(
@@ -341,11 +348,12 @@ class TaskEmbeddingHyperNetActorSacMlpAgent(SacMlpAgent):
         self.task_count += 1
         self.target_weights.clear()
 
-        with utils.eval_mode(self):
-            with torch.no_grad():
-                for task_idx in range(self.task_count):
-                    weights = self.hypernet(task_idx)
-                    self.target_weights.append(weights)
+        if not self.hypernet_on_the_fly_reg:
+            with utils.eval_mode(self):
+                with torch.no_grad():
+                    for task_idx in range(self.task_count):
+                        weights = self.hypernet(task_idx)
+                        self.target_weights.append(weights)
 
     def update(self, replay_buffer, logger, step, **kwargs):
         obs, action, reward, next_obs, not_done = replay_buffer.sample(self.batch_size)

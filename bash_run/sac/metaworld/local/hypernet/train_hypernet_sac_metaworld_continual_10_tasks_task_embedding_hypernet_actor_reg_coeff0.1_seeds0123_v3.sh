@@ -37,6 +37,7 @@ for seed in "${seeds[@]}"; do
     --sac_hypernet_hidden_dim 128 \
     --sac_hypernet_task_embedding_dim 16 \
     --sac_hypernet_reg_coeff 0.1 \
+    --sac_hypernet_on_the_fly_reg False \
     --sac_hypernet_first_order True \
     --seed $seed \
     --work_dir $PROJECT_DIR/vec_logs/hypernet_sac_mlp_metaworld_10_tasks/task_embedding_hypernet_actor_reg_coeff0.1/$seed \

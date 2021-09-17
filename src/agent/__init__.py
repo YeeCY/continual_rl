@@ -299,6 +299,7 @@ def make_agent(obs_space, action_space, device, args):
             kwargs['hypernet_hidden_dim'] = args.sac_hypernet_hidden_dim
             kwargs['hypernet_task_embedding_dim'] = args.sac_hypernet_task_embedding_dim
             kwargs['hypernet_reg_coeff'] = args.sac_hypernet_reg_coeff
+            kwargs['hypernet_on_the_fly_reg'] = args.sac_hypernet_on_the_fly_reg
             kwargs['hypernet_first_order'] = args.sac_hypernet_first_order
             agent = TaskEmbeddingHyperNetActorSacMlpAgent(**kwargs)
         elif args.algo == 'agem_mh_sac_mlp':
