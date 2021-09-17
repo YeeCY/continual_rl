@@ -195,7 +195,7 @@ class TaskEmbeddingHyperNetActorSacMlpAgent(SacMlpAgent):
         self.hypernet_emb_optimizer.step()
 
         if add_reg_loss:
-            assert len(self.target_weights) == self.task_count
+            # assert len(self.target_weights) == self.task_count
             hypernet_delta_weights = self.compute_hypernet_delta_weights()
 
             reg_loss = self.hypernet_reg_coeff * self.compute_hypernet_reg(
