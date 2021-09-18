@@ -317,6 +317,12 @@ CURVE_FORMAT = {
         'style': '-',
         'label': 'task_embedding_hypernet_actor_reg_coeff1.0'
     },
+
+    'task_embedding_hypernet_actor_reg_coeff0.1_on_the_fly': {
+        'color': [55, 126, 184],
+        'style': '-',
+        'label': 'task_embedding_hypernet_actor_reg_coeff0.1_on_the_fly'
+    },
 }
 
 
