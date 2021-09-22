@@ -54,21 +54,12 @@ class TaskEmbeddingHyperNetActorSacMlpAgent(SacMlpAgent):
             init_temperature, alpha_lr, actor_lr, actor_log_std_min, actor_log_std_max, actor_update_freq, critic_lr,
             critic_tau, critic_target_update_freq, batch_size)
 
-        # self.distill_epochs = distill_epochs
-        # self.distill_iters_per_epoch = distill_iters_per_epoch
-        # self.distill_batch_size = distill_batch_size
-        # self.distill_memory_budget_per_task = distill_memory_budget_per_task
-
-        # self.task_count = 0
-        # self.memories = []
-
     def _setup_agent(self):
         if hasattr(self, 'actor') and hasattr(self, 'critic') \
                 and hasattr(self, 'optimizer'):
             return
 
         self.actor = SacActorMainNetMlp(
-
             self.obs_shape, self.action_shape[0], self.actor_hidden_dim,
             self.actor_log_std_min, self.actor_log_std_max
         ).to(self.device)

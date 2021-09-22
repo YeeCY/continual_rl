@@ -135,7 +135,7 @@ def parse_args():
 	# sac distill
 	parser.add_argument('--sac_distill_sample_src', default='rollout', type=str,
 						choices=['rollout', 'replay_buffer', 'hybrid'])
-	parser.add_argument('--sac_distill_epochs', default=200, type=int)
+	parser.add_argument('--sac_distill_epochs', default=1, type=int)
 	parser.add_argument('--sac_distill_iters_per_epoch', default=50, type=int)
 	parser.add_argument('--sac_distill_batch_size', default=1000, type=int)
 	parser.add_argument('--sac_distill_memory_budget_per_task', default=50000, type=int)
