@@ -145,6 +145,7 @@ def parse_args():
 	parser.add_argument('--sac_hypernet_task_embedding_dim', default=16, type=int)
 	parser.add_argument('--sac_hypernet_reg_coeff', default=0.1, type=float)
 	parser.add_argument('--sac_hypernet_on_the_fly_reg', default=False, type=str2bool)
+	parser.add_argument('--sac_hypernet_online_uniform_reg', default=False, type=str2bool)
 	parser.add_argument('--sac_hypernet_first_order', default=True, type=str2bool)
 
 	# td3

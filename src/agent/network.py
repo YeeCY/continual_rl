@@ -338,10 +338,11 @@ class SacActorMlp(nn.Module):
         ) * (log_std + 1)
 
         std = log_std.exp()
-        pi = (action - mu) / (std + 1e-6)
-        log_pi = gaussian_logprob(pi, log_std)
+        noise = (action - mu) / (std + 1e-6)
+        log_pi = gaussian_logprob(noise, log_std)
 
-        mu, _, log_pi = squash(mu, None, log_pi)
+        # squash log_pi
+        log_pi -= torch.log(torch.relu(1 - action.pow(2)) + 1e-6).sum(-1, keepdim=True)
 
         return log_pi
 

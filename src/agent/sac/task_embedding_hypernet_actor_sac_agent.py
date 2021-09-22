@@ -1,4 +1,5 @@
 import math
+import copy
 from collections import OrderedDict
 import numpy as np
 import torch
@@ -34,19 +35,24 @@ class TaskEmbeddingHyperNetActorSacMlpAgent(SacMlpAgent):
             hypernet_task_embedding_dim=16,
             hypernet_reg_coeff=0.01,
             hypernet_on_the_fly_reg=False,
+            hypernet_online_uniform_reg=False,
             hypernet_first_order=True,
     ):
         assert isinstance(action_shape, list)
         assert isinstance(action_range, list)
 
+        assert hypernet_on_the_fly_reg is False or hypernet_online_uniform_reg is False
+
         self.hypernet_hidden_dim = hypernet_hidden_dim
         self.hypernet_task_embedding_dim = hypernet_task_embedding_dim
         self.hypernet_reg_coeff = hypernet_reg_coeff
         self.hypernet_on_the_fly_reg = hypernet_on_the_fly_reg
+        self.hypernet_online_uniform_reg = hypernet_online_uniform_reg
         self.hypernet_first_order = hypernet_first_order
 
         self.task_count = 0
         self.weights = None
+        self.hypernet_ckpt_weights = None
         self.target_weights = []
 
         super().__init__(
@@ -311,21 +317,30 @@ class TaskEmbeddingHyperNetActorSacMlpAgent(SacMlpAgent):
             assert weight.shape == delta_weight.shape
             hypernet_weights[name] = weight + delta_weight
 
-        reg_loss = []
-        for i in range(num_regs):
-            predicted_weights = self.hypernet(i, weights=hypernet_weights)
-            if self.hypernet_on_the_fly_reg:
-                with utils.eval_mode(self):
-                    with torch.no_grad():
-                        target_weights = self.hypernet(i)
-            else:
-                target_weights = self.target_weights[i]
+        if self.hypernet_online_uniform_reg:
+            # randomly chose a previous task
+            task_idx = np.random.choice(num_regs)
+            predicted_weights = self.hypernet(task_idx, weights=hypernet_weights)
+            with torch.no_grad():
+                target_weights = self.hypernet(task_idx, weights=self.hypernet_ckpt_weights)
             predicted_ws = torch.cat([w.view(-1) for w in predicted_weights.values()])
             target_ws = torch.cat([w.view(-1) for w in target_weights.values()])
-            reg_loss.append(
-                (target_ws - predicted_ws).pow(2).sum()
-            )
-        reg_loss = torch.mean(torch.stack(reg_loss))
+            reg_loss = (target_ws - predicted_ws).pow(2).sum()
+        else:  # on_the_fly or memory
+            reg_loss = []
+            for i in range(num_regs):
+                predicted_weights = self.hypernet(i, weights=hypernet_weights)
+                if self.hypernet_on_the_fly_reg:
+                    with torch.no_grad():
+                        target_weights = self.hypernet(i)
+                else:
+                    target_weights = self.target_weights[i]
+                predicted_ws = torch.cat([w.view(-1) for w in predicted_weights.values()])
+                target_ws = torch.cat([w.view(-1) for w in target_weights.values()])
+                reg_loss.append(
+                    (target_ws - predicted_ws).pow(2).sum()
+                )
+            reg_loss = torch.mean(torch.stack(reg_loss))
 
         return reg_loss
 
@@ -339,7 +354,12 @@ class TaskEmbeddingHyperNetActorSacMlpAgent(SacMlpAgent):
         self.task_count += 1
         self.target_weights.clear()
 
-        if not self.hypernet_on_the_fly_reg:
+        if self.hypernet_on_the_fly_reg:
+            pass
+        elif self.hypernet_online_uniform_reg:
+            with utils.eval_mode(self):
+                self.hypernet_ckpt_weights = copy.deepcopy(self.hypernet.weights)
+        else:
             with utils.eval_mode(self):
                 with torch.no_grad():
                     for task_idx in range(self.task_count):

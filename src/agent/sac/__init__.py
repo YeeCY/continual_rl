@@ -65,3 +65,5 @@ from agent.sac.ewc_task_embedding_hypernet_actor_sac_agent import \
     EwcTaskEmbeddingHyperNetActorSacMlpAgent
 from agent.sac.si_task_embedding_hypernet_actor_sac_agent import \
     SiTaskEmbeddingHyperNetActorSacMlpAgent
+from agent.sac.agem_task_embedding_hypernet_actor_sac_agent import \
+    AgemTaskEmbeddingHyperNetActorSacMlpAgent

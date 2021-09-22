@@ -29,6 +29,7 @@ class EwcTaskEmbeddingHyperNetActorSacMlpAgent(TaskEmbeddingHyperNetActorSacMlpA
             hypernet_task_embedding_dim=16,
             hypernet_reg_coeff=0.01,
             hypernet_on_the_fly_reg=False,
+            hypernet_online_uniform_reg=False,
             hypernet_first_order=True,
             ewc_lambda=5000,
             ewc_estimate_fisher_iters=100,
@@ -40,7 +41,7 @@ class EwcTaskEmbeddingHyperNetActorSacMlpAgent(TaskEmbeddingHyperNetActorSacMlpA
             obs_shape, action_shape, action_range, device, actor_hidden_dim, critic_hidden_dim, discount,
             init_temperature, alpha_lr, actor_lr, actor_log_std_min, actor_log_std_max, actor_update_freq, critic_lr,
             critic_tau, critic_target_update_freq, batch_size, hypernet_hidden_dim, hypernet_task_embedding_dim,
-            hypernet_reg_coeff, hypernet_on_the_fly_reg, hypernet_first_order)
+            hypernet_reg_coeff, hypernet_on_the_fly_reg, hypernet_online_uniform_reg, hypernet_first_order)
 
         self.ewc_lambda = ewc_lambda
         self.ewc_estimate_fisher_iters = ewc_estimate_fisher_iters

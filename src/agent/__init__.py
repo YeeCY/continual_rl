@@ -25,7 +25,8 @@ from src.agent.sac import EwcV2GradNormRegCriticMultiHeadSacMlpAgentV2, \
     DistilledActorMultiInputSacMlpAgent, \
     TaskEmbeddingHyperNetActorSacMlpAgent, \
     EwcTaskEmbeddingHyperNetActorSacMlpAgent, \
-    SiTaskEmbeddingHyperNetActorSacMlpAgent
+    SiTaskEmbeddingHyperNetActorSacMlpAgent, \
+    AgemTaskEmbeddingHyperNetActorSacMlpAgent
 from src.agent.td3 import Td3MlpAgent, MultiHeadTd3MlpAgent, MultiInputTd3MlpAgent, \
     EwcMultiHeadTd3MlpAgent, EwcMultiInputTd3MlpAgent, \
     SiMultiHeadTd3MlpAgent, SiMultiInputTd3MlpAgent, \
@@ -68,6 +69,7 @@ ALGOS = [
     'task_embedding_hypernet_actor_sac_mlp',
     'ewc_task_embedding_hypernet_actor_sac_mlp',
     'si_task_embedding_hypernet_actor_sac_mlp',
+    'agem_task_embedding_hypernet_actor_sac_mlp',
     'agem_mh_sac_mlp',
     'agem_mh_sac_mlp_v2',
     'agem_mi_sac_mlp_v2',
@@ -304,6 +306,7 @@ def make_agent(obs_space, action_space, device, args):
             kwargs['hypernet_task_embedding_dim'] = args.sac_hypernet_task_embedding_dim
             kwargs['hypernet_reg_coeff'] = args.sac_hypernet_reg_coeff
             kwargs['hypernet_on_the_fly_reg'] = args.sac_hypernet_on_the_fly_reg
+            kwargs['hypernet_online_uniform_reg'] = args.sac_hypernet_online_uniform_reg
             kwargs['hypernet_first_order'] = args.sac_hypernet_first_order
             agent = TaskEmbeddingHyperNetActorSacMlpAgent(**kwargs)
         elif args.algo == 'ewc_task_embedding_hypernet_actor_sac_mlp':
@@ -311,6 +314,7 @@ def make_agent(obs_space, action_space, device, args):
             kwargs['hypernet_task_embedding_dim'] = args.sac_hypernet_task_embedding_dim
             kwargs['hypernet_reg_coeff'] = args.sac_hypernet_reg_coeff
             kwargs['hypernet_on_the_fly_reg'] = args.sac_hypernet_on_the_fly_reg
+            kwargs['hypernet_online_uniform_reg'] = args.sac_hypernet_online_uniform_reg
             kwargs['hypernet_first_order'] = args.sac_hypernet_first_order
             kwargs['ewc_lambda'] = args.sac_ewc_lambda
             kwargs['ewc_estimate_fisher_iters'] = args.sac_ewc_estimate_fisher_iters
@@ -323,10 +327,21 @@ def make_agent(obs_space, action_space, device, args):
             kwargs['hypernet_task_embedding_dim'] = args.sac_hypernet_task_embedding_dim
             kwargs['hypernet_reg_coeff'] = args.sac_hypernet_reg_coeff
             kwargs['hypernet_on_the_fly_reg'] = args.sac_hypernet_on_the_fly_reg
+            kwargs['hypernet_online_uniform_reg'] = args.sac_hypernet_online_uniform_reg
             kwargs['hypernet_first_order'] = args.sac_hypernet_first_order
             kwargs['si_c'] = args.sac_si_c
             kwargs['si_epsilon'] = args.sac_si_epsilon
             agent = SiTaskEmbeddingHyperNetActorSacMlpAgent(**kwargs)
+        elif args.algo == 'agem_task_embedding_hypernet_actor_sac_mlp':
+            kwargs['hypernet_hidden_dim'] = args.sac_hypernet_hidden_dim
+            kwargs['hypernet_task_embedding_dim'] = args.sac_hypernet_task_embedding_dim
+            kwargs['hypernet_reg_coeff'] = args.sac_hypernet_reg_coeff
+            kwargs['hypernet_on_the_fly_reg'] = args.sac_hypernet_on_the_fly_reg
+            kwargs['hypernet_online_uniform_reg'] = args.sac_hypernet_online_uniform_reg
+            kwargs['hypernet_first_order'] = args.sac_hypernet_first_order
+            kwargs['agem_memory_budget'] = args.sac_agem_memory_budget
+            kwargs['agem_ref_grad_batch_size'] = args.sac_agem_ref_grad_batch_size
+            agent = AgemTaskEmbeddingHyperNetActorSacMlpAgent(**kwargs)
         elif args.algo == 'agem_mh_sac_mlp':
             kwargs['agem_memory_budget'] = args.sac_agem_memory_budget
             kwargs['agem_ref_grad_batch_size'] = args.sac_agem_ref_grad_batch_size
