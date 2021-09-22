@@ -34,13 +34,13 @@ for seed in "${seeds[@]}"; do
     --sac_num_expl_steps_per_process 1000 \
     --sac_num_processes 1 \
     --sac_num_train_iters 1000 \
-    --sac_hypernet_hidden_dim 128 \
+    --sac_hypernet_hidden_dim 256 \
     --sac_hypernet_task_embedding_dim 16 \
     --sac_hypernet_reg_coeff 0.1 \
     --sac_hypernet_on_the_fly_reg False \
     --sac_hypernet_online_uniform_reg True \
     --sac_hypernet_first_order True \
     --seed $seed \
-    --work_dir $PROJECT_DIR/vec_logs/hypernet_sac_mlp_metaworld_10_tasks/task_embedding_hypernet_actor_reg_coeff0.1_online_uniform/$seed \
-    > $PROJECT_DIR/terminal_logs/hypernet_sac_mlp_metaworld_10_tasks-task_embedding_hypernet_actor_reg_coeff0.1_online_uniform-seed"$seed".log 2>&1 &
+    --work_dir $PROJECT_DIR/vec_logs/hypernet_sac_mlp_metaworld_10_tasks/task_embedding_hypernet_actor_256_reg_coeff0.1_online_uniform/$seed \
+    > $PROJECT_DIR/terminal_logs/hypernet_sac_mlp_metaworld_10_tasks-task_embedding_hypernet_actor_256_reg_coeff0.1_online_uniform-seed"$seed".log 2>&1 &
 done
