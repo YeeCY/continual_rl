@@ -442,7 +442,15 @@ def main(args):
                 # total_steps += 1
 
             if task_id < env.num_tasks - 1:
-                if 'ewc' in args.algo:
+                if 'distilled' in args.algo:
+                    print(f"Distill actor: {infos[0]['task_name']}")
+                    agent.distill(env=env, replay_buffer=replay_buffer,
+                                  head_idx=task_id,
+                                  sample_src=args.sac_distillation_sample_src,
+                                  total_steps=total_steps,
+                                  logger=distillation_logger)
+                    distillation_logger.dump(total_steps, ty='train', save=True)
+                elif 'ewc' in args.algo:
                     print(f"Estimating EWC fisher: {infos[0]['task_name']}")
                     if any(x in args.algo for x in ['mh', 'mi', 'individual', 'hypernet', 'distilled']):
                         agent.estimate_fisher(env=env, replay_buffer=replay_buffer,
@@ -470,14 +478,6 @@ def main(args):
                     #         agent.construct_memory(env)
                     # else:
                     #     agent.construct_memory(replay_buffer)
-                elif 'distilled' in args.algo:
-                    print(f"Distill actor: {infos[0]['task_name']}")
-                    agent.distill(env=env, replay_buffer=replay_buffer,
-                                  head_idx=task_id,
-                                  sample_src=args.sac_distillation_sample_src,
-                                  total_steps=total_steps,
-                                  logger=distillation_logger)
-                    distillation_logger.dump(total_steps, ty='train', save=True)
                 elif 'task_embedding_hypernet':
                     agent.construct_hypernet_targets()
 

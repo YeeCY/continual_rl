@@ -1,11 +1,12 @@
-from collections import Iterable
+import copy
+import numpy as np
 import torch
 
 import utils
-from agent.sac import TaskEmbeddingHyperNetActorSacMlpAgent
+from agent.sac import TaskEmbeddingDistilledActorSacMlpAgent
 
 
-class EwcTaskEmbeddingHyperNetActorSacMlpAgent(TaskEmbeddingHyperNetActorSacMlpAgent):
+class EwcTaskEmbeddingDistilledActorSacMlpAgent(TaskEmbeddingDistilledActorSacMlpAgent):
     def __init__(
             self,
             obs_shape,
@@ -25,14 +26,14 @@ class EwcTaskEmbeddingHyperNetActorSacMlpAgent(TaskEmbeddingHyperNetActorSacMlpA
             critic_tau=0.005,
             critic_target_update_freq=2,
             batch_size=128,
-            hypernet_hidden_dim=128,
-            hypernet_task_embedding_dim=16,
-            hypernet_reg_coeff=0.01,
-            hypernet_on_the_fly_reg=False,
-            hypernet_online_uniform_reg=False,
-            hypernet_first_order=True,
+            distillation_hidden_dim=256,
+            distillation_task_embedding_dim=16,
+            distillation_epochs=1,
+            distillation_iters_per_epoch=50,
+            distillation_batch_size=1000,
+            distillation_memory_budget_per_task=50000,
             ewc_lambda=5000,
-            ewc_estimate_fisher_iters=100,
+            ewc_estimate_fisher_iters=50,
             ewc_estimate_fisher_sample_num=1000,
             online_ewc=False,
             online_ewc_gamma=1.0,
@@ -40,8 +41,9 @@ class EwcTaskEmbeddingHyperNetActorSacMlpAgent(TaskEmbeddingHyperNetActorSacMlpA
         super().__init__(
             obs_shape, action_shape, action_range, device, actor_hidden_dim, critic_hidden_dim, discount,
             init_temperature, alpha_lr, actor_lr, actor_log_std_min, actor_log_std_max, actor_update_freq, critic_lr,
-            critic_tau, critic_target_update_freq, batch_size, hypernet_hidden_dim, hypernet_task_embedding_dim,
-            hypernet_reg_coeff, hypernet_on_the_fly_reg, hypernet_online_uniform_reg, hypernet_first_order)
+            critic_tau, critic_target_update_freq, batch_size, distillation_hidden_dim,
+            distillation_task_embedding_dim, distillation_epochs, distillation_iters_per_epoch,
+            distillation_batch_size, distillation_memory_budget_per_task)
 
         self.ewc_lambda = ewc_lambda
         self.ewc_estimate_fisher_iters = ewc_estimate_fisher_iters
@@ -60,7 +62,6 @@ class EwcTaskEmbeddingHyperNetActorSacMlpAgent(TaskEmbeddingHyperNetActorSacMlpA
         task_idx = kwargs.pop('head_idx')
 
         fishers = {}
-        # TODO (chongyi zheng): save trajectory for KL divergence
         for _ in range(self.ewc_estimate_fisher_iters):
             obs = env.reset()
             samples = {
@@ -73,7 +74,8 @@ class EwcTaskEmbeddingHyperNetActorSacMlpAgent(TaskEmbeddingHyperNetActorSacMlpA
             if sample_src == 'rollout':
                 for _ in range(self.ewc_estimate_fisher_sample_num):
                     with utils.eval_mode(self):
-                        action = self.act(obs, sample=True, head_idx=task_idx)
+                        action = self.act(obs, sample=True, head_idx=task_idx,
+                                          use_distilled_actor=True)
 
                     next_obs, reward, done, _ = env.step(action)
 
@@ -167,87 +169,3 @@ class EwcTaskEmbeddingHyperNetActorSacMlpAgent(TaskEmbeddingHyperNetActorSacMlpA
                         fisher / self.ewc_estimate_fisher_iters
 
         self.ewc_task_count += 1
-
-    def _compute_ewc_loss(self, named_parameters):
-        assert isinstance(named_parameters, Iterable), "'named_parameters' must be a iterator"
-
-        ewc_losses = []
-        if self.ewc_task_count >= 1:
-            if self.online_ewc:
-                for name, param in named_parameters:
-                    if param.grad is not None:
-                        name = name + '_prev_task'
-                        mean = self.prev_task_params[name]
-                        # apply decay-term to the running sum of the Fisher Information matrices
-                        fisher = self.online_ewc_gamma * self.prev_task_fishers[name]
-                        ewc_loss = torch.sum(fisher * (param - mean) ** 2)
-                        ewc_losses.append(ewc_loss)
-            else:
-                for task in range(self.ewc_task_count):
-                    # compute ewc loss for each parameter
-                    for name, param in named_parameters:
-                        if param.grad is not None:
-                            name = name + f'_prev_task{task}'
-                            mean = self.prev_task_params[name]
-                            fisher = self.prev_task_fishers[name]
-                            ewc_loss = torch.sum(fisher * (param - mean) ** 2)
-                            ewc_losses.append(ewc_loss)
-            return torch.sum(torch.stack(ewc_losses)) / 2.0
-        else:
-            return torch.tensor(0.0, device=self.device)
-
-    def update_actor_and_alpha(self, log_pi, actor_loss, logger, step, alpha_loss=None,
-                               add_reg_loss=False):
-        logger.log('train_actor/loss', actor_loss, step)
-        logger.log('train/target_entropy', self.target_entropy, step)
-        logger.log('train/entropy', -log_pi.mean(), step)
-
-        # optimize the actor
-        self.hypernet_weight_optimizer.zero_grad()
-        self.hypernet_emb_optimizer.zero_grad()
-
-        actor_loss.backward(retain_graph=add_reg_loss,
-                            create_graph=add_reg_loss and not self.hypernet_first_order)
-        self.hypernet_emb_optimizer.step()
-
-        if add_reg_loss:
-            # assert len(self.target_weights) == self.task_count
-            hypernet_delta_weights = self.compute_hypernet_delta_weights()
-
-            reg_loss = self.hypernet_reg_coeff * self.compute_hypernet_reg(
-                hypernet_delta_weights)
-            reg_loss.backward()
-
-        self.hypernet_weight_optimizer.step()
-
-        if isinstance(alpha_loss, torch.Tensor):
-            logger.log('train_alpha/loss', alpha_loss, step)
-            logger.log('train_alpha/value', self.alpha, step)
-
-            self.log_alpha_optimizer.zero_grad()
-            alpha_loss.backward()
-            self.log_alpha_optimizer.step()
-
-    def update(self, replay_buffer, logger, step, **kwargs):
-        obs, action, reward, next_obs, not_done = replay_buffer.sample(self.batch_size)
-
-        logger.log('train/batch_reward', reward.mean(), step)
-
-        assert 'head_idx' in kwargs
-        task_idx = kwargs.pop('head_idx')
-
-        critic_loss = self.compute_critic_loss(obs, action, reward, next_obs, not_done,
-                                               task_idx=task_idx)
-        self.update_critic(critic_loss, logger, step)
-
-        if step % self.actor_update_freq == 0:
-            log_pi, actor_loss, alpha_loss = self.compute_actor_and_alpha_loss(
-                obs, task_idx=task_idx)
-            actor_ewc_loss = self._compute_ewc_loss(self.hypernet.weights.items())
-            actor_loss = actor_loss + self.ewc_lambda * actor_ewc_loss
-            self.update_actor_and_alpha(log_pi, actor_loss, logger, step, alpha_loss=alpha_loss,
-                                        add_reg_loss=False)
-
-        if step % self.critic_target_update_freq == 0:
-            utils.soft_update_params(self.critic, self.critic_target,
-                                     self.critic_tau)
