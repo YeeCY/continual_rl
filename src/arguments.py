@@ -120,6 +120,7 @@ def parse_args():
 	parser.add_argument('--sac_agem_critic_grad_norm_reg_coeff', default=1.0, type=float)
 	parser.add_argument('--sac_agem_memory_budget', default=5000, type=int)
 	parser.add_argument('--sac_agem_ref_grad_batch_size', default=500, type=int)
+	parser.add_argument('--sac_agem_clip_param', default=0.2, type=float)
 
 	# sac si
 	parser.add_argument('--sac_si_c', default=1.0, type=float)

@@ -10,7 +10,7 @@ from agent.sac.base_sac_agent import SacMlpAgent
 from agent.network import MultiHeadSacActorMlp, SacCriticMlp
 
 
-class DistilledActorMultiHeadSacMlpAgent(SacMlpAgent):
+class TaskEmbeddingDistilledActorSacMlpAgent(SacMlpAgent):
     def __init__(
             self,
             obs_shape,

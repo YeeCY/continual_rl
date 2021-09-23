@@ -31,8 +31,9 @@ class AgemTaskEmbeddingHyperNetActorSacMlpAgent(TaskEmbeddingHyperNetActorSacMlp
             hypernet_on_the_fly_reg=False,
             hypernet_online_uniform_reg=False,
             hypernet_first_order=True,
-            agem_memory_budget=4500,
+            agem_memory_budget=5000,
             agem_ref_grad_batch_size=500,
+            agem_clip_param=0.2,
     ):
         super().__init__(
             obs_shape, action_shape, action_range, device, actor_hidden_dim, critic_hidden_dim, discount,
@@ -42,6 +43,7 @@ class AgemTaskEmbeddingHyperNetActorSacMlpAgent(TaskEmbeddingHyperNetActorSacMlp
 
         self.agem_memory_budget = agem_memory_budget
         self.agem_ref_grad_batch_size = agem_ref_grad_batch_size
+        self.agem_clip_param = agem_clip_param
 
         self.agem_task_count = 0
         self.agem_memories = {}
@@ -81,7 +83,7 @@ class AgemTaskEmbeddingHyperNetActorSacMlpAgent(TaskEmbeddingHyperNetActorSacMlp
             with utils.eval_mode(self):
                 weights = self.hypernet(task_idx)
 
-            for _ in range(self.agem_memory_budget // 2):
+            for _ in range(self.agem_memory_budget):
                 with utils.eval_mode(self):
                     # compute log_pi and Q for later gradient projection
                     _, action, log_pi, _ = self.actor(
@@ -107,6 +109,7 @@ class AgemTaskEmbeddingHyperNetActorSacMlpAgent(TaskEmbeddingHyperNetActorSacMlp
                 rollout_qs.append(actor_Q)
 
                 obs = next_obs
+
             self.agem_memories[self.agem_task_count]['obses'] = np.asarray(rollout_obses)
             self.agem_memories[self.agem_task_count]['actions'] = np.asarray(rollout_actions)
             self.agem_memories[self.agem_task_count]['rewards'] = np.asarray(rollout_rewards)
@@ -225,24 +228,30 @@ class AgemTaskEmbeddingHyperNetActorSacMlpAgent(TaskEmbeddingHyperNetActorSacMlp
         ref_actor_grad = []
         for task_idx, memory in enumerate(self.agem_memories.values()):
             idxs = np.random.randint(
-                0, len(memory['obses']), size=self.agem_ref_grad_batch_size // self.agem_task_count
+                0, len(memory['obses']), size=self.agem_ref_grad_batch_size
             )
 
             obses, actions, rewards, next_obses, not_dones, old_log_pis, qs = \
                 memory['obses'][idxs], memory['actions'][idxs], memory['rewards'][idxs], \
-                memory['next_obses'][idxs], memory['not_dones'][idxs], memory['log_pis'], \
-                memory['qs']
+                memory['next_obses'][idxs], memory['not_dones'][idxs], memory['log_pis'][idxs], \
+                memory['qs'][idxs]
 
             obses = torch.Tensor(obses).to(self.device)
             actions = torch.Tensor(actions).to(self.device)
             old_log_pis = torch.Tensor(old_log_pis).to(self.device)
             qs = torch.Tensor(qs).to(self.device)
 
+            # (cyzheng): Is it critical to normalize Q?
+            qs = (qs - qs.mean()) / (qs.std() + 1e-5)
+
             # (chongyi zheng): use PPO style gradient projection loss for actor
             weights = self.hypernet(task_idx)
             log_pis = self.actor.compute_log_probs(obses, actions, weights=weights)
             ratio = torch.exp(log_pis - old_log_pis)  # importance sampling ratio
-            proj_actor_loss = (ratio * qs).mean()
+            surr1 = ratio * qs
+            surr2 = torch.clamp(ratio, 1.0 - self.agem_clip_param,
+                                1.0 + self.agem_clip_param) * qs
+            proj_actor_loss = -torch.min(surr1, surr2).mean()
 
             self.hypernet_weight_optimizer.zero_grad()  # clear current gradient
             proj_actor_loss.backward()

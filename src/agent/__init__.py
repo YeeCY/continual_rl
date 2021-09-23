@@ -341,6 +341,7 @@ def make_agent(obs_space, action_space, device, args):
             kwargs['hypernet_first_order'] = args.sac_hypernet_first_order
             kwargs['agem_memory_budget'] = args.sac_agem_memory_budget
             kwargs['agem_ref_grad_batch_size'] = args.sac_agem_ref_grad_batch_size
+            kwargs['agem_clip_param'] = args.sac_agem_clip_param
             agent = AgemTaskEmbeddingHyperNetActorSacMlpAgent(**kwargs)
         elif args.algo == 'agem_mh_sac_mlp':
             kwargs['agem_memory_budget'] = args.sac_agem_memory_budget
