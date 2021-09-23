@@ -43,7 +43,7 @@ def evaluate(train_env, eval_env, agent, video, num_episodes, logger, step,
             while len(episode_rewards) < num_episodes:
                 with utils.eval_mode(agent):
                     with utils.eval_mode(agent):
-                        if any(x in args.algo for x in ['mh', 'mi', 'individual', 'hypernet']):
+                        if any(x in args.algo for x in ['mh', 'mi', 'individual', 'hypernet', 'distilled']):
                             action = agent.act(obs, sample=False, head_idx=task_id, **act_kwargs)
                         else:
                             action = agent.act(obs, sample=False, **act_kwargs)
@@ -249,7 +249,7 @@ def main(args):
     agent = make_agent(
         obs_space=env.observation_space,
         action_space=[env.action_space for _ in range(env.num_tasks)]
-        if any(x in args.algo for x in ['mh', 'mi', 'individual', 'hypernet'])
+        if any(x in args.algo for x in ['mh', 'mi', 'individual', 'hypernet', 'distilled'])
         else env.action_space,
         device=device,
         args=args
@@ -261,11 +261,11 @@ def main(args):
                     save_tb=args.save_tb)
 
     if 'distilled' in args.algo:
-        distill_dir = utils.make_dir(os.path.join(args.work_dir, 'distill'))
-        distill_logger = Logger(distill_dir,
-                                log_frequency=args.log_freq,
-                                action_repeat=args.action_repeat,
-                                save_tb=args.save_tb)
+        distillation_dir = utils.make_dir(os.path.join(args.work_dir, 'distillation'))
+        distillation_logger = Logger(distillation_dir,
+                                     log_frequency=args.log_freq,
+                                     action_repeat=args.action_repeat,
+                                     save_tb=args.save_tb)
 
     # log arguments
     args_dict = vars(args)
@@ -308,7 +308,7 @@ def main(args):
                     evaluate(env, eval_env, agent, video, args.num_eval_episodes, logger, total_steps)
 
                     if 'distilled' in args.algo:
-                        evaluate(env, eval_env, agent, video, args.num_eval_episodes, distill_logger,
+                        evaluate(env, eval_env, agent, video, args.num_eval_episodes, distillation_logger,
                                  total_steps, use_distilled_actor=True)
                     # elif 'hypernet_actor' in args.algo:
                     #     evaluate(env, eval_env, agent, video, args.num_eval_episodes, logger,
@@ -336,7 +336,7 @@ def main(args):
                                            for _ in range(env.unwrapped.num_envs)])
                     else:
                         with utils.eval_mode(agent):
-                            if any(x in args.algo for x in ['mh', 'mi', 'individual', 'hypernet']):
+                            if any(x in args.algo for x in ['mh', 'mi', 'individual', 'hypernet', 'distilled']):
                                 action = agent.act(obs, sample=True, head_idx=task_id)
                             else:
                                 action = agent.act(obs, sample=True)
@@ -364,7 +364,7 @@ def main(args):
 
                 if task_steps >= args.sac_init_steps:
                     for _ in range(args.sac_num_train_iters):
-                        if any(x in args.algo for x in ['mh', 'mi', 'individual', 'hypernet']):
+                        if any(x in args.algo for x in ['mh', 'mi', 'individual', 'hypernet', 'distilled']):
                             agent.update(replay_buffer, logger, total_steps, head_idx=task_id)
                         else:
                             agent.update(replay_buffer, logger, total_steps)
@@ -444,7 +444,7 @@ def main(args):
             if task_id < env.num_tasks - 1:
                 if 'ewc' in args.algo:
                     print(f"Estimating EWC fisher: {infos[0]['task_name']}")
-                    if any(x in args.algo for x in ['mh', 'mi', 'individual', 'hypernet']):
+                    if any(x in args.algo for x in ['mh', 'mi', 'individual', 'hypernet', 'distilled']):
                         agent.estimate_fisher(env=env, replay_buffer=replay_buffer,
                                               head_idx=task_id,
                                               sample_src=args.sac_ewc_estimate_fisher_sample_src)
@@ -456,7 +456,7 @@ def main(args):
                     agent.update_omegas()
                 elif 'agem' in args.algo:
                     print(f"Constructing AGEM memory: {infos[0]['task_name']}")
-                    if any(x in args.algo for x in ['mh', 'mi', 'individual', 'hypernet']):
+                    if any(x in args.algo for x in ['mh', 'mi', 'individual', 'hypernet', 'distilled']):
                         agent.construct_memory(env=env, replay_buffer=replay_buffer,
                                                head_idx=task_id,
                                                sample_src=args.sac_agem_memory_sample_src)
@@ -472,18 +472,12 @@ def main(args):
                     #     agent.construct_memory(replay_buffer)
                 elif 'distilled' in args.algo:
                     print(f"Distill actor: {infos[0]['task_name']}")
-                    if any(x in args.algo for x in ['mh', 'mi', 'individual', 'hypernet']):
-                        agent.distill(env=env, replay_buffer=replay_buffer,
-                                      head_idx=task_id,
-                                      sample_src=args.sac_distill_sample_src,
-                                      total_steps=total_steps,
-                                      logger=distill_logger)
-                    else:
-                        agent.distill(env=env, replay_buffer=replay_buffer,
-                                      sample_src=args.sac_distill_sample_src,
-                                      total_steps=total_steps,
-                                      logger=distill_logger)
-                    distill_logger.dump(total_steps, ty='train', save=True)
+                    agent.distill(env=env, replay_buffer=replay_buffer,
+                                  head_idx=task_id,
+                                  sample_src=args.sac_distillation_sample_src,
+                                  total_steps=total_steps,
+                                  logger=distillation_logger)
+                    distillation_logger.dump(total_steps, ty='train', save=True)
                 elif 'task_embedding_hypernet':
                     agent.construct_hypernet_targets()
 

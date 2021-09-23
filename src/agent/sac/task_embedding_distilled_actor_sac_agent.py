@@ -7,7 +7,8 @@ from torch.distributions.kl import kl_divergence
 import utils
 
 from agent.sac.base_sac_agent import SacMlpAgent
-from agent.network import MultiHeadSacActorMlp, SacCriticMlp
+from agent.network import SacActorMlp, SacCriticMlp
+from agent.nets.distillation import SacTaskEmbeddingDistilledActorMlp
 
 
 class TaskEmbeddingDistilledActorSacMlpAgent(SacMlpAgent):
@@ -30,22 +31,27 @@ class TaskEmbeddingDistilledActorSacMlpAgent(SacMlpAgent):
             critic_tau=0.005,
             critic_target_update_freq=2,
             batch_size=128,
-            distill_epochs=200,  # (cyzheng): refresh data every epoch
-            distill_iters_per_epoch=50,
-            distill_batch_size=1000,
-            distill_memory_budget_per_task=50000,
+            distillation_hidden_dim=256,
+            distillation_task_embedding_dim=16,
+            distillation_epochs=1,
+            distillation_iters_per_epoch=50,
+            distillation_batch_size=1000,
+            distillation_memory_budget_per_task=50000,
     ):
         assert isinstance(action_shape, list)
         assert isinstance(action_range, list)
+
+        self.distillation_hidden_dim = distillation_hidden_dim
+        self.distillation_task_embedding_dim = distillation_task_embedding_dim
+        self.distillation_epochs = distillation_epochs
+        self.distillation_iters_per_epoch = distillation_iters_per_epoch
+        self.distillation_batch_size = distillation_batch_size
+        self.distillation_memory_budget_per_task = distillation_memory_budget_per_task
+
         super().__init__(
             obs_shape, action_shape, action_range, device, actor_hidden_dim, critic_hidden_dim, discount,
             init_temperature, alpha_lr, actor_lr, actor_log_std_min, actor_log_std_max, actor_update_freq, critic_lr,
             critic_tau, critic_target_update_freq, batch_size)
-
-        self.distill_epochs = distill_epochs
-        self.distill_iters_per_epoch = distill_iters_per_epoch
-        self.distill_batch_size = distill_batch_size
-        self.distill_memory_budget_per_task = distill_memory_budget_per_task
 
         self.task_count = 0
         self.memories = []
@@ -55,13 +61,15 @@ class TaskEmbeddingDistilledActorSacMlpAgent(SacMlpAgent):
                 and hasattr(self, 'optimizer'):
             return
 
-        self.actor = MultiHeadSacActorMlp(
-            self.obs_shape, self.action_shape, self.actor_hidden_dim,
+        self.actor = SacActorMlp(
+            self.obs_shape, self.action_shape[0], self.actor_hidden_dim,
             self.actor_log_std_min, self.actor_log_std_max
         ).to(self.device)
 
-        self.distilled_actor = MultiHeadSacActorMlp(
-            self.obs_shape, self.action_shape, self.actor_hidden_dim,
+        num_tasks = len(self.action_shape)
+        self.distilled_actor = SacTaskEmbeddingDistilledActorMlp(
+            num_tasks, self.obs_shape, self.action_shape[0],
+            self.distillation_hidden_dim, self.distillation_task_embedding_dim,
             self.actor_log_std_min, self.actor_log_std_max
         ).to(self.device)
 
@@ -93,11 +101,11 @@ class TaskEmbeddingDistilledActorSacMlpAgent(SacMlpAgent):
     def _train_distilled_actor(self, dataset, step, logger):
         losses = []
         for subset in dataset:
-            random_idxs = np.random.randint(0, self.distill_memory_budget_per_task,
-                                            size=self.distill_batch_size)
-            batch_obses = torch.Tensor(subset['obses'][random_idxs]).to(self.device)
-            batch_mus = torch.Tensor(subset['mus'][random_idxs]).to(self.device)
-            batch_log_stds = torch.Tensor(subset['log_stds'][random_idxs]).to(self.device)
+            random_idxs = np.random.randint(0, self.distillation_memory_budget_per_task,
+                                            size=self.distillation_batch_size)
+            batch_obses = torch.Tensor(subset['obses'][random_idxs]).to(self.device).squeeze()
+            batch_mus = torch.Tensor(subset['mus'][random_idxs]).to(self.device).squeeze()
+            batch_log_stds = torch.Tensor(subset['log_stds'][random_idxs]).to(self.device).squeeze()
             task_id = subset['task_id']
 
             mus, _, _, log_stds = self.distilled_actor(
@@ -119,11 +127,14 @@ class TaskEmbeddingDistilledActorSacMlpAgent(SacMlpAgent):
         if not isinstance(obs, torch.Tensor):
             obs = torch.Tensor(obs).to(self.device)
 
+        assert 'head_idx' in kwargs
+        task_idx = kwargs['head_idx']
+
         with torch.no_grad():
             if use_distilled_actor:
-                mu, pi, _, _ = self.distilled_actor(obs, compute_log_pi=False, **kwargs)
+                mu, pi, _, _ = self.distilled_actor(obs, task_idx, compute_log_pi=False)
             else:
-                mu, pi, _, _ = self.actor(obs, compute_log_pi=False, **kwargs)
+                mu, pi, _, _ = self.actor(obs, compute_log_pi=False)
             action = pi if sample else mu
             assert 'head_idx' in kwargs
             action = action.clamp(*self.action_range[kwargs['head_idx']])
@@ -138,7 +149,8 @@ class TaskEmbeddingDistilledActorSacMlpAgent(SacMlpAgent):
         total_steps = kwargs.pop('total_steps')
         logger = kwargs.pop('logger')
 
-        for epoch in range(self.distill_epochs):
+        # (cyzheng): refresh data every epoch
+        for epoch in range(self.distillation_epochs):
             # collect samples
             dataset = {
                 'obses': [],
@@ -149,7 +161,7 @@ class TaskEmbeddingDistilledActorSacMlpAgent(SacMlpAgent):
             }
             obs = env.reset()
             if sample_src == 'rollout':
-                for _ in range(self.distill_memory_budget_per_task):
+                for _ in range(self.distillation_memory_budget_per_task):
                     with utils.eval_mode(self):
                         # compute log_pi and Q for later gradient projection
                         mu, action, _, log_std = self.actor(
@@ -177,7 +189,8 @@ class TaskEmbeddingDistilledActorSacMlpAgent(SacMlpAgent):
                 dataset['mus'] = np.stack(dataset['mus'])
                 dataset['log_stds'] = np.stack(dataset['log_stds'])
             elif sample_src == 'replay_buffer':
-                obses, _, _, _, _ = replay_buffer.sample(self.distill_memory_budget_per_task)
+                obses, _, _, _, _ = replay_buffer.sample(
+                    self.distillation_memory_budget_per_task)
                 with utils.eval_mode(self):
                     mus, actions, _, log_stds = self.actor(
                         obses, compute_pi=True, compute_log_pi=True, **kwargs)
@@ -187,7 +200,7 @@ class TaskEmbeddingDistilledActorSacMlpAgent(SacMlpAgent):
                 dataset['mus'] = utils.to_np(mus)
                 dataset['log_stds'] = utils.to_np(log_stds)
             elif sample_src == 'hybrid':
-                for _ in range(self.distill_memory_budget_per_task // 2):
+                for _ in range(self.distillation_memory_budget_per_task // 2):
                     with utils.eval_mode(self):
                         # compute log_pi and Q for later gradient projection
                         mu, action, _, log_std = self.actor(
@@ -216,7 +229,8 @@ class TaskEmbeddingDistilledActorSacMlpAgent(SacMlpAgent):
                 rollout_log_stds = np.stack(dataset['log_stds'])
 
                 obses, _, _, _, _ = replay_buffer.sample(
-                    self.distill_memory_budget_per_task - self.distill_memory_budget_per_task // 2)
+                    self.distillation_memory_budget_per_task -
+                    self.distillation_memory_budget_per_task // 2)
                 with utils.eval_mode(self):
                     mus, actions, _, log_stds = self.actor(
                         obses, compute_pi=True, compute_log_pi=True, **kwargs)
@@ -228,18 +242,19 @@ class TaskEmbeddingDistilledActorSacMlpAgent(SacMlpAgent):
             else:
                 raise ValueError("Unknown sample source!")
 
-            for iter in range(self.distill_iters_per_epoch):
+            for iter in range(self.distillation_iters_per_epoch):
                 # TODO (cyzheng): convert previous task memory batch size to an argument
                 if self.task_count > 0:
                     prev_task_dataset = np.random.choice(self.memories, 3).tolist()
                 else:
                     prev_task_dataset = []
-                self._train_distilled_actor([dataset] + prev_task_dataset,
-                                            total_steps + epoch * self.distill_iters_per_epoch + iter,
-                                            logger)
+                self._train_distilled_actor(
+                    [dataset] + prev_task_dataset,
+                    total_steps + epoch * self.distillation_iters_per_epoch + iter,
+                    logger)
 
             # TODO (cyzheng): log loss for every epoch
-            logger.dump(total_steps + epoch * self.distill_iters_per_epoch,
+            logger.dump(total_steps + epoch * self.distillation_iters_per_epoch,
                         ty='train', save=True)
 
         self.memories.append(dataset)

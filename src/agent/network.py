@@ -303,7 +303,8 @@ class SacActorMlp(nn.Module):
         )
         self.apply(weight_init)
 
-    def forward(self, obs, compute_pi=True, compute_log_pi=True):
+    def forward(self, obs, compute_pi=True, compute_log_pi=True, **kwargs):
+        # FIXME (cyzheng): kwargs not used
         mu, log_std = self.trunk(obs).chunk(2, dim=-1)
 
         # constrain log_std inside [log_std_min, log_std_max]
@@ -328,7 +329,8 @@ class SacActorMlp(nn.Module):
 
         return mu, pi, log_pi, log_std
 
-    def compute_log_probs(self, obs, action):
+    def compute_log_probs(self, obs, action, **kwargs):
+        # FIXME (cyzheng): kwargs not used
         mu, log_std = self.trunk(obs).chunk(2, dim=-1)
 
         # constrain log_std inside [log_std_min, log_std_max]

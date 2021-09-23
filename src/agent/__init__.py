@@ -22,11 +22,15 @@ from src.agent.sac import EwcV2GradNormRegCriticMultiHeadSacMlpAgentV2, \
     AgemContinualActorCriticGradNormRegCriticPrioritizedMemoryMultiHeadSacMlpAgent, \
     AgemContinualActorCriticGradNormRegCriticPrioritizedMemoryMultiInputSacMlpAgent, \
     DistilledActorMultiHeadSacMlpAgent, \
-    DistilledActorMultiInputSacMlpAgent, \
+    DistilledActorMultiInputSacMlpAgent
+from src.agent.sac import \
     TaskEmbeddingHyperNetActorSacMlpAgent, \
     EwcTaskEmbeddingHyperNetActorSacMlpAgent, \
     SiTaskEmbeddingHyperNetActorSacMlpAgent, \
     AgemTaskEmbeddingHyperNetActorSacMlpAgent
+from src.agent.sac import \
+    TaskEmbeddingDistilledActorSacMlpAgent
+
 from src.agent.td3 import Td3MlpAgent, MultiHeadTd3MlpAgent, MultiInputTd3MlpAgent, \
     EwcMultiHeadTd3MlpAgent, EwcMultiInputTd3MlpAgent, \
     SiMultiHeadTd3MlpAgent, SiMultiInputTd3MlpAgent, \
@@ -70,6 +74,7 @@ ALGOS = [
     'ewc_task_embedding_hypernet_actor_sac_mlp',
     'si_task_embedding_hypernet_actor_sac_mlp',
     'agem_task_embedding_hypernet_actor_sac_mlp',
+    'task_embedding_distilled_actor_sac_mlp',
     'agem_mh_sac_mlp',
     'agem_mh_sac_mlp_v2',
     'agem_mi_sac_mlp_v2',
@@ -343,6 +348,14 @@ def make_agent(obs_space, action_space, device, args):
             kwargs['agem_ref_grad_batch_size'] = args.sac_agem_ref_grad_batch_size
             kwargs['agem_clip_param'] = args.sac_agem_clip_param
             agent = AgemTaskEmbeddingHyperNetActorSacMlpAgent(**kwargs)
+        elif args.algo == 'task_embedding_distilled_actor_sac_mlp':
+            kwargs['distillation_hidden_dim'] = args.sac_distillation_hidden_dim
+            kwargs['distillation_task_embedding_dim'] = args.sac_distillation_task_embedding_dim
+            kwargs['distillation_epochs'] = args.sac_distillation_epochs
+            kwargs['distillation_iters_per_epoch'] = args.sac_distillation_iters_per_epoch
+            kwargs['distillation_batch_size'] = args.sac_distillation_batch_size
+            kwargs['distillation_memory_budget_per_task'] = args.sac_distillation_memory_budget_per_task
+            agent = TaskEmbeddingDistilledActorSacMlpAgent(**kwargs)
         elif args.algo == 'agem_mh_sac_mlp':
             kwargs['agem_memory_budget'] = args.sac_agem_memory_budget
             kwargs['agem_ref_grad_batch_size'] = args.sac_agem_ref_grad_batch_size

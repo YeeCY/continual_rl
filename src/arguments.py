@@ -134,12 +134,14 @@ def parse_args():
 	parser.add_argument('--sac_fisher_brc_bc_train_steps_per_task', default=100000, type=int)
 
 	# sac distill
-	parser.add_argument('--sac_distill_sample_src', default='rollout', type=str,
+	parser.add_argument('--sac_distillation_sample_src', default='rollout', type=str,
 						choices=['rollout', 'replay_buffer', 'hybrid'])
-	parser.add_argument('--sac_distill_epochs', default=1, type=int)
-	parser.add_argument('--sac_distill_iters_per_epoch', default=50, type=int)
-	parser.add_argument('--sac_distill_batch_size', default=1000, type=int)
-	parser.add_argument('--sac_distill_memory_budget_per_task', default=50000, type=int)
+	parser.add_argument('--sac_distillation_hidden_dim', default=256, type=int)
+	parser.add_argument('--sac_distillation_task_embedding_dim', default=16, type=int)
+	parser.add_argument('--sac_distillation_epochs', default=1, type=int)
+	parser.add_argument('--sac_distillation_iters_per_epoch', default=50, type=int)
+	parser.add_argument('--sac_distillation_batch_size', default=1000, type=int)
+	parser.add_argument('--sac_distillation_memory_budget_per_task', default=50000, type=int)
 
 	# sac hypernet
 	parser.add_argument('--sac_hypernet_hidden_dim', default=128, type=int)
