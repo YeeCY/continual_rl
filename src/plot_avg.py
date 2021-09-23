@@ -323,6 +323,27 @@ CURVE_FORMAT = {
         'style': '-',
         'label': 'task_embedding_hypernet_actor_reg_coeff0.1_on_the_fly'
     },
+    'task_embedding_hypernet_actor_256_reg_coeff0.1': {
+        'color': [0, 178, 238],
+        'style': '-',
+        'label': 'task_embedding_hypernet_actor_256_reg_coeff0.1',
+    },
+    'task_embedding_hypernet_actor_256_reg_coeff0.01': {
+        'color': [204, 153, 255],
+        'style': '-',
+        'label': 'task_embedding_hypernet_actor_256_reg_coeff0.01',
+    },
+    'task_embedding_hypernet_actor_256_reg_coeff1.0': {
+        'color': [139, 101, 8],
+        'style': '-',
+        'label': 'task_embedding_hypernet_actor_256_reg_coeff1.0',
+    },
+    'task_embedding_hypernet_actor_256_reg_coeff0.1_online_uniform': {
+        'color': [0, 100, 0],
+        'style': '-',
+        'label': 'task_embedding_hypernet_actor_256_reg_coeff0.1_online_uniform',
+    },
+
 }
 
 

@@ -306,7 +306,7 @@ class AgemTaskEmbeddingHyperNetActorSacMlpAgent(TaskEmbeddingHyperNetActorSacMlp
                 hypernet_delta_weights)
             reg_loss.backward()
 
-        self._project_grad(list(self.actor.parameters()), ref_actor_grad)
+        self._project_grad(list(self.hypernet.weights.values()), ref_actor_grad)
 
         self.hypernet_weight_optimizer.step()
 
