@@ -442,6 +442,7 @@ def main(args):
                 # total_steps += 1
 
             if task_id < env.num_tasks - 1:
+                # distillation is separated from regularization
                 if 'distilled' in args.algo:
                     print(f"Distill actor: {infos[0]['task_name']}")
                     agent.distill(env=env, replay_buffer=replay_buffer,
@@ -450,7 +451,8 @@ def main(args):
                                   total_steps=total_steps,
                                   logger=distillation_logger)
                     distillation_logger.dump(total_steps, ty='train', save=True)
-                elif 'ewc' in args.algo:
+
+                if 'ewc' in args.algo:
                     print(f"Estimating EWC fisher: {infos[0]['task_name']}")
                     if any(x in args.algo for x in ['mh', 'mi', 'individual', 'hypernet', 'distilled']):
                         agent.estimate_fisher(env=env, replay_buffer=replay_buffer,

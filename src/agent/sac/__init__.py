@@ -72,3 +72,5 @@ from agent.sac.task_embedding_distilled_actor_sac_agent import \
     TaskEmbeddingDistilledActorSacMlpAgent
 from agent.sac.ewc_task_embedding_distilled_actor_sac_agent import \
     EwcTaskEmbeddingDistilledActorSacMlpAgent
+from agent.sac.si_task_embedding_distilled_actor_sac_agent import \
+    SiTaskEmbeddingDistilledActorSacMlpAgent

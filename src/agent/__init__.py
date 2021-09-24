@@ -30,7 +30,8 @@ from src.agent.sac import \
     AgemTaskEmbeddingHyperNetActorSacMlpAgent
 from src.agent.sac import \
     TaskEmbeddingDistilledActorSacMlpAgent, \
-    EwcTaskEmbeddingDistilledActorSacMlpAgent
+    EwcTaskEmbeddingDistilledActorSacMlpAgent, \
+    SiTaskEmbeddingDistilledActorSacMlpAgent
 from src.agent.td3 import Td3MlpAgent, MultiHeadTd3MlpAgent, MultiInputTd3MlpAgent, \
     EwcMultiHeadTd3MlpAgent, EwcMultiInputTd3MlpAgent, \
     SiMultiHeadTd3MlpAgent, SiMultiInputTd3MlpAgent, \
@@ -76,6 +77,7 @@ ALGOS = [
     'agem_task_embedding_hypernet_actor_sac_mlp',
     'task_embedding_distilled_actor_sac_mlp',
     'ewc_task_embedding_distilled_actor_sac_mlp',
+    'si_task_embedding_distilled_actor_sac_mlp',
     'agem_mh_sac_mlp',
     'agem_mh_sac_mlp_v2',
     'agem_mi_sac_mlp_v2',
@@ -370,6 +372,16 @@ def make_agent(obs_space, action_space, device, args):
             kwargs['online_ewc'] = args.sac_online_ewc
             kwargs['online_ewc_gamma'] = args.sac_online_ewc_gamma
             agent = EwcTaskEmbeddingDistilledActorSacMlpAgent(**kwargs)
+        elif args.algo == 'si_task_embedding_distilled_actor_sac_mlp':
+            kwargs['distillation_hidden_dim'] = args.sac_distillation_hidden_dim
+            kwargs['distillation_task_embedding_dim'] = args.sac_distillation_task_embedding_dim
+            kwargs['distillation_epochs'] = args.sac_distillation_epochs
+            kwargs['distillation_iters_per_epoch'] = args.sac_distillation_iters_per_epoch
+            kwargs['distillation_batch_size'] = args.sac_distillation_batch_size
+            kwargs['distillation_memory_budget_per_task'] = args.sac_distillation_memory_budget_per_task
+            kwargs['si_c'] = args.sac_si_c
+            kwargs['si_epsilon'] = args.sac_si_epsilon
+            agent = SiTaskEmbeddingDistilledActorSacMlpAgent(**kwargs)
         elif args.algo == 'agem_mh_sac_mlp':
             kwargs['agem_memory_budget'] = args.sac_agem_memory_budget
             kwargs['agem_ref_grad_batch_size'] = args.sac_agem_ref_grad_batch_size

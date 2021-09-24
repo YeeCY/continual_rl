@@ -109,11 +109,8 @@ class EwcTaskEmbeddingDistilledActorSacMlpAgent(TaskEmbeddingDistilledActorSacMl
                             torch.Tensor(obs).to(device=self.device),
                             compute_pi=True, compute_log_pi=True, **kwargs)
 
-                        if 'head_idx' in kwargs:
-                            action = utils.to_np(
-                                action.clamp(*self.action_range[kwargs['head_idx']]))
-                        else:
-                            action = utils.to_np(action.clamp(*self.action_range))
+                        action = utils.to_np(
+                            action.clamp(*self.action_range[task_idx]))
 
                     next_obs, reward, done, _ = env.step(action)
 
@@ -123,7 +120,7 @@ class EwcTaskEmbeddingDistilledActorSacMlpAgent(TaskEmbeddingDistilledActorSacMl
 
                     obs = next_obs
 
-                rollout_obses = torch.Tensor(samples['obs']).to(device=self.device)
+                rollout_obses = torch.Tensor(samples['obses']).to(device=self.device)
                 rollout_mus = torch.Tensor(samples['mus']).to(device=self.device)
                 rollout_log_stds = torch.Tensor(samples['log_stds']).to(device=self.device)
 
@@ -143,7 +140,7 @@ class EwcTaskEmbeddingDistilledActorSacMlpAgent(TaskEmbeddingDistilledActorSacMl
 
             # compute distillation loss
             mus, _, _, log_stds = self.distilled_actor(
-                samples['obs'].squeeze(), task_idx,
+                samples['obses'].squeeze(), task_idx,
                 compute_pi=True, compute_log_pi=True)
 
             actor_dists = Independent(Normal(loc=samples['mus'].squeeze(),
@@ -158,10 +155,10 @@ class EwcTaskEmbeddingDistilledActorSacMlpAgent(TaskEmbeddingDistilledActorSacMl
             for name, param in self.distilled_actor.named_parameters():
                 if param.requires_grad:
                     if param.grad is not None:
-                        fishers[name] = param.grad.detach().clone() ** 2 + \
-                                        fishers.get(name, torch.zeros_like(param.grad))
+                        fishers[name] = param.grad.detach().cpu().clone() ** 2 + \
+                                        fishers.get(name, torch.zeros_like(param.grad).cpu())
                     else:
-                        fishers[name] = torch.zeros_like(param)
+                        fishers[name] = torch.zeros_like(param).cpu()
 
         for name, param in self.distilled_actor.named_parameters():
             if param.requires_grad:
@@ -169,14 +166,14 @@ class EwcTaskEmbeddingDistilledActorSacMlpAgent(TaskEmbeddingDistilledActorSacMl
 
                 if self.online_ewc:
                     name = name + '_prev_task'
-                    self.prev_task_params[name] = param.detach().clone()
+                    self.prev_task_params[name] = param.detach().cpu().clone()
                     self.prev_task_fishers[name] = \
                         fisher / self.ewc_estimate_fisher_iters + \
                         self.online_ewc_gamma * self.prev_task_fishers.get(
-                            name, torch.zeros_like(param.grad))
+                            name, torch.zeros_like(param.grad).cpu())
                 else:
                     name = name + f'_prev_task{self.ewc_task_count}'
-                    self.prev_task_params[name] = param.detach().clone()
+                    self.prev_task_params[name] = param.detach().cpu().clone()
                     self.prev_task_fishers[name] = \
                         fisher / self.ewc_estimate_fisher_iters
 
@@ -191,9 +188,9 @@ class EwcTaskEmbeddingDistilledActorSacMlpAgent(TaskEmbeddingDistilledActorSacMl
                 for name, param in named_parameters:
                     if param.grad is not None:
                         name = name + '_prev_task'
-                        mean = self.prev_task_params[name]
+                        mean = self.prev_task_params[name].to(self.device)
                         # apply decay-term to the running sum of the Fisher Information matrices
-                        fisher = self.online_ewc_gamma * self.prev_task_fishers[name]
+                        fisher = self.online_ewc_gamma * self.prev_task_fishers[name].to(self.device)
                         ewc_loss = torch.sum(fisher * (param - mean) ** 2)
                         ewc_losses.append(ewc_loss)
             else:
@@ -202,8 +199,8 @@ class EwcTaskEmbeddingDistilledActorSacMlpAgent(TaskEmbeddingDistilledActorSacMl
                     for name, param in named_parameters:
                         if param.grad is not None:
                             name = name + f'_prev_task{task}'
-                            mean = self.prev_task_params[name]
-                            fisher = self.prev_task_fishers[name]
+                            mean = self.prev_task_params[name].to(self.device)
+                            fisher = self.prev_task_fishers[name].to(self.device)
                             ewc_loss = torch.sum(fisher * (param - mean) ** 2)
                             ewc_losses.append(ewc_loss)
             return torch.sum(torch.stack(ewc_losses)) / 2.0
