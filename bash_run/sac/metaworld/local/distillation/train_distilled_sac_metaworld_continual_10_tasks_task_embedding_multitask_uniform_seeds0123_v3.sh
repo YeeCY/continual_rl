@@ -37,12 +37,12 @@ for seed in "${seeds[@]}"; do
     --sac_num_train_iters 1000 \
     --sac_distillation_hidden_dim 256 \
     --sac_distillation_task_embedding_dim 16 \
-    --sac_distillation_epochs 1 \
+    --sac_distillation_epochs 200 \
     --sac_distillation_iters_per_epoch 50 \
     --sac_distillation_batch_size 1000 \
     --sac_distillation_memory_budget_per_task 50000 \
     --sac_distillation_sample_src hybrid \
     --seed $seed \
-    --work_dir $PROJECT_DIR/vec_logs/distilled_sac_mlp_metaworld_10_tasks/multitask_uniform/$seed \
-    > $PROJECT_DIR/terminal_logs/distilled_sac_mlp_metaworld_10_tasks-multitask_uniform-seed"$seed".log 2>&1 &
+    --work_dir $PROJECT_DIR/vec_logs/distilled_sac_mlp_metaworld_10_tasks/distillation_multitask_uniform/$seed \
+    > $PROJECT_DIR/terminal_logs/distilled_sac_mlp_metaworld_10_tasks-distillation_multitask_uniform-seed"$seed".log 2>&1 &
 done
