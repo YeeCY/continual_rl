@@ -480,7 +480,7 @@ def main(args):
                     #         agent.construct_memory(env)
                     # else:
                     #     agent.construct_memory(replay_buffer)
-                elif 'task_embedding_hypernet':
+                elif 'task_embedding_hypernet' in args.algo:
                     agent.construct_hypernet_targets()
 
                 agent.reset(reset_critic=args.reset_agent)

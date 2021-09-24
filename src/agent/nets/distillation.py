@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 # import torch.nn.functional as F
 
-# from collections import OrderedDict
+from collections import OrderedDict
 
 from src.utils import weight_init, gaussian_logprob, squash
 
@@ -36,6 +36,10 @@ class SacTaskEmbeddingDistilledActorMlp(nn.Module):
                              requires_grad=True)
             )
             torch.nn.init.normal_(self.task_embs[-1], mean=0., std=1.)
+
+    @property
+    def weights(self):
+        return OrderedDict(self.trunk.named_parameters())
 
     def construct_input(self, obs, task_idx):
         batch_size = obs.shape[0]

@@ -55,13 +55,13 @@ class SiTaskEmbeddingDistilledActorSacMlpAgent(TaskEmbeddingDistilledActorSacMlp
 
     def _save_init_params(self):
         # set prev_task_params as weight initializations
-        for name, param in self.distilled_actor.named_parameters():
+        for name, param in self.distilled_actor.weights.items():
             if param.requires_grad:
                 self.prev_task_params[name] = param.detach().cpu().clone()
                 self.prev_params[name] = param.detach().cpu().clone()
 
     def update_omegas(self):
-        for name, param in self.distilled_actor.named_parameters():
+        for name, param in self.distilled_actor.weights.items():
             if param.requires_grad:
                 prev_param = self.prev_task_params[name]
                 current_param = param.detach().cpu().clone()
@@ -76,7 +76,7 @@ class SiTaskEmbeddingDistilledActorSacMlpAgent(TaskEmbeddingDistilledActorSacMlp
         self.params_w = {}
 
     def _estimate_importance(self):
-        for name, param in self.distilled_actor.named_parameters():
+        for name, param in self.distilled_actor.weights.items():
             if param.requires_grad:
                 self.params_w[name] = \
                     -param.grad.detach().cpu() * (param.detach().cpu() - self.prev_params[name]) + \
@@ -113,15 +113,17 @@ class SiTaskEmbeddingDistilledActorSacMlpAgent(TaskEmbeddingDistilledActorSacMlp
             distilled_actor_dists = Independent(Normal(loc=mus, scale=log_stds.exp()), 1)
             distillation_loss = torch.mean(kl_divergence(actor_dists, distilled_actor_dists))
             # regularize with SI
-            si_surrogate_loss = self._compute_surrogate_loss(self.distilled_actor.named_parameters())
+            si_surrogate_loss = self._compute_surrogate_loss(self.distilled_actor.weights.items())
             distillation_loss = distillation_loss + self.si_c * si_surrogate_loss
 
             logger.log('train/distillation_loss', distillation_loss,
                        total_steps + epoch * self.distillation_iters_per_epoch + iter)
 
-            self.distilled_actor_optimizer.zero_grad()
+            self.distilled_actor_weight_optimizer.zero_grad()
+            self.distilled_actor_emb_optimizer.zero_grad()
             distillation_loss.backward()
-            self.distilled_actor_optimizer.step()
+            self.distilled_actor_weight_optimizer.step()
+            self.distilled_actor_emb_optimizer.step()
 
             # estimate weight importance
             self._estimate_importance()

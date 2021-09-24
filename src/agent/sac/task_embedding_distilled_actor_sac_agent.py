@@ -48,13 +48,13 @@ class TaskEmbeddingDistilledActorSacMlpAgent(SacMlpAgent):
         self.distillation_batch_size = distillation_batch_size
         self.distillation_memory_budget_per_task = distillation_memory_budget_per_task
 
+        self.task_count = 0
+        self.memories = []
+
         super().__init__(
             obs_shape, action_shape, action_range, device, actor_hidden_dim, critic_hidden_dim, discount,
             init_temperature, alpha_lr, actor_lr, actor_log_std_min, actor_log_std_max, actor_update_freq, critic_lr,
             critic_tau, critic_target_update_freq, batch_size)
-
-        self.task_count = 0
-        self.memories = []
 
     def _setup_agent(self):
         if hasattr(self, 'actor') and hasattr(self, 'critic') \
@@ -89,14 +89,32 @@ class TaskEmbeddingDistilledActorSacMlpAgent(SacMlpAgent):
 
         # sac optimizers
         self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), lr=self.actor_lr)
-        self.distilled_actor_optimizer = torch.optim.Adam(
-            self.distilled_actor.parameters(), lr=self.actor_lr)
+        self.distilled_actor_weight_optimizer = torch.optim.Adam(
+            self.distilled_actor.weights.values(), lr=self.actor_lr)
+        self.distilled_actor_emb_optimizer = torch.optim.Adam(
+            [self.distilled_actor.task_embs[self.task_count]],
+            lr=self.actor_lr
+        )
         self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), lr=self.critic_lr)
 
         self.log_alpha_optimizer = torch.optim.Adam([self.log_alpha], lr=self.alpha_lr)
 
         # save initial parameters
         self._critic_init_state = copy.deepcopy(self.critic.state_dict())
+
+    def reset(self, **kwargs):
+        self.reset_target_critic()
+        self.reset_log_alpha()
+
+        self.distilled_actor_weight_optimizer = torch.optim.Adam(
+            self.distilled_actor.weights.values(), lr=self.actor_lr,
+        )
+        self.distilled_actor_emb_optimizer = torch.optim.Adam(
+            [self.distilled_actor.task_embs[self.task_count]]
+        )
+        self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), lr=self.actor_lr)
+        self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), lr=self.critic_lr)
+        self.log_alpha_optimizer = torch.optim.Adam([self.log_alpha], lr=self.alpha_lr)
 
     def _train_distilled_actor(self, dataset, total_steps, epoch, logger):
         for iter in range(self.distillation_iters_per_epoch):
@@ -127,9 +145,12 @@ class TaskEmbeddingDistilledActorSacMlpAgent(SacMlpAgent):
             logger.log('train/distillation_loss', loss,
                        total_steps + epoch * self.distillation_iters_per_epoch + iter)
 
-            self.distilled_actor_optimizer.zero_grad()
+            # (cyzheng): don't optimize embedding vector of previous tasks
+            self.distilled_actor_weight_optimizer.zero_grad()
+            self.distilled_actor_emb_optimizer.zero_grad()
             loss.backward()
-            self.distilled_actor_optimizer.step()
+            self.distilled_actor_weight_optimizer.step()
+            self.distilled_actor_emb_optimizer.step()
 
     def act(self, obs, sample=False, use_distilled_actor=False, **kwargs):
         if not isinstance(obs, torch.Tensor):

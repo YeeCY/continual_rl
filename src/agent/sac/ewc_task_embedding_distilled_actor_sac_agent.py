@@ -74,49 +74,53 @@ class EwcTaskEmbeddingDistilledActorSacMlpAgent(TaskEmbeddingDistilledActorSacMl
             if sample_src == 'rollout':
                 for _ in range(self.ewc_estimate_fisher_sample_num):
                     with utils.eval_mode(self):
-                        action = self.act(obs, sample=True, head_idx=task_idx)
-
-                    next_obs, reward, done, _ = env.step(action)
-
-                    samples['obs'].append(obs)
-                    samples['action'].append(action)
-                    samples['reward'].append(reward)
-                    samples['next_obs'].append(next_obs)
-                    not_done = [not done_ for done_ in done]
-                    samples['not_done'].append(not_done)
-
-                    obs = next_obs
-                samples['obs'] = torch.Tensor(samples['obs']).to(device=self.device)
-                samples['action'] = torch.Tensor(samples['action']).to(device=self.device)
-                samples['reward'] = torch.Tensor(
-                    samples['reward']).to(device=self.device).unsqueeze(-1)
-                samples['next_obs'] = torch.Tensor(samples['next_obs']).to(device=self.device)
-                samples['not_dones'] = torch.Tensor(
-                    samples['not_done']).to(device=self.device).unsqueeze(-1)
-            elif sample_src == 'replay_buffer':
-                obs, action, reward, next_obs, not_done = replay_buffer.sample(
-                    self.ewc_estimate_fisher_sample_num)
-                samples['obs'] = obs
-                samples['action'] = action
-                samples['reward'] = reward
-                samples['next_obs'] = next_obs
-                samples['not_done'] = not_done
-            elif sample_src == 'hybrid':
-                for _ in range(self.ewc_estimate_fisher_sample_num // 2):
-                    with utils.eval_mode(self):
-                        # compute log_pi and Q for later gradient projection
                         mu, action, _, log_std = self.actor(
                             torch.Tensor(obs).to(device=self.device),
                             compute_pi=True, compute_log_pi=True, **kwargs)
 
                         action = utils.to_np(
                             action.clamp(*self.action_range[task_idx]))
+                        mu = utils.to_np(mu)
+                        log_std = utils.to_np(log_std)
 
                     next_obs, reward, done, _ = env.step(action)
 
                     samples['obses'].append(obs)
-                    samples['mus'].append(utils.to_np(mu))
-                    samples['log_stds'].append(utils.to_np(log_std))
+                    samples['mus'].append(mu)
+                    samples['log_stds'].append(log_std)
+
+                    obs = next_obs
+                samples['obses'] = torch.Tensor(samples['obses']).to(device=self.device)
+                samples['mus'] = torch.Tensor(samples['mus']).to(device=self.device)
+                samples['log_stds'] = torch.Tensor(samples['log_stds']).to(device=self.device)
+            elif sample_src == 'replay_buffer':
+                obses, _, _, _, _ = replay_buffer.sample(
+                    self.ewc_estimate_fisher_sample_num)
+
+                with utils.eval_mode(self):
+                    mus, _, _, log_stds = self.actor(
+                        obses, compute_pi=True, compute_log_pi=True, **kwargs)
+
+                samples['obses'] = obses
+                samples['mus'] = mus
+                samples['log_stds'] = log_stds
+            elif sample_src == 'hybrid':
+                for _ in range(self.ewc_estimate_fisher_sample_num // 2):
+                    with utils.eval_mode(self):
+                        mu, action, _, log_std = self.actor(
+                            torch.Tensor(obs).to(device=self.device),
+                            compute_pi=True, compute_log_pi=True, **kwargs)
+
+                        action = utils.to_np(
+                            action.clamp(*self.action_range[task_idx]))
+                        mu = utils.to_np(mu)
+                        log_std = utils.to_np(log_std)
+
+                    next_obs, reward, done, _ = env.step(action)
+
+                    samples['obses'].append(obs)
+                    samples['mus'].append(mu)
+                    samples['log_stds'].append(log_std)
 
                     obs = next_obs
 
@@ -148,11 +152,11 @@ class EwcTaskEmbeddingDistilledActorSacMlpAgent(TaskEmbeddingDistilledActorSacMl
             distilled_actor_dists = Independent(Normal(loc=mus, scale=log_stds.exp()), 1)
             loss = torch.mean(kl_divergence(actor_dists, distilled_actor_dists))
 
-            self.distilled_actor_optimizer.zero_grad()
+            self.distilled_actor_weight_optimizer.zero_grad()
             loss.backward()
 
             # compute Fisher matrix
-            for name, param in self.distilled_actor.named_parameters():
+            for name, param in self.distilled_actor.weights.items():
                 if param.requires_grad:
                     if param.grad is not None:
                         fishers[name] = param.grad.detach().cpu().clone() ** 2 + \
@@ -160,7 +164,7 @@ class EwcTaskEmbeddingDistilledActorSacMlpAgent(TaskEmbeddingDistilledActorSacMl
                     else:
                         fishers[name] = torch.zeros_like(param).cpu()
 
-        for name, param in self.distilled_actor.named_parameters():
+        for name, param in self.distilled_actor.weights.items():
             if param.requires_grad:
                 fisher = fishers[name]
 
@@ -224,12 +228,14 @@ class EwcTaskEmbeddingDistilledActorSacMlpAgent(TaskEmbeddingDistilledActorSacMl
             distilled_actor_dists = Independent(Normal(loc=mus, scale=log_stds.exp()), 1)
             distillation_loss = torch.mean(kl_divergence(actor_dists, distilled_actor_dists))
             # regularize with EWC
-            ewc_loss = self._compute_ewc_loss(self.distilled_actor.named_parameters())
+            ewc_loss = self._compute_ewc_loss(self.distilled_actor.weights.items())
             distillation_loss = distillation_loss + self.ewc_lambda * ewc_loss
 
             logger.log('train/distillation_loss', distillation_loss,
                        total_steps + epoch * self.distillation_iters_per_epoch + iter)
 
-            self.distilled_actor_optimizer.zero_grad()
+            self.distilled_actor_weight_optimizer.zero_grad()
+            self.distilled_actor_emb_optimizer.zero_grad()
             distillation_loss.backward()
-            self.distilled_actor_optimizer.step()
+            self.distilled_actor_weight_optimizer.step()
+            self.distilled_actor_emb_optimizer.step()
