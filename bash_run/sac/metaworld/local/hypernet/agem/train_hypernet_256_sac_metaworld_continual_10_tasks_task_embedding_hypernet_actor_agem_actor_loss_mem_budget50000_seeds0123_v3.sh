@@ -24,7 +24,7 @@ for seed in "${seeds[@]}"; do
       handle-pull-side-v2 \
       window-open-v2 \
     --env_type metaworld \
-    --algo ewc_task_embedding_hypernet_actor_sac_mlp \
+    --algo agem_task_embedding_hypernet_actor_sac_mlp \
     --train_steps_per_task 500000 \
     --eval_freq 10 \
     --discount 0.99 \

@@ -24,7 +24,7 @@ for seed in "${seeds[@]}"; do
       handle-pull-side-v2 \
       window-open-v2 \
     --env_type metaworld \
-    --algo ewc_task_embedding_distilled_actor_sac_mlp \
+    --algo si_task_embedding_distilled_actor_sac_mlp \
     --train_steps_per_task 500000 \
     --eval_freq 10 \
     --log_freq 5 \
@@ -42,11 +42,8 @@ for seed in "${seeds[@]}"; do
     --sac_distillation_batch_size 1000 \
     --sac_distillation_memory_budget_per_task 50000 \
     --sac_distillation_sample_src hybrid \
-    --sac_ewc_lambda 5000 \
-    --sac_ewc_estimate_fisher_iters 100 \
-    --sac_ewc_estimate_fisher_sample_num 1000 \
-    --sac_ewc_estimate_fisher_sample_src hybrid \
+    --sac_si_c 1.0 \
     --seed $seed \
-    --work_dir $PROJECT_DIR/vec_logs/distilled_sac_mlp_metaworld_10_tasks/distillation_ewc_lambda5000/$seed \
-    > $PROJECT_DIR/terminal_logs/distilled_sac_mlp_metaworld_10_tasks-distillation_ewc_lambda5000-seed"$seed".log 2>&1 &
+    --work_dir $PROJECT_DIR/vec_logs/distilled_sac_mlp_metaworld_10_tasks/distillation_si_c1.0/$seed \
+    > $PROJECT_DIR/terminal_logs/distilled_sac_mlp_metaworld_10_tasks-distillation_si_c1.0-seed"$seed".log 2>&1 &
 done
