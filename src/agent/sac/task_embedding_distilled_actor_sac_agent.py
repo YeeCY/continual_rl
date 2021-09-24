@@ -33,7 +33,7 @@ class TaskEmbeddingDistilledActorSacMlpAgent(SacMlpAgent):
             batch_size=128,
             distillation_hidden_dim=256,
             distillation_task_embedding_dim=16,
-            distillation_epochs=1,
+            distillation_epochs=200,
             distillation_iters_per_epoch=50,
             distillation_batch_size=1000,
             distillation_memory_budget_per_task=50000,
@@ -98,30 +98,38 @@ class TaskEmbeddingDistilledActorSacMlpAgent(SacMlpAgent):
         # save initial parameters
         self._critic_init_state = copy.deepcopy(self.critic.state_dict())
 
-    def _train_distilled_actor(self, dataset, step, logger):
-        losses = []
-        for subset in dataset:
-            random_idxs = np.random.randint(0, self.distillation_memory_budget_per_task,
-                                            size=self.distillation_batch_size)
-            batch_obses = torch.Tensor(subset['obses'][random_idxs]).to(self.device).squeeze()
-            batch_mus = torch.Tensor(subset['mus'][random_idxs]).to(self.device).squeeze()
-            batch_log_stds = torch.Tensor(subset['log_stds'][random_idxs]).to(self.device).squeeze()
-            task_id = subset['task_id']
+    def _train_distilled_actor(self, dataset, total_steps, epoch, logger):
+        for iter in range(self.distillation_iters_per_epoch):
+            # TODO (cyzheng): convert previous task memory batch size to an argument
+            if self.task_count > 0:
+                prev_task_dataset = np.random.choice(self.memories, 3).tolist()
+            else:
+                prev_task_dataset = []
 
-            mus, _, _, log_stds = self.distilled_actor(
-                batch_obses, task_id,
-                compute_pi=True, compute_log_pi=True)
+            losses = []
+            for subset in [dataset] + prev_task_dataset:
+                random_idxs = np.random.randint(0, self.distillation_memory_budget_per_task,
+                                                size=self.distillation_batch_size)
+                batch_obses = torch.Tensor(subset['obses'][random_idxs]).to(self.device).squeeze()
+                batch_mus = torch.Tensor(subset['mus'][random_idxs]).to(self.device).squeeze()
+                batch_log_stds = torch.Tensor(subset['log_stds'][random_idxs]).to(self.device).squeeze()
+                task_id = subset['task_id']
 
-            actor_dists = Independent(Normal(loc=batch_mus, scale=batch_log_stds.exp()), 1)
-            distilled_actor_dists = Independent(Normal(loc=mus, scale=log_stds.exp()), 1)
-            losses.append(torch.mean(kl_divergence(actor_dists, distilled_actor_dists)))
-        loss = torch.mean(torch.stack(losses))
+                mus, _, _, log_stds = self.distilled_actor(
+                    batch_obses, task_id,
+                    compute_pi=True, compute_log_pi=True)
 
-        logger.log('train/distillation_loss', loss, step)
+                actor_dists = Independent(Normal(loc=batch_mus, scale=batch_log_stds.exp()), 1)
+                distilled_actor_dists = Independent(Normal(loc=mus, scale=log_stds.exp()), 1)
+                losses.append(torch.mean(kl_divergence(actor_dists, distilled_actor_dists)))
+            loss = torch.mean(torch.stack(losses))
 
-        self.distilled_actor_optimizer.zero_grad()
-        loss.backward()
-        self.distilled_actor_optimizer.step()
+            logger.log('train/distillation_loss', loss,
+                       total_steps + epoch * self.distillation_iters_per_epoch + iter)
+
+            self.distilled_actor_optimizer.zero_grad()
+            loss.backward()
+            self.distilled_actor_optimizer.step()
 
     def act(self, obs, sample=False, use_distilled_actor=False, **kwargs):
         if not isinstance(obs, torch.Tensor):
@@ -242,16 +250,7 @@ class TaskEmbeddingDistilledActorSacMlpAgent(SacMlpAgent):
             else:
                 raise ValueError("Unknown sample source!")
 
-            for iter in range(self.distillation_iters_per_epoch):
-                # TODO (cyzheng): convert previous task memory batch size to an argument
-                if self.task_count > 0:
-                    prev_task_dataset = np.random.choice(self.memories, 3).tolist()
-                else:
-                    prev_task_dataset = []
-                self._train_distilled_actor(
-                    [dataset] + prev_task_dataset,
-                    total_steps + epoch * self.distillation_iters_per_epoch + iter,
-                    logger)
+            self._train_distilled_actor(dataset, total_steps, epoch, logger)
 
             # TODO (cyzheng): log loss for every epoch
             logger.dump(total_steps + epoch * self.distillation_iters_per_epoch,
@@ -259,4 +258,3 @@ class TaskEmbeddingDistilledActorSacMlpAgent(SacMlpAgent):
 
         self.memories.append(dataset)
         self.task_count += 1
-

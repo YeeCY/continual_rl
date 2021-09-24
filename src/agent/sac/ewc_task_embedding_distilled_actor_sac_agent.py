@@ -1,6 +1,8 @@
-import copy
 import numpy as np
+from collections import Iterable
 import torch
+from torch.distributions import Independent, Normal
+from torch.distributions.kl import kl_divergence
 
 import utils
 from agent.sac import TaskEmbeddingDistilledActorSacMlpAgent
@@ -28,7 +30,7 @@ class EwcTaskEmbeddingDistilledActorSacMlpAgent(TaskEmbeddingDistilledActorSacMl
             batch_size=128,
             distillation_hidden_dim=256,
             distillation_task_embedding_dim=16,
-            distillation_epochs=1,
+            distillation_epochs=200,
             distillation_iters_per_epoch=50,
             distillation_batch_size=1000,
             distillation_memory_budget_per_task=50000,
@@ -65,17 +67,14 @@ class EwcTaskEmbeddingDistilledActorSacMlpAgent(TaskEmbeddingDistilledActorSacMl
         for _ in range(self.ewc_estimate_fisher_iters):
             obs = env.reset()
             samples = {
-                'obs': [],
-                'action': [],
-                'reward': [],
-                'next_obs': [],
-                'not_done': [],
+                'obses': [],
+                'mus': [],
+                'log_stds': [],
             }
             if sample_src == 'rollout':
                 for _ in range(self.ewc_estimate_fisher_sample_num):
                     with utils.eval_mode(self):
-                        action = self.act(obs, sample=True, head_idx=task_idx,
-                                          use_distilled_actor=True)
+                        action = self.act(obs, sample=True, head_idx=task_idx)
 
                     next_obs, reward, done, _ = env.step(action)
 
@@ -105,45 +104,58 @@ class EwcTaskEmbeddingDistilledActorSacMlpAgent(TaskEmbeddingDistilledActorSacMl
             elif sample_src == 'hybrid':
                 for _ in range(self.ewc_estimate_fisher_sample_num // 2):
                     with utils.eval_mode(self):
-                        action = self.act(obs, sample=True, head_idx=task_idx)
+                        # compute log_pi and Q for later gradient projection
+                        mu, action, _, log_std = self.actor(
+                            torch.Tensor(obs).to(device=self.device),
+                            compute_pi=True, compute_log_pi=True, **kwargs)
+
+                        if 'head_idx' in kwargs:
+                            action = utils.to_np(
+                                action.clamp(*self.action_range[kwargs['head_idx']]))
+                        else:
+                            action = utils.to_np(action.clamp(*self.action_range))
 
                     next_obs, reward, done, _ = env.step(action)
 
-                    samples['obs'].append(obs)
-                    samples['action'].append(action)
-                    samples['reward'].append(reward)
-                    samples['next_obs'].append(next_obs)
-                    not_done = [not done_ for done_ in done]
-                    samples['not_done'].append(not_done)
+                    samples['obses'].append(obs)
+                    samples['mus'].append(utils.to_np(mu))
+                    samples['log_stds'].append(utils.to_np(log_std))
 
                     obs = next_obs
 
-                rollout_obs = torch.Tensor(samples['obs']).to(device=self.device)
-                rollout_action = torch.Tensor(samples['action']).to(device=self.device)
-                rollout_reward = torch.Tensor(
-                    samples['reward']).to(device=self.device).unsqueeze(-1)
-                rollout_next_obs = torch.Tensor(samples['next_obs']).to(device=self.device)
-                rollout_not_done = torch.Tensor(
-                    samples['not_done']).to(device=self.device).unsqueeze(-1)
+                rollout_obses = torch.Tensor(samples['obs']).to(device=self.device)
+                rollout_mus = torch.Tensor(samples['mus']).to(device=self.device)
+                rollout_log_stds = torch.Tensor(samples['log_stds']).to(device=self.device)
 
-                obs, action, reward, next_obs, not_done = replay_buffer.sample(
-                    self.ewc_estimate_fisher_sample_num - self.ewc_estimate_fisher_sample_num // 2)
-                samples['obs'] = torch.cat([rollout_obs, obs], dim=0)
-                samples['action'] = torch.cat([rollout_action, action], dim=0)
-                samples['reward'] = torch.cat([rollout_reward, reward], dim=0)
-                samples['next_obs'] = torch.cat([rollout_next_obs, next_obs], dim=0)
-                samples['not_done'] = torch.cat([rollout_not_done, not_done], dim=0)
+                obses, _, _, _, _ = replay_buffer.sample(
+                    self.ewc_estimate_fisher_sample_num -
+                    self.ewc_estimate_fisher_sample_num // 2)
+
+                with utils.eval_mode(self):
+                    mus, _, _, log_stds = self.actor(
+                        obses, compute_pi=True, compute_log_pi=True, **kwargs)
+
+                samples['obses'] = torch.cat([rollout_obses, obses], dim=0)
+                samples['mus'] = torch.cat([rollout_mus, mus], dim=0)
+                samples['log_stds'] = torch.cat([rollout_log_stds, log_stds], dim=0)
             else:
                 raise ValueError("Unknown sample source!")
 
-            _, actor_loss, _ = self.compute_actor_and_alpha_loss(
-                samples['obs'],
-                compute_alpha_loss=False, task_idx=task_idx
-            )
-            self.hypernet_weight_optimizer.zero_grad()
-            actor_loss.backward()
+            # compute distillation loss
+            mus, _, _, log_stds = self.distilled_actor(
+                samples['obs'].squeeze(), task_idx,
+                compute_pi=True, compute_log_pi=True)
 
-            for name, param in self.hypernet.weights.items():
+            actor_dists = Independent(Normal(loc=samples['mus'].squeeze(),
+                                             scale=samples['log_stds'].squeeze().exp()), 1)
+            distilled_actor_dists = Independent(Normal(loc=mus, scale=log_stds.exp()), 1)
+            loss = torch.mean(kl_divergence(actor_dists, distilled_actor_dists))
+
+            self.distilled_actor_optimizer.zero_grad()
+            loss.backward()
+
+            # compute Fisher matrix
+            for name, param in self.distilled_actor.named_parameters():
                 if param.requires_grad:
                     if param.grad is not None:
                         fishers[name] = param.grad.detach().clone() ** 2 + \
@@ -151,7 +163,7 @@ class EwcTaskEmbeddingDistilledActorSacMlpAgent(TaskEmbeddingDistilledActorSacMl
                     else:
                         fishers[name] = torch.zeros_like(param)
 
-        for name, param in self.hypernet.weights.items():
+        for name, param in self.distilled_actor.named_parameters():
             if param.requires_grad:
                 fisher = fishers[name]
 
@@ -169,3 +181,58 @@ class EwcTaskEmbeddingDistilledActorSacMlpAgent(TaskEmbeddingDistilledActorSacMl
                         fisher / self.ewc_estimate_fisher_iters
 
         self.ewc_task_count += 1
+
+    def _compute_ewc_loss(self, named_parameters):
+        assert isinstance(named_parameters, Iterable), "'named_parameters' must be a iterator"
+
+        ewc_losses = []
+        if self.ewc_task_count >= 1:
+            if self.online_ewc:
+                for name, param in named_parameters:
+                    if param.grad is not None:
+                        name = name + '_prev_task'
+                        mean = self.prev_task_params[name]
+                        # apply decay-term to the running sum of the Fisher Information matrices
+                        fisher = self.online_ewc_gamma * self.prev_task_fishers[name]
+                        ewc_loss = torch.sum(fisher * (param - mean) ** 2)
+                        ewc_losses.append(ewc_loss)
+            else:
+                for task in range(self.ewc_task_count):
+                    # compute ewc loss for each parameter
+                    for name, param in named_parameters:
+                        if param.grad is not None:
+                            name = name + f'_prev_task{task}'
+                            mean = self.prev_task_params[name]
+                            fisher = self.prev_task_fishers[name]
+                            ewc_loss = torch.sum(fisher * (param - mean) ** 2)
+                            ewc_losses.append(ewc_loss)
+            return torch.sum(torch.stack(ewc_losses)) / 2.0
+        else:
+            return torch.tensor(0.0, device=self.device)
+
+    def _train_distilled_actor(self, dataset, total_steps, epoch, logger):
+        for iter in range(self.distillation_iters_per_epoch):
+            random_idxs = np.random.randint(0, self.distillation_memory_budget_per_task,
+                                            size=self.distillation_batch_size)
+            batch_obses = torch.Tensor(dataset['obses'][random_idxs]).to(self.device).squeeze()
+            batch_mus = torch.Tensor(dataset['mus'][random_idxs]).to(self.device).squeeze()
+            batch_log_stds = torch.Tensor(dataset['log_stds'][random_idxs]).to(self.device).squeeze()
+            task_id = dataset['task_id']
+
+            mus, _, _, log_stds = self.distilled_actor(
+                batch_obses, task_id,
+                compute_pi=True, compute_log_pi=True)
+
+            actor_dists = Independent(Normal(loc=batch_mus, scale=batch_log_stds.exp()), 1)
+            distilled_actor_dists = Independent(Normal(loc=mus, scale=log_stds.exp()), 1)
+            distillation_loss = torch.mean(kl_divergence(actor_dists, distilled_actor_dists))
+            # regularize with EWC
+            ewc_loss = self._compute_ewc_loss(self.distilled_actor.named_parameters())
+            distillation_loss = distillation_loss + self.ewc_lambda * ewc_loss
+
+            logger.log('train/distillation_loss', distillation_loss,
+                       total_steps + epoch * self.distillation_iters_per_epoch + iter)
+
+            self.distilled_actor_optimizer.zero_grad()
+            distillation_loss.backward()
+            self.distilled_actor_optimizer.step()

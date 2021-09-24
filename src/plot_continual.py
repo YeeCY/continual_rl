@@ -301,6 +301,11 @@ CURVE_FORMAT = {
         'style': '-',
         'label': 'distilled_actor_no_forgetting_reg'
     },
+    'distillation_multitask_uniform': {
+        'color': [255, 0, 0],
+        'style': '-',
+        'label': 'distillation_multitask_uniform'
+    },
 
     'task_embedding_hypernet_actor_reg_coeff0.1': {
         'color': [0, 255, 255],
@@ -450,6 +455,8 @@ def main(args):
                 for seed in seeds:
                     if 'distilled' in algo:
                         data_path = osp.join(data_dir, exp_name, algo, str(seed), 'distill', 'eval.csv')
+                    elif 'distillation' in algo:
+                        data_path = osp.join(data_dir, exp_name, algo, str(seed), 'distillation', 'eval.csv')
                     else:
                         data_path = osp.join(data_dir, exp_name, algo, str(seed), 'eval.csv')
                     data_path = os.path.abspath(data_path)
@@ -493,6 +500,15 @@ if __name__ == '__main__':
     #     splited_s = s.split(',')
     #     assert splited_s, 'invalid string pair'
     #     return (splited_s[0], splited_s[1])
+    def str2bool(v):
+        if isinstance(v, bool):
+            return v
+        if v.lower() in ('yes', 'true', 't', 'y', '1'):
+            return True
+        elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+            return False
+        else:
+            raise argparse.ArgumentTypeError('Boolean value expected.')
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--exp_name', type=str, default='reach_window-close_button-press-topdown')

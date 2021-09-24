@@ -301,6 +301,11 @@ CURVE_FORMAT = {
         'style': '-',
         'label': 'distilled_actor_no_forgetting_reg'
     },
+    'distillation_multitask_uniform': {
+        'color': [255, 0, 0],
+        'style': '-',
+        'label': 'distillation_multitask_uniform'
+    },
 
     'task_embedding_hypernet_actor_reg_coeff0.1': {
         'color': [0, 255, 255],
@@ -469,6 +474,8 @@ def main(args):
                 for seed in seeds:
                     if 'distilled' in algo:
                         data_path = osp.join(data_dir, exp_name, algo, str(seed), 'distill', 'eval.csv')
+                    elif 'distillation' in algo:
+                        data_path = osp.join(data_dir, exp_name, algo, str(seed), 'distillation', 'eval.csv')
                     else:
                         data_path = osp.join(data_dir, exp_name, algo, str(seed), 'eval.csv')
                     data_path = os.path.abspath(data_path)

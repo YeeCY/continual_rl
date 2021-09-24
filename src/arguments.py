@@ -138,7 +138,7 @@ def parse_args():
 						choices=['rollout', 'replay_buffer', 'hybrid'])
 	parser.add_argument('--sac_distillation_hidden_dim', default=256, type=int)
 	parser.add_argument('--sac_distillation_task_embedding_dim', default=16, type=int)
-	parser.add_argument('--sac_distillation_epochs', default=1, type=int)
+	parser.add_argument('--sac_distillation_epochs', default=200, type=int)
 	parser.add_argument('--sac_distillation_iters_per_epoch', default=50, type=int)
 	parser.add_argument('--sac_distillation_batch_size', default=1000, type=int)
 	parser.add_argument('--sac_distillation_memory_budget_per_task', default=50000, type=int)

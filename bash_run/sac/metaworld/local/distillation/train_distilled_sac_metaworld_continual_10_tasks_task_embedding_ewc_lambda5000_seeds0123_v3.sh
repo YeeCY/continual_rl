@@ -1,7 +1,7 @@
 #!/bin/bash
 
 SCRIPT_DIR=$(dirname "$BASH_SOURCE")
-PROJECT_DIR=$(realpath "$SCRIPT_DIR/../../../../../..")
+PROJECT_DIR=$(realpath "$SCRIPT_DIR/../../../../..")
 
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/.mujoco/mujoco200/bin
 export PYTHONPATH=$PROJECT_DIR
@@ -24,9 +24,10 @@ for seed in "${seeds[@]}"; do
       handle-pull-side-v2 \
       window-open-v2 \
     --env_type metaworld \
-    --algo ewc_task_embedding_hypernet_actor_sac_mlp \
+    --algo task_embedding_distilled_actor_sac_mlp \
     --train_steps_per_task 500000 \
     --eval_freq 10 \
+    --log_freq 5 \
     --discount 0.99 \
     --sac_actor_hidden_dim 256 \
     --sac_critic_hidden_dim 256 \
@@ -34,13 +35,18 @@ for seed in "${seeds[@]}"; do
     --sac_num_expl_steps_per_process 1000 \
     --sac_num_processes 1 \
     --sac_num_train_iters 1000 \
-    --sac_hypernet_hidden_dim 256 \
-    --sac_hypernet_task_embedding_dim 16 \
+    --sac_distillation_hidden_dim 256 \
+    --sac_distillation_task_embedding_dim 16 \
+    --sac_distillation_epochs 200 \
+    --sac_distillation_iters_per_epoch 50 \
+    --sac_distillation_batch_size 1000 \
+    --sac_distillation_memory_budget_per_task 50000 \
+    --sac_distillation_sample_src hybrid \
     --sac_ewc_lambda 5000 \
     --sac_ewc_estimate_fisher_iters 100 \
     --sac_ewc_estimate_fisher_sample_num 1000 \
     --sac_ewc_estimate_fisher_sample_src hybrid \
     --seed $seed \
-    --work_dir $PROJECT_DIR/vec_logs/hypernet_sac_mlp_metaworld_10_tasks/task_embedding_hypernet_actor_256_ewc_actor_loss_lambda5000/$seed \
-    > $PROJECT_DIR/terminal_logs/hypernet_sac_mlp_metaworld_10_tasks-task_embedding_hypernet_actor_256_ewc_actor_loss_lambda5000-seed"$seed".log 2>&1 &
+    --work_dir $PROJECT_DIR/vec_logs/distilled_sac_mlp_metaworld_10_tasks/distillation_ewc_lambda5000/$seed \
+    > $PROJECT_DIR/terminal_logs/distilled_sac_mlp_metaworld_10_tasks-distillation_ewc_lambda5000-seed"$seed".log 2>&1 &
 done

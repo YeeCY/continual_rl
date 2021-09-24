@@ -70,3 +70,5 @@ from agent.sac.agem_task_embedding_hypernet_actor_sac_agent import \
 
 from agent.sac.task_embedding_distilled_actor_sac_agent import \
     TaskEmbeddingDistilledActorSacMlpAgent
+from agent.sac.ewc_task_embedding_distilled_actor_sac_agent import \
+    EwcTaskEmbeddingDistilledActorSacMlpAgent
