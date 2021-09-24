@@ -75,73 +75,47 @@ class AgemTaskEmbeddingDistilledActorSacMlpAgent(TaskEmbeddingDistilledActorSacM
             'mus': [],
             'log_stds': [],
         }
-        if sample_src == 'rollout':  # FIXME (cyzheng)
-            rollout_obses, rollout_actions, rollout_rewards, rollout_next_obses, \
-            rollout_not_dones, rollout_log_pis, rollout_qs = [], [], [], [], [], [], []
-
+        if sample_src == 'rollout':
+            rollout_obses, rollout_mus, rollout_log_stds = [], [], []
             for _ in range(self.agem_memory_budget):
                 with utils.eval_mode(self):
-                    # compute log_pi and Q for later gradient projection
-                    _, action, log_pi, _ = self.actor(
+                    mu, action, _, log_std = self.actor(
                         torch.Tensor(obs).to(device=self.device),
-                        compute_pi=True, compute_log_pi=True)
-                    actor_Q1, actor_Q2 = self.critic(
-                        torch.Tensor(obs).to(device=self.device), action, **kwargs)
-                    actor_Q = torch.min(actor_Q1, actor_Q2) - self.alpha.detach() * log_pi
+                        compute_pi=True, compute_log_pi=True, **kwargs)
 
-                    action = utils.to_np(action)
-                    log_pi = utils.to_np(log_pi)
-                    actor_Q = utils.to_np(actor_Q)
+                    action = utils.to_np(
+                        action.clamp(*self.action_range[task_idx]))
+                    mu = utils.to_np(mu)
+                    log_std = utils.to_np(log_std)
 
                 next_obs, reward, done, _ = env.step(action)
 
                 rollout_obses.append(obs)
-                rollout_actions.append(action)
-                rollout_rewards.append([reward])
-                rollout_next_obses.append(next_obs)
-                not_done = np.array([[not done_ for done_ in done]], dtype=np.float32)
-                rollout_not_dones.append(not_done)
-                rollout_log_pis.append(log_pi)
-                rollout_qs.append(actor_Q)
+                rollout_mus.append(mu)
+                rollout_log_stds.append(log_std)
 
                 obs = next_obs
-
             self.agem_memories[self.agem_task_count]['obses'] = np.asarray(rollout_obses)
-            self.agem_memories[self.agem_task_count]['actions'] = np.asarray(rollout_actions)
-            self.agem_memories[self.agem_task_count]['rewards'] = np.asarray(rollout_rewards)
-            self.agem_memories[self.agem_task_count]['next_obses'] = np.asarray(rollout_next_obses)
-            self.agem_memories[self.agem_task_count]['not_dones'] = np.asarray(rollout_not_dones)
-            self.agem_memories[self.agem_task_count]['log_pis'] = np.asarray(rollout_log_pis)
-            self.agem_memories[self.agem_task_count]['qs'] = np.asarray(rollout_qs)
-
+            self.agem_memories[self.agem_task_count]['mus'] = np.asarray(rollout_mus)
+            self.agem_memories[self.agem_task_count]['log_stds'] = np.asarray(rollout_log_stds)
         elif sample_src == 'replay_buffer':  # FIXME (cyzheng)
-            obses, actions, rewards, next_obses, not_dones = replay_buffer.sample(
+            obses, _, _, _, _ = replay_buffer.sample(
                 self.agem_memory_budget)
 
             with utils.eval_mode(self):
-                log_pis = self.actor.compute_log_probs(obses, actions, **kwargs)
-                actor_Q1, actor_Q2 = self.critic(
-                    obses, actions, **kwargs)
-                actor_Q = torch.min(actor_Q1, actor_Q2) - self.alpha.detach() * log_pis
+                mus, _, _, log_stds = self.actor(
+                    obses, compute_pi=True, compute_log_pi=True,
+                    **kwargs)
 
                 obses = utils.to_np(obses)
-                actions = utils.to_np(actions)
-                rewards = utils.to_np(rewards)
-                next_obses = utils.to_np(next_obses)
-                not_dones = utils.to_np(not_dones)
-                log_pis = utils.to_np(log_pis)
-                actor_Q = utils.to_np(actor_Q)
+                mus = utils.to_np(mus)
+                log_stds = utils.to_np(log_stds)
 
             self.agem_memories[self.agem_task_count]['obses'] = obses
-            self.agem_memories[self.agem_task_count]['actions'] = actions
-            self.agem_memories[self.agem_task_count]['rewards'] = rewards
-            self.agem_memories[self.agem_task_count]['next_obses'] = next_obses
-            self.agem_memories[self.agem_task_count]['not_dones'] = not_dones
-            self.agem_memories[self.agem_task_count]['log_pis'] = log_pis
-            self.agem_memories[self.agem_task_count]['qs'] = actor_Q
+            self.agem_memories[self.agem_task_count]['mus'] = mus
+            self.agem_memories[self.agem_task_count]['log_stds'] = log_stds
         elif sample_src == 'hybrid':
             rollout_obses, rollout_mus, rollout_log_stds = [], [], []
-
             for _ in range(self.agem_memory_budget // 2):
                 with utils.eval_mode(self):
                     mu, action, _, log_std = self.actor(
