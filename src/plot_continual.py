@@ -306,6 +306,21 @@ CURVE_FORMAT = {
         'style': '-',
         'label': 'distillation_multitask_uniform'
     },
+    'distillation_ewc_lambda5000': {
+        'color': [255, 0, 0],
+        'style': '-',
+        'label': 'distillation_ewc_lambda5000'
+    },
+    'distillation_si_c1.0': {
+        'color': [255, 0, 255],
+        'style': '-',
+        'label': 'distillation_si_c1.0'
+    },
+    'distillation_agem_memory_budget50000': {
+        'color': [180, 180, 180],
+        'style': '-',
+        'label': 'distillation_agem_memory_budget50000',
+    },
 
     'task_embedding_hypernet_actor_reg_coeff0.1': {
         'color': [0, 255, 255],
