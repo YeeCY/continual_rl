@@ -349,6 +349,21 @@ CURVE_FORMAT = {
         'label': 'task_embedding_hypernet_actor_256_reg_coeff0.1_online_uniform',
     },
 
+    'task_embedding_hypernet_actor_256_ewc_actor_loss_lambda5000': {
+        'color': [255, 0, 0],
+        'style': '-',
+        'label': 'task_embedding_hypernet_actor_256_ewc_actor_loss_lambda5000'
+    },
+    'task_embedding_hypernet_actor_256_si_actor_loss_c1.0': {
+        'color': [255, 0, 255],
+        'style': '-',
+        'label': 'task_embedding_hypernet_actor_256_si_actor_loss_c1.0'
+    },
+    'task_embedding_hypernet_actor_256_agem_actor_loss_memory_budget50000': {
+        'color': [180, 180, 180],
+        'style': '-',
+        'label': 'task_embedding_hypernet_actor_256_agem_actor_loss_memory_budget50000',
+    }
 }
 
 

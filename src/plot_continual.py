@@ -358,6 +358,11 @@ CURVE_FORMAT = {
         'style': '-',
         'label': 'task_embedding_hypernet_actor_256_si_actor_loss_c1.0'
     },
+    'task_embedding_hypernet_actor_256_agem_actor_loss_memory_budget50000': {
+        'color': [180, 180, 180],
+        'style': '-',
+        'label': 'task_embedding_hypernet_actor_256_agem_actor_loss_memory_budget50000',
+    }
 }
 
 
