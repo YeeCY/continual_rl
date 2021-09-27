@@ -302,7 +302,7 @@ CURVE_FORMAT = {
         'label': 'distilled_actor_no_forgetting_reg'
     },
     'distillation_multitask_uniform': {
-        'color': [255, 0, 0],
+        'color': [0, 255, 0],
         'style': '-',
         'label': 'distillation_multitask_uniform'
     },
