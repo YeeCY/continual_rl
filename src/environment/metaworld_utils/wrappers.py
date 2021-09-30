@@ -483,27 +483,18 @@ class MultiEnvWrapper(gym.Wrapper):
         self.action_space = self._task_envs[idx].action_space
 
     def _augment_observation(self, obs):
-        if obs.shape == self.observation_space.shape:
-            obs = np.expand_dims(obs, axis=0)
-
         # optionally zero-pad observation
-        if np.prod(obs.shape[1:]) < self._max_observation_dim:
-            zeros = np.zeros([
-                obs.shape[0],
-                self._max_observation_dim - np.prod(obs.shape[1:])
-            ])
+        if np.prod(obs.shape) < self._max_observation_dim:
+            zeros = np.zeros(self._max_observation_dim - np.prod(obs.shape))
             obs = np.concatenate([obs, zeros], axis=-1)
 
         return obs
 
     def _curtail_action(self, action):
-        if action.shape == self.action_space.shape:
-            action = np.expand_dims(action, axis=0)
-
         # optionally curtail action
         env_action_dim = np.prod(self.env.action_space.shape)
-        if np.prod(action.shape[1:]) > env_action_dim:
-            action = action[:, :env_action_dim]
+        if np.prod(action.shape) > env_action_dim:
+            action = action[:env_action_dim]
 
         return action
 
@@ -565,6 +556,12 @@ class MultiEnvWrapper(gym.Wrapper):
     @property
     def all_action_spaces(self):
         return [self._task_envs[id].action_space for id in range(self.num_tasks)]
+
+    def sample_task(self):
+        """Helper function for vectorized environment
+        """
+        self._active_task_index = self._sample_strategy(
+            self._num_tasks, self._active_task_index)
 
     def reset(self, sample_task=False):
         """Sample new task and call reset on new task environment.
@@ -629,11 +626,6 @@ class MultiEnvWrapper(gym.Wrapper):
             info['task_id'] = self._active_task_index
             if self._env_names is not None:
                 info['task_name'] = self._env_names[self._active_task_index]
-        elif isinstance(info, (list, tuple)) and 'task_id' not in info[0]:
-            for info_ in info:
-                info_['task_id'] = self._active_task_index
-                if self._env_names is not None:
-                    info_['task_name'] = self._env_names[self._active_task_index]
 
         return obs, reward, done, info
 

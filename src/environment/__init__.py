@@ -59,8 +59,8 @@ def make_continual_metaworld_env(env_names, seed=None):
     return env
 
 
-def make_env(env_id, seed, rank, log_dir, allow_early_resets):
-    def _thunk():
+def make_env(env_id, seed, rank, log_dir, allow_early_resets, **kwargs):
+    def _thunk(env_id):
         try:
             env = gym.make(env_id)
         except gym.error.UnregisteredEnv:
@@ -114,7 +114,28 @@ def make_env(env_id, seed, rank, log_dir, allow_early_resets):
 
         return env
 
-    return _thunk
+    def _thunks():
+        if isinstance(env_id, list):
+            envs = []
+            for env_id_ in env_id:
+                envs.append(_thunk(env_id_))
+
+            add_onehot = kwargs['add_onehot']
+            augment_observation = kwargs['augment_observation']
+            augment_action = kwargs['augment_action']
+
+            env = MultiEnvWrapper(envs,
+                                  sample_strategy=round_robin_strategy,
+                                  mode='add-onehot' if add_onehot else 'vanilla',
+                                  augment_observation=augment_observation,
+                                  augment_action=augment_action,
+                                  env_names=env_id)
+        else:
+            env = _thunk(env_id)
+
+        return env
+
+    return _thunks
 
 
 def make_vec_envs(env_name,
@@ -123,9 +144,10 @@ def make_vec_envs(env_name,
                   discount,
                   log_dir,
                   allow_early_resets=False,
-                  normalize=True):
+                  normalize=True,
+                  **make_env_kwargs):
     envs = [
-        make_env(env_name, seed, i, log_dir, allow_early_resets)
+        make_env(env_name, seed, i, log_dir, allow_early_resets, **make_env_kwargs)
         for i in range(num_processes)
     ]
 
@@ -160,21 +182,27 @@ def make_continual_vec_envs(env_names,
                             normalize=True,
                             add_onehot=False):
     # TODO (chongyi zheng): We fork many processes here, optimize it
-    envs = []
-    for env_name in env_names:
-        env_log_dir = utils.make_dir(os.path.join(log_dir, env_name)) \
-            if log_dir is not None else None
-        env = make_vec_envs(env_name, seed, num_processes, discount,
-                            env_log_dir, allow_early_resets=allow_early_resets,
-                            normalize=normalize)
-        env.reward_range = env.get_attr('reward_range')  # prevent wrapper error
-        envs.append(env)
-    continual_env = MultiEnvWrapper(envs,
-                                    sample_strategy=round_robin_strategy,
-                                    mode='add-onehot' if add_onehot else 'vanilla',
-                                    augment_observation=True,
-                                    augment_action=True,
-                                    env_names=env_names)
+    # envs = []
+    # for env_name in env_names:
+    #     env_log_dir = utils.make_dir(os.path.join(log_dir, env_name)) \
+    #         if log_dir is not None else None
+    #     env = make_vec_envs(env_name, seed, num_processes, discount,
+    #                         env_log_dir, allow_early_resets=allow_early_resets,
+    #                         normalize=normalize)
+    #     env.reward_range = env.get_attr('reward_range')  # prevent wrapper error
+    #     envs.append(env)
+    # continual_env = MultiEnvWrapper(envs,
+    #                                 sample_strategy=round_robin_strategy,
+    #                                 mode='add-onehot' if add_onehot else 'vanilla',
+    #                                 augment_observation=True,
+    #                                 augment_action=True,
+    #                                 env_names=env_names)
+    continual_env = make_vec_envs(env_names, seed, num_processes, discount, log_dir,
+                                  allow_early_resets=allow_early_resets,
+                                  normalize=normalize,
+                                  add_onehot=add_onehot,
+                                  augment_observation=True,
+                                  augment_action=True)
 
     return continual_env
 

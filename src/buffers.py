@@ -18,14 +18,15 @@ class ReplayBuffer:
     - https://github.com/hill-a/stable-baselines/blob/master/stable_baselines/common/buffers.py
 
     """
-    def __init__(self, obs_space, action_space, capacity, device, n_envs=1,
+    def __init__(self, obs_space, action_space, transition_num, device, n_envs=1,
                  optimize_memory_usage=False, handle_timeout_termination=False):
 
-        assert n_envs == 1, "Replay buffer only support single environment for now"
+        # assert n_envs == 1, "Replay buffer only support single environment for now"
 
         self.obs_space = obs_space
         self.action_space = action_space
-        self.capacity = capacity
+        self.capacity = transition_num // n_envs
+        self.n_envs = n_envs
         self.device = device
         self.optimize_memory_usage = optimize_memory_usage
         self.handle_timeout_termination = handle_timeout_termination
@@ -38,21 +39,21 @@ class ReplayBuffer:
         obs_shape = obs_space.shape
         action_shape = action_space.shape
 
-        self.obses = np.empty((capacity, n_envs, *obs_shape), dtype=np.float32)
+        self.obses = np.empty((self.capacity, n_envs, *obs_shape), dtype=np.float32)
         if self.optimize_memory_usage:
             # `observations` contains also the next observation
             self.next_obses = None
         else:
-            self.next_obses = np.empty((capacity, n_envs, *obs_shape), dtype=np.float32)
+            self.next_obses = np.empty((self.capacity, n_envs, *obs_shape), dtype=np.float32)
         if isinstance(action_space, gym.spaces.Discrete):
-            self.actions = np.empty((capacity, n_envs, 1), dtype=np.int32)
+            self.actions = np.empty((self.capacity, n_envs, 1), dtype=np.int32)
         elif isinstance(action_space, gym.spaces.Box):
-            self.actions = np.empty((capacity, n_envs, *action_shape), dtype=np.float32)
+            self.actions = np.empty((self.capacity, n_envs, *action_shape), dtype=np.float32)
         else:
             raise TypeError(f"Unknown action space type: {type(action_space)}")
-        self.rewards = np.empty((capacity, n_envs, 1), dtype=np.float32)
-        self.not_dones = np.empty((capacity, n_envs, 1), dtype=np.float32)
-        self.timeouts = np.zeros((capacity, n_envs, 1), dtype=np.float32)
+        self.rewards = np.empty((self.capacity, n_envs, 1), dtype=np.float32)
+        self.not_dones = np.empty((self.capacity, n_envs, 1), dtype=np.float32)
+        self.timeouts = np.zeros((self.capacity, n_envs, 1), dtype=np.float32)
 
         if psutil is not None:
             total_memory_usage = self.obses.nbytes + self.actions.nbytes + self.rewards.nbytes + self.not_dones.nbytes
@@ -72,7 +73,7 @@ class ReplayBuffer:
         self.full = False
 
     def __len__(self):
-        return self.capacity if self.full else self.idx
+        return self.capacity * self.n_envs if self.full else self.idx * self.n_envs
 
     def reset(self):
         self.idx = 0
@@ -81,13 +82,13 @@ class ReplayBuffer:
     def add(self, obs, action, reward, next_obs, done, infos):
         np.copyto(self.obses[self.idx], obs)
         np.copyto(self.actions[self.idx], action)
-        np.copyto(self.rewards[self.idx], reward)
+        np.copyto(self.rewards[self.idx], reward.reshape([-1, 1]))
         if self.optimize_memory_usage:
             np.copyto(self.obses[(self.idx + 1) % self.capacity], next_obs)
         else:
             np.copyto(self.next_obses[self.idx], next_obs)
-        not_done = [not done_ for done_ in done]
-        np.copyto(self.not_dones[self.idx], not_done)
+        not_done = np.array([not done_ for done_ in done])
+        np.copyto(self.not_dones[self.idx], not_done.reshape([-1, 1]))
 
         if self.handle_timeout_termination:
             self.timeouts[self.idx] = np.array([info.get("TimeLimit.truncated", False) for info in infos])
@@ -98,31 +99,39 @@ class ReplayBuffer:
     def sample(self, batch_size):
         if not self.optimize_memory_usage:
             idxs = np.random.randint(
-                0, self.capacity if self.full else self.idx, size=batch_size
+                0, self.capacity if self.full else self.idx, size=batch_size // self.n_envs
             )
 
-            next_obses = torch.as_tensor(self.next_obses[idxs], device=self.device).float()
+            next_obses = torch.as_tensor(
+                self.next_obses[idxs].reshape([-1, *self.obs_space.shape]),
+                device=self.device).float()
         else:
             if self.full:
-                idxs = (np.random.randint(1, self.capacity, size=batch_size) + self.idx) % self.capacity
+                idxs = (np.random.randint(1, self.capacity, size=batch_size // self.n_envs)
+                        + self.idx) % self.capacity
             else:
-                idxs = np.random.randint(0, self.idx, size=batch_size)
+                idxs = np.random.randint(0, self.idx, size=batch_size // self.n_envs)
 
-            next_obses = torch.as_tensor(self.obses[(idxs + 1) % self.capacity], device=self.device).float()
+            next_obses = torch.as_tensor(
+                self.obses[(idxs + 1) % self.capacity].reshape([-1, *self.obs_space.shape]),
+                device=self.device).float()
 
-        obses = torch.as_tensor(self.obses[idxs], device=self.device)
-        actions = torch.as_tensor(self.actions[idxs], device=self.device)
-        rewards = torch.as_tensor(self.rewards[idxs], device=self.device)
+        obses = torch.as_tensor(self.obses[idxs].reshape([-1, *self.obs_space.shape]),
+                                device=self.device)
+        actions = torch.as_tensor(self.actions[idxs].reshape([-1, *self.action_space.shape]),
+                                  device=self.device)
+        rewards = torch.as_tensor(self.rewards[idxs].reshape([-1, 1]), device=self.device)
         if self.handle_timeout_termination:
             # Only use dones that are not due to timeouts
             # deactivated by default (timeouts is initialized as an array of False)
             not_dones = torch.as_tensor(
                 np.logical_or(self.not_dones[idxs], self.timeouts[idxs]).astype(
-                    self.not_dones.dtype),
+                    self.not_dones.dtype).reshape([-1, 1]),
                 device=self.device
             )
         else:
-            not_dones = torch.as_tensor(self.not_dones[idxs], device=self.device)
+            not_dones = torch.as_tensor(self.not_dones[idxs].reshape([-1, 1]),
+                                        device=self.device)
 
         return obses, actions, rewards, next_obses, not_dones
 
