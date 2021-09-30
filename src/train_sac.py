@@ -458,7 +458,7 @@ def main(args):
             # episode_step += 1
             # total_steps += 1
 
-        if task_id < env.num_tasks - 1:
+        if task_id < num_tasks - 1:
             # distillation is separated from regularization
             if 'distilled' in args.algo:
                 print(f"Distill actor: {infos[0]['task_name']}")

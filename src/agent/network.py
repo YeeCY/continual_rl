@@ -18,19 +18,8 @@ class QFunction(nn.Module):
     def __init__(self, obs_dim, action_dim, hidden_dim):
         super().__init__()
 
-        # self.trunk = nn.Sequential(
-        #     nn.Linear(obs_dim + action_dim, hidden_dim),
-        #     nn.ReLU(),
-        #     nn.Linear(hidden_dim, hidden_dim),
-        #     nn.ReLU(),
-        #     nn.Linear(hidden_dim, 1)
-        # )
-
-        # (chongyi zheng): add another layer
         self.trunk = nn.Sequential(
             nn.Linear(obs_dim + action_dim, hidden_dim),
-            nn.ReLU(),
-            nn.Linear(hidden_dim, hidden_dim),
             nn.ReLU(),
             nn.Linear(hidden_dim, hidden_dim),
             nn.ReLU(),
@@ -283,24 +272,14 @@ class SacActorMlp(nn.Module):
         self.log_std_min = log_std_min
         self.log_std_max = log_std_max
 
-        # self.trunk = nn.Sequential(
-        #     nn.Linear(obs_shape[0], hidden_dim),
-        #     nn.ReLU(),
-        #     nn.Linear(hidden_dim, hidden_dim),
-        #     nn.ReLU(),
-        #     nn.Linear(hidden_dim, 2 * action_shape[0])
-        # )
-
-        # (chongyi zheng): add another layer
         self.trunk = nn.Sequential(
             nn.Linear(obs_shape[0], hidden_dim),
             nn.ReLU(),
             nn.Linear(hidden_dim, hidden_dim),
             nn.ReLU(),
-            nn.Linear(hidden_dim, hidden_dim),
-            nn.ReLU(),
             nn.Linear(hidden_dim, 2 * action_shape[0])
         )
+
         self.apply(weight_init)
 
     def forward(self, obs, compute_pi=True, compute_log_pi=True, **kwargs):
@@ -355,18 +334,6 @@ class SacTaskOneHotHyperNetMlp(nn.Module):
 
         self.onehot_dim = onehot_dim
 
-        # self.log_std_min = log_std_min
-        # self.log_std_max = log_std_max
-
-        # self.trunk = nn.Sequential(
-        #     nn.Linear(obs_shape[0], hidden_dim),
-        #     nn.ReLU(),
-        #     nn.Linear(hidden_dim, hidden_dim),
-        #     nn.ReLU(),
-        #     nn.Linear(hidden_dim, 2 * action_shape[0])
-        # )
-
-        # (chongyi zheng): add another layer
         self.trunk = nn.Sequential(
             nn.Linear(onehot_dim, hidden_dim),
             nn.ReLU(),
@@ -374,6 +341,7 @@ class SacTaskOneHotHyperNetMlp(nn.Module):
             nn.ReLU(),
             nn.Linear(hidden_dim, output_dim)
         )
+
         self.apply(weight_init)
 
     def forward(self, task_idx):
@@ -394,8 +362,6 @@ class MultiHeadSacActorMlp(nn.Module):
 
         self.trunk = nn.Sequential(
             nn.Linear(obs_shape[0], hidden_dim),
-            nn.ReLU(),
-            nn.Linear(hidden_dim, hidden_dim),
             nn.ReLU(),
             nn.Linear(hidden_dim, hidden_dim),
             nn.ReLU(),
@@ -480,8 +446,6 @@ class MultiInputSacActorMlp(nn.Module):
         self.dist_heads = torch.nn.ModuleList()
         for action_shape in action_shapes:
             self.dist_heads.append(nn.Sequential(
-                nn.Linear(hidden_dim, hidden_dim),
-                nn.ReLU(),
                 nn.Linear(hidden_dim, hidden_dim),
                 nn.ReLU(),
                 nn.Linear(hidden_dim, 2 * action_shape[0]),
