@@ -236,8 +236,10 @@ def parse_args():
 	parser.add_argument('--seed', default=1, type=int)
 	parser.add_argument('--work_dir', default=None, type=str)
 	parser.add_argument('--load_checkpoint', default=None, type=str)
+	parser.add_argument('--load_dir', default=None, type=str)
 	parser.add_argument('--replay_buffer_capacity', default=1000000, type=int)  # (chongyi zheng), 100000
 	parser.add_argument('--save_model', default=False, type=str2bool)
+	parser.add_argument('--save_task_model', default=False, type=str2bool)
 	parser.add_argument('--save_video', default=False, type=str2bool)
 	parser.add_argument('--log_freq', default=5, type=int)
 	parser.add_argument('--save_tb', default=False, type=str2bool)  # (chongyi zheng)

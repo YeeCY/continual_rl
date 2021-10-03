@@ -557,6 +557,12 @@ class MultiEnvWrapper(gym.Wrapper):
     def all_action_spaces(self):
         return [self._task_envs[id].action_space for id in range(self.num_tasks)]
 
+    def set_task(self, name_or_id):
+        if isinstance(name_or_id, int):
+            self._active_task_index = name_or_id
+        else:
+            self._active_task_index = self._env_names.index(name_or_id)
+
     def sample_task(self):
         """Helper function for vectorized environment
         """

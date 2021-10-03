@@ -185,18 +185,26 @@ class SacMlpAgent:
             utils.soft_update_params(self.critic, self.critic_target,
                                      self.critic_tau)
 
-    def save(self, model_dir, step):
+    def save(self, model_dir, step=None):
+        suffix = ''
+        if step is not None:
+            suffix = '_%s'.format(step)
+
         torch.save(
-            self.actor.state_dict(), '%s/actor_%s.pt' % (model_dir, step)
+            self.actor.state_dict(), '%s/actor%s.pt' % (model_dir, suffix)
         )
         torch.save(
-            self.critic.state_dict(), '%s/critic_%s.pt' % (model_dir, step)
+            self.critic.state_dict(), '%s/critic%s.pt' % (model_dir, suffix)
         )
 
-    def load(self, model_dir, step):
+    def load(self, model_dir, step=None):
+        suffix = ''
+        if step is not None:
+            suffix = '_%s'.format(step)
+
         self.actor.load_state_dict(
-            torch.load('%s/actor_%s.pt' % (model_dir, step))
+            torch.load('%s/actor%s.pt' % (model_dir, suffix))
         )
         self.critic.load_state_dict(
-            torch.load('%s/critic_%s.pt' % (model_dir, step))
+            torch.load('%s/critic%s.pt' % (model_dir, suffix))
         )
