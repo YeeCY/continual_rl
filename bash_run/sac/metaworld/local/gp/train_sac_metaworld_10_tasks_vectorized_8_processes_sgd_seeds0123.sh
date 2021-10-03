@@ -15,13 +15,6 @@ for seed in "${seeds[@]}"; do
       window-close-v2 \
       button-press-topdown-v2 \
       door-open-v2 \
-      coffee-button-v2 \
-      plate-slide-side-v2 \
-      sweep-into-v2 \
-      faucet-close-v2 \
-      door-lock-v2 \
-      handle-pull-side-v2 \
-      window-open-v2 \
     --env_type metaworld \
     --algo sac_mlp \
     --train_steps_per_task 500000 \
