@@ -2,6 +2,7 @@ import urllib.request
 import os
 from scipy.io import loadmat
 from math import floor
+import matplotlib.pyplot as plt
 
 import torch
 from torch.utils.data import TensorDataset, DataLoader
@@ -41,6 +42,12 @@ def main():
     X = X - X.min(0)[0]
     X = 2 * (X / X.max(0)[0]) - 1
     y = data[:, -1]
+
+    f, ax = plt.subplots(1, 1, figsize=(20, 10))
+    ax.plot(X[:, 0], y, 'k*')
+    ax.set_ylim([-3, 3])
+    ax.legend(['song'])
+    plt.show()
 
     train_n = int(floor(0.8 * len(X)))
     train_x = X[:train_n, :].contiguous()
