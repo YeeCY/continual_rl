@@ -252,7 +252,7 @@ def main(args):
 
     agent = make_agent(
         obs_space=env.observation_space,
-        action_space=[env.action_space for _ in range(env.num_tasks)]
+        action_space=[env.action_space for _ in range(env.get_attr('num_tasks')[0])]
         if any(x in args.algo for x in ['mh', 'mi', 'individual', 'hypernet', 'distilled'])
         else env.action_space,
         device=device,
@@ -270,6 +270,12 @@ def main(args):
                                      log_frequency=args.log_freq,
                                      action_repeat=args.action_repeat,
                                      save_tb=args.save_tb)
+    elif 'awp' in args.algo:
+        awp_dir = utils.make_dir(os.path.join(args.work_dir, 'awp_robust'))
+        awp_logger = Logger(awp_dir,
+                            log_frequency=args.log_freq,
+                            action_repeat=args.action_repeat,
+                            save_tb=args.save_tb)
 
     # log arguments
     args_dict = vars(args)
@@ -320,6 +326,9 @@ def main(args):
                 if 'distilled' in args.algo:
                     evaluate(eval_env, agent, video, args.num_eval_episodes, distillation_logger,
                              total_steps, use_distilled_actor=True)
+                elif 'awp' in args.algo:
+                    evaluate(eval_env, agent, video, args.num_eval_episodes, awp_logger,
+                             total_steps, perturb=True)
                 # elif 'hypernet_actor' in args.algo:
                 #     evaluate(env, eval_env, agent, video, args.num_eval_episodes, logger,
                 #              total_steps)

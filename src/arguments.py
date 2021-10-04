@@ -151,6 +151,9 @@ def parse_args():
 	parser.add_argument('--sac_hypernet_online_uniform_reg', default=False, type=str2bool)
 	parser.add_argument('--sac_hypernet_first_order', default=True, type=str2bool)
 
+	# sac awp
+	parser.add_argument('--sac_awp_coeff', default=0.01, type=float)
+
 	# td3
 	parser.add_argument('--td3_init_steps', default=1000, type=int)
 	parser.add_argument('--td3_num_expl_steps_per_process', default=1000, type=int)

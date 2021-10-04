@@ -145,7 +145,7 @@ def main(args):
 
     agent = make_agent(
         obs_space=env.observation_space,
-        action_space=[env.action_space for _ in range(env.num_tasks)]
+        action_space=[env.action_space for _ in range(env.get_attr('num_tasks')[0])]
         if any(x in args.algo for x in ['mh', 'mi', 'individual', 'hypernet', 'distilled'])
         else env.action_space,
         device=device,

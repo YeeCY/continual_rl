@@ -117,7 +117,7 @@ class TaskEmbeddingHyperNetActorSacMlpAgent(SacMlpAgent):
             self.hypernet.weights.values(), lr=self.actor_lr,
         )
         self.hypernet_emb_optimizer = torch.optim.Adam(
-            [self.hypernet.task_embs[self.task_count]]
+            [self.hypernet.task_embs[self.task_count]], lr=self.actor_lr,
         )
         self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), lr=self.critic_lr)
         self.log_alpha_optimizer = torch.optim.Adam([self.log_alpha], lr=self.alpha_lr)

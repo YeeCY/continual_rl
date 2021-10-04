@@ -173,7 +173,7 @@ def main(args):
             nn.Linear(256, 1)
         ).to(args.device)
 
-        num_epochs = 15
+        num_epochs = 1
         model.train()
         likelihood.train()
         nn_model.train()

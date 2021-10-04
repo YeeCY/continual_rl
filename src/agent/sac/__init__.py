@@ -76,3 +76,5 @@ from agent.sac.si_task_embedding_distilled_actor_sac_agent import \
     SiTaskEmbeddingDistilledActorSacMlpAgent
 from agent.sac.agem_task_embedding_distilled_actor_sac_agent import \
     AgemTaskEmbeddingDistilledActorSacMlpAgent
+
+from agent.sac.awp_sac_agent import AdversarialWeightPermutationSacMlpAgent

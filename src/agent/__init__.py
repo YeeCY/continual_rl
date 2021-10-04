@@ -33,6 +33,8 @@ from src.agent.sac import \
     EwcTaskEmbeddingDistilledActorSacMlpAgent, \
     SiTaskEmbeddingDistilledActorSacMlpAgent, \
     AgemTaskEmbeddingDistilledActorSacMlpAgent
+from src.agent.sac import \
+    AdversarialWeightPermutationSacMlpAgent
 from src.agent.td3 import Td3MlpAgent, MultiHeadTd3MlpAgent, MultiInputTd3MlpAgent, \
     EwcMultiHeadTd3MlpAgent, EwcMultiInputTd3MlpAgent, \
     SiMultiHeadTd3MlpAgent, SiMultiInputTd3MlpAgent, \
@@ -54,6 +56,7 @@ ALGOS = [
     'sac_cnn_ss_ensem',
     'sac_mlp_ss_ensem',
     'sac_mlp',
+    'awp_sac_mlp',
     'ewc_sac_mlp',
     'si_sac_mlp',
     'agem_sac_mlp',
@@ -219,6 +222,8 @@ def make_agent(obs_space, action_space, device, args):
             agent = SacMlpSSEnsembleAgent(**kwargs)
         elif args.algo == 'sac_mlp':
             agent = SacMlpAgent(**kwargs)
+        elif args.algo == 'awp_sac_mlp':
+            agent = AdversarialWeightPermutationSacMlpAgent(**kwargs)
         elif args.algo == 'ewc_sac_mlp':
             kwargs['ewc_lambda'] = args.sac_ewc_lambda
             kwargs['ewc_estimate_fisher_iters'] = args.sac_ewc_estimate_fisher_iters
