@@ -377,7 +377,23 @@ CURVE_FORMAT = {
         'color': [180, 180, 180],
         'style': '-',
         'label': 'task_embedding_hypernet_actor_256_agem_actor_loss_memory_budget50000',
-    }
+    },
+
+    'awp_coeff0.01': {
+        'color': [255, 0, 0],
+        'style': '-',
+        'label': 'awp_coeff0.01'
+    },
+    'awp_coeff0.05': {
+        'color': [255, 0, 255],
+        'style': '-',
+        'label': 'awp_coeff0.05'
+    },
+    'awp_coeff0.1': {
+        'color': [180, 180, 180],
+        'style': '-',
+        'label': 'awp_coeff0.1',
+    },
 }
 
 

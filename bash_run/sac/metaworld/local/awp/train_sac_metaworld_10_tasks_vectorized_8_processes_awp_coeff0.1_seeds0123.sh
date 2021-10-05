@@ -10,7 +10,7 @@ declare -a seeds=(0 1 2 3)
 
 for seed in "${seeds[@]}"; do
   export CUDA_VISIBLE_DEVICES="$seed"
-  python $PROJECT_DIR/src/train_sac_gp.py \
+  python $PROJECT_DIR/src/train_sac.py \
     --env_names \
       window-close-v2 \
       button-press-topdown-v2 \

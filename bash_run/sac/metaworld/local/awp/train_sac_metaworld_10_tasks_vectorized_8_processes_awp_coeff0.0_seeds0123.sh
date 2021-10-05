@@ -28,9 +28,9 @@ for seed in "${seeds[@]}"; do
     --sac_num_expl_steps_per_process 125 \
     --sac_num_processes 8 \
     --sac_num_train_iters 1000 \
-    --sac_awp_coeff 0.05 \
+    --sac_awp_coeff 0.0 \
     --seed $seed \
     --save_task_model True \
-    --work_dir $PROJECT_DIR/vec_logs/awp_sac_mlp_metaworld/awp_coeff0.05/$seed \
-    > $PROJECT_DIR/terminal_logs/awp_sac_mlp_metaworld-awp_coeff0.05-seed"$seed".log 2>&1 &
+    --work_dir $PROJECT_DIR/vec_logs/awp_sac_mlp_metaworld/awp_coeff0.0/$seed \
+    > $PROJECT_DIR/terminal_logs/awp_sac_mlp_metaworld-awp_coeff0.0-seed"$seed".log 2>&1 &
 done
