@@ -223,6 +223,7 @@ def make_agent(obs_space, action_space, device, args):
         elif args.algo == 'sac_mlp':
             agent = SacMlpAgent(**kwargs)
         elif args.algo == 'awp_sac_mlp':
+            kwargs['awp_coeff'] = args.sac_awp_coeff
             agent = AdversarialWeightPermutationSacMlpAgent(**kwargs)
         elif args.algo == 'ewc_sac_mlp':
             kwargs['ewc_lambda'] = args.sac_ewc_lambda

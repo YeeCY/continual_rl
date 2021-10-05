@@ -19,16 +19,6 @@ from video import VideoRecorder
 def evaluate(env, agent, video, num_episodes, logger, step,
              **act_kwargs):
     """Evaluate agent"""
-    # assert (train_env.env_names is not None) and (eval_env.env_names is not None), \
-    #     "Environment name must exist!"
-
-    # TODO (cyzheng): we don't use observation normalization for SAC
-    # train_vec_norms = get_vec_normalize(train_env)
-    # eval_vec_norms = get_vec_normalize(eval_env)
-    # for train_vec_norm, eval_vec_norm in zip(train_vec_norms, eval_vec_norms):
-    #     if eval_vec_norm is not None:
-    #         eval_vec_norm.eval()
-    #         eval_vec_norm.obs_rms = train_vec_norm.obs_rms
 
     for task_id, task_name in enumerate(env.get_attr('env_names')[0]):
         episode_rewards = []
@@ -510,6 +500,11 @@ def main(args):
                 agent.construct_hypernet_targets()
 
             agent.reset(reset_critic=args.reset_agent)
+
+        if args.save_task_model:
+            task_model_dir = os.path.join(model_dir, infos[0]['task_name'])
+            utils.make_dir(task_model_dir)
+            agent.save(task_model_dir)
 
     print('Final evaluating:', args.work_dir)
     evaluate(eval_env, agent, video, args.num_eval_episodes, logger, total_steps)

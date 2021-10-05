@@ -394,6 +394,11 @@ CURVE_FORMAT = {
         'style': '-',
         'label': 'awp_coeff0.1',
     },
+    'awp_coeff0.0': {
+        'color': [0, 255, 0],
+        'style': '-',
+        'label': 'awp_coeff0.0',
+    },
 }
 
 
