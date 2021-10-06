@@ -130,7 +130,7 @@ def main(args):
 
         # # plot actor weights
         actor_params = []
-        for param in agent.actor.parameters():
+        for param in agent.actor.main_parameters():
             actor_params.append(param.detach().clone().flatten())
         actor_params = torch.cat(actor_params)
         actor_param_dims = torch.linspace(0, actor_params.shape[0] - 1,
@@ -148,21 +148,24 @@ def main(args):
         # X = X - X.min(0)[0]
         # X = 2 * (X / X.max(0)[0]) - 1
         # norm_actor_params = (actor_params - actor_param_mean) / (actor_param_std + 1e-6)
+        norm_actor_param_dims = 2 * (actor_param_dims - actor_param_dims.min(0)[0]) / actor_param_dims.max(0)[0] - 1
         norm_actor_params = actor_params
 
         f, ax = plt.subplots(1, 1, figsize=(20, 10))
-        ax.plot(utils.to_np(actor_param_dims), utils.to_np(norm_actor_params), 'k*')
+        ax.plot(utils.to_np(norm_actor_param_dims), utils.to_np(norm_actor_params), 'k*')
         ax.set_ylim([-3, 3])
         ax.legend(['Actor Weights'])
         # plt.show()
 
-        train_dataset = TensorDataset(actor_param_dims, norm_actor_params)
+        train_dataset = TensorDataset(norm_actor_param_dims, norm_actor_params)
         train_loader = DataLoader(train_dataset, batch_size=1000, shuffle=True)
 
-        test_dataset = TensorDataset(actor_param_dims, norm_actor_params)
+        test_dataset = TensorDataset(norm_actor_param_dims, norm_actor_params)
         test_loader = DataLoader(test_dataset, batch_size=1000, shuffle=True)
 
-        inducing_points = norm_actor_params[:5000]
+        rand_idxs = np.random.randint(0, len(actor_param_dims), 5000)
+        # inducing_points = torch.rand(5000, device=args.device) * actor_param_dims[-1]
+        inducing_points = norm_actor_param_dims[rand_idxs]
         model = ApproximateGPModel(inducing_points).to(args.device)
         likelihood = gpytorch.likelihoods.GaussianLikelihood().to(args.device)
         nn_model = nn.Sequential(
@@ -173,7 +176,7 @@ def main(args):
             nn.Linear(256, 1)
         ).to(args.device)
 
-        num_epochs = 1
+        num_epochs = 15
         model.train()
         likelihood.train()
         nn_model.train()
@@ -223,22 +226,22 @@ def main(args):
             utils.to_np(torch.mean(torch.abs(means - norm_actor_params))),
             utils.to_np(torch.mean(torch.abs(nn_means - norm_actor_params)))
         ))
-        print('Test Relative MAE: {}, NN Relative MAE: {}'.format(
-            utils.to_np(torch.mean(torch.abs((means - norm_actor_params) / norm_actor_params))),
-            utils.to_np(torch.mean(torch.abs((nn_means - norm_actor_params) / norm_actor_params)))
-        ))
+        # print('Test Relative MAE: {}, NN Relative MAE: {}'.format(
+        #     utils.to_np(torch.mean(torch.abs((means - norm_actor_params) / norm_actor_params))),
+        #     utils.to_np(torch.mean(torch.abs((nn_means - norm_actor_params) / norm_actor_params)))
+        # ))
 
         with torch.no_grad():
             idx = 0
             pred_params = []
             nn_pred_params = []
             while idx < actor_params.shape[0]:
-                sample_param = model(actor_param_dims[idx:idx + 1000]).sample()
+                sample_param = model(norm_actor_param_dims[idx:idx + 1000]).sample()
                 # pred_param = (mean + 1) * actor_param_max / 2 + actor_param_min
                 pred_param = sample_param
                 pred_params.append(pred_param)
 
-                nn_param = nn_model(actor_param_dims[idx:idx + 1000].unsqueeze(1)).squeeze()
+                nn_param = nn_model(norm_actor_param_dims[idx:idx + 1000].unsqueeze(1)).squeeze()
                 nn_pred_params.append(nn_param)
 
                 idx += 1000
@@ -246,7 +249,7 @@ def main(args):
             nn_pred_params = torch.cat(nn_pred_params)
 
             idx = 0
-            for param in agent.actor.parameters():
+            for param in agent.actor.main_parameters():
                 num_param = param.numel()  # number of parameters in [p]
                 param.copy_(pred_params[idx:idx + num_param].reshape(param.shape))
                 idx += num_param
@@ -257,7 +260,7 @@ def main(args):
 
         with torch.no_grad():
             idx = 0
-            for param in agent.actor.parameters():
+            for param in agent.actor.main_parameters():
                 num_param = param.numel()  # number of parameters in [p]
                 param.copy_(nn_pred_params[idx:idx + num_param].reshape(param.shape))
                 idx += num_param

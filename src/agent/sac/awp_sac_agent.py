@@ -63,7 +63,7 @@ class AdversarialWeightPermutationSacMlpAgent(SacMlpAgent):
 
         # sac optimizers
         self.actor_optimizer = torch.optim.Adam(self.actor.main_parameters(), lr=self.actor_lr)
-        self.actor_proxy_optimizer = torch.optim.SGD(self.actor.proxy_parameters(), lr=self.actor_lr)
+        self.actor_proxy_optimizer = torch.optim.Adam(self.actor.proxy_parameters(), lr=self.actor_lr)
         self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), lr=self.critic_lr)
 
         self.log_alpha_optimizer = torch.optim.Adam([self.log_alpha], lr=self.alpha_lr)
@@ -78,7 +78,7 @@ class AdversarialWeightPermutationSacMlpAgent(SacMlpAgent):
         self.actor_optimizer = torch.optim.Adam(
             self.actor.main_parameters(), lr=self.actor_lr,
         )
-        self.actor_proxy_optimizer = torch.optim.SGD(
+        self.actor_proxy_optimizer = torch.optim.Adam(
             self.actor.proxy_parameters(), lr=self.actor_lr
         )
         self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), lr=self.critic_lr)
