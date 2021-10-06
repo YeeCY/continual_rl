@@ -12,7 +12,7 @@ from src.utils import gaussian_logprob, squash
 
 class ApproximateGPModel(gpytorch.models.ApproximateGP):
     def __init__(self, inducing_points):
-        variational_distribution = gpytorch.variational.CholeskyVariationalDistribution(
+        variational_distribution = gpytorch.variational.MeanFieldVariationalDistribution(
             inducing_points.size(0))
         variational_strategy = gpytorch.variational.UnwhitenedVariationalStrategy(
             self, inducing_points, variational_distribution, learn_inducing_locations=True)
