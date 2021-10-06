@@ -389,10 +389,10 @@ CURVE_FORMAT = {
         'style': '-',
         'label': 'awp_coeff0.01'
     },
-    'awp_coeff0.05': {
+    'awp_coeff0.005': {
         'color': [255, 0, 255],
         'style': '-',
-        'label': 'awp_coeff0.05'
+        'label': 'awp_coeff0.005'
     },
     'awp_coeff0.1': {
         'color': [180, 180, 180],

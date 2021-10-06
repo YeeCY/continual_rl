@@ -78,3 +78,5 @@ from agent.sac.agem_task_embedding_distilled_actor_sac_agent import \
     AgemTaskEmbeddingDistilledActorSacMlpAgent
 
 from agent.sac.awp_sac_agent import AdversarialWeightPermutationSacMlpAgent
+from agent.sac.sparse_gp_hypernet_actor_sac_agent import \
+    SparseGPHyperNetActorSacMlpAgent

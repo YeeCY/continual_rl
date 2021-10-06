@@ -5,6 +5,7 @@ import torch.nn.functional as F
 import gpytorch
 
 from collections import OrderedDict
+from itertools import chain
 
 from src.utils import gaussian_logprob, squash
 
@@ -13,12 +14,19 @@ class ApproximateGPModel(gpytorch.models.ApproximateGP):
     def __init__(self, inducing_points):
         variational_distribution = gpytorch.variational.CholeskyVariationalDistribution(
             inducing_points.size(0))
-        variational_strategy = gpytorch.variational.VariationalStrategy(
+        variational_strategy = gpytorch.variational.UnwhitenedVariationalStrategy(
             self, inducing_points, variational_distribution, learn_inducing_locations=True)
         super().__init__(variational_strategy)
 
         self.mean = gpytorch.means.ConstantMean()
-        self.kernel = gpytorch.kernels.ScaleKernel(gpytorch.kernels.RBFKernel())
+        # self.kernel = gpytorch.kernels.ScaleKernel(
+        #     gpytorch.kernels.RBFKernel(lengthscale_prior=None),
+        #     outputscale_prior=None
+        # )
+        self.kernel = gpytorch.kernels.ScaleKernel(
+            gpytorch.kernels.RBFKernel(lengthscale_constraint=gpytorch.constraints.Interval(1e-6, 1e-3)),
+            outputscale_constraint=gpytorch.constraints.Interval(1e-6, 1e-3)
+        )
 
     def forward(self, x):
         mean = self.mean(x)
@@ -138,9 +146,22 @@ class SacSparseGPActorHyperNetMlp(nn.Module):
         self.actor_shapes = actor_shapes
         self.act_fun = act_func
 
-        inducing_points = norm_actor_params[rand_idxs]
+        self.num_actor_params = 0
+        for actor_layer_shapes in self.actor_shapes.values():
+            self.num_actor_params += np.prod(actor_layer_shapes)
+        actor_param_dims = torch.linspace(0, self.num_actor_params,
+                                          self.num_actor_params)
+        # normalize to [-1, 1]
+        self.norm_actor_param_dims = 2 * actor_param_dims / self.num_actor_params - 1
+        rand_idxs = np.random.randint(0, len(actor_param_dims), num_inducing_points)
+        inducing_points = self.norm_actor_param_dims[rand_idxs]
         self.model = ApproximateGPModel(inducing_points)
-        self.likelihood = gpytorch.likelihoods.GaussianLikelihood()
+
+        # initialize model
+        # self.model.variational_strategy
+
+        # TODO (cyzheng): Do we need likelihood model?
+        # self.likelihood = gpytorch.likelihoods.GaussianLikelihood()
 
         # # hypernet trunk
         # # FIXME (cyzheng): configurable architecture
@@ -196,35 +217,97 @@ class SacSparseGPActorHyperNetMlp(nn.Module):
         #     )
         #     torch.nn.init.normal_(self.task_embs[-1], mean=0., std=1.)
 
-    def construct_input(self, task_idx):
-        batch_size = 1
-        task_emb = self.task_embs[task_idx]
-        task_emb = task_emb.expand(batch_size,
-                                   self.task_embedding_dim)
+    # def construct_input(self, task_idx):
+    #     batch_size = 1
+    #     task_emb = self.task_embs[task_idx]
+    #     task_emb = task_emb.expand(batch_size,
+    #                                self.task_embedding_dim)
+    #
+    #     return task_emb
 
-        return task_emb
+    def to(self, device):
+        self.model = self.model.to(device)
+        # self.likelihood = self.likelihood.to(device)
+        self.norm_actor_param_dims = self.norm_actor_param_dims.to(device)
 
-    def forward(self, task_idx, weights=None):
-        # (cyzheng): add weights parameter for output regularization
-        if weights is None:
-            weights = self.weights
+        return self
 
-        hidden = self.construct_input(task_idx)
+    def parameters(self, recurse=True):
+        # return chain(self.model.parameters(), self.likelihood.parameters())
+        return self.model.parameters()
 
-        for i in range(len(self.hidden_layers)):
-            hidden = F.linear(hidden,
-                              weight=weights['hidden_layer{}/weight'.format(i)],
-                              bias=weights['hidden_layer{}/bias'.format(i)])
-            hidden = self.act_fun(hidden)
+    def named_parameters(self, prefix='', recurse=True):
+        # return chain(self.model.named_parameters(), self.likelihood.named_parameters())
+        return self.model.named_parameters()
+
+    # def warmup(self, epochs, lr=1e-3):
+    #     # GP regress to random parameters
+    #
+    #     mll = gpytorch.mlls.VariationalELBO(self.likelihood, self.model,
+    #                                         num_data=self.num_actor_params)
+    #     optimizer = torch.optim.Adam(self.parameters(), lr=lr)
+    #
+    #     num_iters = np.ceil(self.num_actor_params / 4000).astype(int)
+    #     for _ in range(epochs):
+    #         for i in range(num_iters):
+    #             norm_actor_param_dims = self.norm_actor_param_dims[i * 4000:(i + 1) * 4000]
+    #             rand_actor_param = torch.zeros(*norm_actor_param_dims.shape,
+    #                                            device=self.norm_actor_param_dims.device)
+    #             torch.nn.init.normal_(rand_actor_param.data, mean=0.0, std=0.2)
+    #
+    #             output = self.model(norm_actor_param_dims)
+    #             loss = -mll(output, rand_actor_param)
+    #
+    #             loss.backward()
+    #             optimizer.step()
+    #
+    #             del rand_actor_param
+    #             torch.cuda.empty_cache()
+    #
+    #     del mll
+    #     del optimizer
+
+    def forward(self, task_idx):
+        # hidden = self.construct_input(task_idx)
+        #
+        # for i in range(len(self.hidden_layers)):
+        #     hidden = F.linear(hidden,
+        #                       weight=weights['hidden_layer{}/weight'.format(i)],
+        #                       bias=weights['hidden_layer{}/bias'.format(i)])
+        #     hidden = self.act_fun(hidden)
 
         actor_weights = OrderedDict()
-        for i, (actor_layer_name, actor_layer_shape) in enumerate(
-                self.actor_shapes.items()):
-            actor_weight = F.linear(hidden,
-                                    weight=weights['output_layer{}/weight'.format(i)],
-                                    bias=weights['output_layer{}/bias'.format(i)])
+
+        idx = 0
+        for actor_layer_name, actor_layer_shape in self.actor_shapes.items():
+            num_actor_layer_params = np.prod(actor_layer_shape)
+            norm_layer_actor_param_dims = self.norm_actor_param_dims[idx:idx + num_actor_layer_params]
+
+            # actor_weight = F.linear(hidden,
+            #                         weight=weights['output_layer{}/weight'.format(i)],
+            #                         bias=weights['output_layer{}/bias'.format(i)])
+
+            actor_weight = self.model(norm_layer_actor_param_dims).rsample()
+
+            # actor_weight = []
+            # for i in range(np.ceil(num_actor_layer_params / 10000).astype(int)):
+            #     weight_chunk = self.model(
+            #         norm_layer_actor_param_dims[i * 10000:(i + 1) * 10000]).rsample()
+            #     actor_weight.append(weight_chunk)
+            # actor_weight = torch.cat(actor_weight)
+
+            # weight_chunks = self.model(
+            #     norm_layer_actor_param_dims[:num_actor_layer_params // 1000 * 1000].reshape(-1, 1000)
+            # ).rsample()
+            # remained_weight_chunk = self.model(
+            #     norm_layer_actor_param_dims[num_actor_layer_params // 1000 * 1000:]
+            # ).rsample()
+            # actor_weight = torch.cat(weight_chunks.reshape(-1), remained_weight_chunk)
+
             actor_weight = actor_weight.reshape(-1, *actor_layer_shape)
             actor_weight = torch.squeeze(actor_weight, dim=0)
             actor_weights[actor_layer_name] = actor_weight
+
+            idx += num_actor_layer_params
 
         return actor_weights

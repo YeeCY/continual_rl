@@ -21,12 +21,15 @@ class ApproximateGPModel(gpytorch.models.ApproximateGP):
     def __init__(self, inducing_points):
         variational_distribution = gpytorch.variational.CholeskyVariationalDistribution(
             inducing_points.size(0))
-        variational_strategy = gpytorch.variational.VariationalStrategy(
+        variational_strategy = gpytorch.variational.UnwhitenedVariationalStrategy(
             self, inducing_points, variational_distribution, learn_inducing_locations=True)
         super().__init__(variational_strategy)
 
         self.mean = gpytorch.means.ConstantMean()
-        self.kernel = gpytorch.kernels.ScaleKernel(gpytorch.kernels.RBFKernel())
+        self.kernel = gpytorch.kernels.ScaleKernel(
+            gpytorch.kernels.RBFKernel(lengthscale_constraint=gpytorch.constraints.Interval(1e-6, 1e-4)),
+            outputscale_constraint=gpytorch.constraints.Interval(1e-6, 1e-4)
+        )
 
     def forward(self, x):
         mean = self.mean(x)
@@ -132,7 +135,7 @@ def main(args):
         actor_params = []
         for param in agent.actor.main_parameters():
             actor_params.append(param.detach().clone().flatten())
-        actor_params = torch.cat(actor_params)
+        actor_params = torch.cat([actor_params[2], actor_params[3]])
         actor_param_dims = torch.linspace(0, actor_params.shape[0] - 1,
                                           actor_params.shape[0], device=args.device)
 
@@ -158,12 +161,12 @@ def main(args):
         # plt.show()
 
         train_dataset = TensorDataset(norm_actor_param_dims, norm_actor_params)
-        train_loader = DataLoader(train_dataset, batch_size=1000, shuffle=True)
+        train_loader = DataLoader(train_dataset, batch_size=1000, shuffle=False)
 
         test_dataset = TensorDataset(norm_actor_param_dims, norm_actor_params)
-        test_loader = DataLoader(test_dataset, batch_size=1000, shuffle=True)
+        test_loader = DataLoader(test_dataset, batch_size=1000, shuffle=False)
 
-        rand_idxs = np.random.randint(0, len(actor_param_dims), 5000)
+        rand_idxs = np.random.randint(0, len(actor_param_dims), 1000)
         # inducing_points = torch.rand(5000, device=args.device) * actor_param_dims[-1]
         inducing_points = norm_actor_param_dims[rand_idxs]
         model = ApproximateGPModel(inducing_points).to(args.device)
@@ -184,8 +187,8 @@ def main(args):
         optimizer = torch.optim.Adam([
             {'params': model.parameters()},
             {'params': likelihood.parameters()}
-        ], lr=0.01)
-        nn_optimizer = torch.optim.Adam(nn_model.parameters(), lr=0.01)
+        ], lr=1e-2)
+        nn_optimizer = torch.optim.Adam(nn_model.parameters(), lr=1e-2)
 
         mll = gpytorch.mlls.VariationalELBO(likelihood, model, num_data=norm_actor_params.shape[0])
 
@@ -215,7 +218,7 @@ def main(args):
         nn_means = []
         with torch.no_grad():
             for x_batch, y_batch in test_loader:
-                preds = model(x_batch)
+                preds = likelihood(model(x_batch))
                 means.append(preds.mean)
 
                 nn_preds = nn_model(x_batch.unsqueeze(1)).squeeze()
@@ -236,7 +239,7 @@ def main(args):
             pred_params = []
             nn_pred_params = []
             while idx < actor_params.shape[0]:
-                sample_param = model(norm_actor_param_dims[idx:idx + 1000]).sample()
+                sample_param = likelihood(model(norm_actor_param_dims[idx:idx + 1000])).sample()
                 # pred_param = (mean + 1) * actor_param_max / 2 + actor_param_min
                 pred_param = sample_param
                 pred_params.append(pred_param)
@@ -249,7 +252,7 @@ def main(args):
             nn_pred_params = torch.cat(nn_pred_params)
 
             idx = 0
-            for param in agent.actor.main_parameters():
+            for param in [list(agent.actor.main_parameters())[2], list(agent.actor.main_parameters())[3]]:
                 num_param = param.numel()  # number of parameters in [p]
                 param.copy_(pred_params[idx:idx + num_param].reshape(param.shape))
                 idx += num_param
@@ -260,7 +263,7 @@ def main(args):
 
         with torch.no_grad():
             idx = 0
-            for param in agent.actor.main_parameters():
+            for param in [list(agent.actor.main_parameters())[2], list(agent.actor.main_parameters())[3]]:
                 num_param = param.numel()  # number of parameters in [p]
                 param.copy_(nn_pred_params[idx:idx + num_param].reshape(param.shape))
                 idx += num_param
