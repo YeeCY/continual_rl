@@ -379,6 +379,11 @@ CURVE_FORMAT = {
         'label': 'task_embedding_hypernet_actor_256_agem_actor_loss_memory_budget50000',
     },
 
+    'awp_coeff0.001': {
+        'color': [0, 0, 255],
+        'style': '-',
+        'label': 'awp_coeff0.001',
+    },
     'awp_coeff0.01': {
         'color': [255, 0, 0],
         'style': '-',
