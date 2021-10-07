@@ -12,10 +12,25 @@ from src.utils import gaussian_logprob, squash
 
 class ApproximateGPModel(gpytorch.models.ApproximateGP):
     def __init__(self, inducing_points):
-        variational_distribution = gpytorch.variational.MeanFieldVariationalDistribution(
+        # standard
+        variational_distribution = gpytorch.variational.DeltaVariationalDistribution(
             inducing_points.size(0))
         variational_strategy = gpytorch.variational.UnwhitenedVariationalStrategy(
             self, inducing_points, variational_distribution, learn_inducing_locations=True)
+
+        # orthogonally decoupled
+        # mean_inducing_points = inducing_points
+        # covar_inducing_points = inducing_points[
+        #     np.random.randint(len(inducing_points), size=len(inducing_points) // 10)]
+        # covar_variational_strategy = gpytorch.variational.UnwhitenedVariationalStrategy(
+        #     self, covar_inducing_points,
+        #     gpytorch.variational.MeanFieldVariationalDistribution(covar_inducing_points.size(0)),
+        #     learn_inducing_locations=True
+        # )
+        # variational_strategy = gpytorch.variational.OrthogonallyDecoupledVariationalStrategy(
+        #     covar_variational_strategy, mean_inducing_points,
+        #     gpytorch.variational.DeltaVariationalDistribution(mean_inducing_points.size(0)),
+        # )
         super().__init__(variational_strategy)
 
         self.mean = gpytorch.means.ConstantMean()
@@ -153,9 +168,11 @@ class SacSparseGPActorHyperNetMlp(nn.Module):
                                           self.num_actor_params)
         # normalize to [-1, 1]
         self.norm_actor_param_dims = 2 * actor_param_dims / self.num_actor_params - 1
-        rand_idxs = np.random.randint(0, len(actor_param_dims), num_inducing_points)
-        inducing_points = self.norm_actor_param_dims[rand_idxs]
-        self.model = ApproximateGPModel(inducing_points)
+        self.models = []
+        for _ in range(num_tasks):
+            rand_idxs = np.random.randint(0, len(actor_param_dims), num_inducing_points)
+            inducing_points = self.norm_actor_param_dims[rand_idxs]
+            self.models.append(ApproximateGPModel(inducing_points))
 
         # initialize model
         # self.model.variational_strategy
@@ -226,19 +243,21 @@ class SacSparseGPActorHyperNetMlp(nn.Module):
     #     return task_emb
 
     def to(self, device):
-        self.model = self.model.to(device)
+        for idx, model in enumerate(self.models):
+            self.models[idx] = model.to(device)
+            # self.model = self.model.to(device)
         # self.likelihood = self.likelihood.to(device)
         self.norm_actor_param_dims = self.norm_actor_param_dims.to(device)
 
         return self
 
-    def parameters(self, recurse=True):
+    def parameters(self, task_idx=0, recurse=True):
         # return chain(self.model.parameters(), self.likelihood.parameters())
-        return self.model.parameters()
+        return self.models[task_idx].parameters()
 
-    def named_parameters(self, prefix='', recurse=True):
+    def named_parameters(self, task_idx=0, prefix='', recurse=True):
         # return chain(self.model.named_parameters(), self.likelihood.named_parameters())
-        return self.model.named_parameters()
+        return self.models[task_idx].named_parameters()
 
     # def warmup(self, epochs, lr=1e-3):
     #     # GP regress to random parameters
@@ -286,13 +305,12 @@ class SacSparseGPActorHyperNetMlp(nn.Module):
             # actor_weight = F.linear(hidden,
             #                         weight=weights['output_layer{}/weight'.format(i)],
             #                         bias=weights['output_layer{}/bias'.format(i)])
-
-            actor_weight = self.model(norm_layer_actor_param_dims).rsample()
+            actor_weight = self.models[task_idx](norm_layer_actor_param_dims).rsample()
 
             # actor_weight = []
-            # for i in range(np.ceil(num_actor_layer_params / 10000).astype(int)):
-            #     weight_chunk = self.model(
-            #         norm_layer_actor_param_dims[i * 10000:(i + 1) * 10000]).rsample()
+            # for i in range(np.ceil(num_actor_layer_params / 2000).astype(int)):
+            #     weight_chunk = self.models[task_idx](
+            #         norm_layer_actor_param_dims[i * 2000:(i + 1) * 2000]).rsample()
             #     actor_weight.append(weight_chunk)
             # actor_weight = torch.cat(actor_weight)
 

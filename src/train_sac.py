@@ -338,7 +338,8 @@ def main(args):
             #     replay_buffer.reset()
 
             if 'task_embedding_hypernet' in args.algo or 'sparse_gp_hypernet' in args.algo:
-                agent.infer_weights(task_id)
+                with utils.eval_mode(agent):
+                    agent.infer_weights(task_id)
             for step in range(args.sac_num_expl_steps_per_process):
                 if task_steps < args.sac_init_steps:
                     action = np.array([env.action_space.sample()
@@ -366,7 +367,8 @@ def main(args):
                 obs = next_obs
 
             if 'task_embedding_hypernet' in args.algo or 'sparse_gp_hypernet' in args.algo:
-                agent.clear_weights()
+                with utils.eval_mode(agent):
+                    agent.clear_weights()
 
             task_steps += args.sac_num_expl_steps_per_process * args.sac_num_processes
             total_steps += args.sac_num_expl_steps_per_process * args.sac_num_processes
@@ -496,7 +498,7 @@ def main(args):
                 #         agent.construct_memory(env)
                 # else:
                 #     agent.construct_memory(replay_buffer)
-            elif 'task_embedding_hypernet' in args.algo or 'sparse_gp_hypernet' in args.algo:
+            elif 'task_embedding_hypernet' in args.algo:
                 agent.construct_hypernet_targets()
 
             agent.reset(reset_critic=args.reset_agent)

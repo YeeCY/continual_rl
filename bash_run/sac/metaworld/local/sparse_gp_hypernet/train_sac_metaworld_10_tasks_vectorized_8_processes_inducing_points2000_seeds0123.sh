@@ -14,7 +14,7 @@ for seed in "${seeds[@]}"; do
     --env_names \
       window-close-v2 \
     --env_type metaworld \
-    --algo sac_mlp \
+    --algo sparse_gp_hypernet_actor_sac_mlp \
     --train_steps_per_task 500000 \
     --eval_freq 10 \
     --log_freq 5 \

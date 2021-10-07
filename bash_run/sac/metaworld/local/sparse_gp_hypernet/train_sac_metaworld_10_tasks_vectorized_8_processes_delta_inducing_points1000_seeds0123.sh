@@ -14,7 +14,7 @@ for seed in "${seeds[@]}"; do
     --env_names \
       window-close-v2 \
     --env_type metaworld \
-    --algo sac_mlp \
+    --algo sparse_gp_hypernet_actor_sac_mlp \
     --train_steps_per_task 500000 \
     --eval_freq 10 \
     --log_freq 5 \
@@ -26,9 +26,9 @@ for seed in "${seeds[@]}"; do
     --sac_num_expl_steps_per_process 125 \
     --sac_num_processes 8 \
     --sac_num_train_iters 300 \
-    --sac_gp_num_inducing_points 2000 \
+    --sac_gp_num_inducing_points 1000 \
     --seed $seed \
     --save_task_model True \
-    --work_dir $PROJECT_DIR/vec_logs/gp_hypernet_sac_mlp_metaworld/mean_field_inducing_points2000/$seed \
-    > $PROJECT_DIR/terminal_logs/gp_hypernet_sac_mlp_metaworld-mean_field_inducing_points2000-seed"$seed".log 2>&1 &
+    --work_dir $PROJECT_DIR/vec_logs/gp_hypernet_sac_mlp_metaworld/delta_inducing_points1000/$seed \
+    > $PROJECT_DIR/terminal_logs/gp_hypernet_sac_mlp_metaworld-delta_inducing_points1000-seed"$seed".log 2>&1 &
 done

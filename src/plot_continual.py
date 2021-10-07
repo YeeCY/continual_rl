@@ -404,6 +404,22 @@ CURVE_FORMAT = {
         'style': '-',
         'label': 'awp_coeff0.0',
     },
+
+    'inducing_points2000': {
+        'color': [255, 0, 255],
+        'style': '-',
+        'label': 'inducing_points2000'
+    },
+    'mean_field_inducing_points2000': {
+        'color': [180, 180, 180],
+        'style': '-',
+        'label': 'mean_field_inducing_points2000',
+    },
+    'mean_field_train_iters1000_inducing_points2000': {
+        'color': [0, 255, 0],
+        'style': '-',
+        'label': 'mean_field_train_iters1000_inducing_points2000',
+    },
 }
 
 

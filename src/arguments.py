@@ -155,7 +155,7 @@ def parse_args():
 	parser.add_argument('--sac_awp_coeff', default=0.01, type=float)
 
 	# sac sparse gp hypernet
-	parser.add_argument('--sac_gp_num_inducing_points', default=2000, type=int)
+	parser.add_argument('--sac_gp_num_inducing_points', default=1000, type=int)
 
 	# td3
 	parser.add_argument('--td3_init_steps', default=1000, type=int)

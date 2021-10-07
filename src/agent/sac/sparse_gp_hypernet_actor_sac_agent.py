@@ -1,6 +1,6 @@
-import math
-import copy
-from collections import OrderedDict
+# import math
+# import copy
+# from collections import OrderedDict
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -31,7 +31,7 @@ class SparseGPHyperNetActorSacMlpAgent(SacMlpAgent):
             critic_tau=0.005,
             critic_target_update_freq=2,
             batch_size=128,
-            gp_num_inducing_points=2000,
+            gp_num_inducing_points=1000,
             # gp_warmup_epochs=5,
     ):
         assert isinstance(action_shape, list)
@@ -145,7 +145,10 @@ class SparseGPHyperNetActorSacMlpAgent(SacMlpAgent):
         task_idx = kwargs.pop('task_idx')
 
         with torch.no_grad():
-            weights = self.hypernet(task_idx)
+            if self.weights is None:
+                weights = self.hypernet(task_idx)
+            else:
+                weights = self.weights
             _, policy_action, log_pi, _ = self.actor(next_obs, weights=weights)
             target_Q1, target_Q2 = self.critic_target(next_obs, policy_action)
             target_V = torch.min(target_Q1,
@@ -162,7 +165,10 @@ class SparseGPHyperNetActorSacMlpAgent(SacMlpAgent):
         assert 'task_idx' in kwargs
         task_idx = kwargs.pop('task_idx')
 
-        weights = self.hypernet(task_idx)
+        if self.weights is None:
+            weights = self.hypernet(task_idx)
+        else:
+            weights = self.weights
         _, pi, log_pi, log_std = self.actor(obs, weights=weights)
         actor_Q1, actor_Q2 = self.critic(obs, pi)
 
@@ -222,6 +228,7 @@ class SparseGPHyperNetActorSacMlpAgent(SacMlpAgent):
         assert 'head_idx' in kwargs
         task_idx = kwargs.pop('head_idx')
 
+        self.infer_weights(task_idx)
         critic_loss = self.compute_critic_loss(obs, action, reward, next_obs, not_done,
                                                task_idx=task_idx)
         self.update_critic(critic_loss, logger, step)
@@ -234,3 +241,5 @@ class SparseGPHyperNetActorSacMlpAgent(SacMlpAgent):
         if step % self.critic_target_update_freq == 0:
             utils.soft_update_params(self.critic, self.critic_target,
                                      self.critic_tau)
+
+        self.clear_weights()
