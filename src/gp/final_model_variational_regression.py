@@ -135,7 +135,7 @@ def main(args):
         actor_params = []
         for param in agent.actor.main_parameters():
             actor_params.append(param.detach().clone().flatten())
-        actor_params = torch.cat([actor_params[2], actor_params[3]])
+        actor_params = torch.cat(actor_params)
         actor_param_dims = torch.linspace(0, actor_params.shape[0] - 1,
                                           actor_params.shape[0], device=args.device)
 
@@ -161,10 +161,10 @@ def main(args):
         # plt.show()
 
         train_dataset = TensorDataset(norm_actor_param_dims, norm_actor_params)
-        train_loader = DataLoader(train_dataset, batch_size=1000, shuffle=False)
+        train_loader = DataLoader(train_dataset, batch_size=1000, shuffle=True)
 
         test_dataset = TensorDataset(norm_actor_param_dims, norm_actor_params)
-        test_loader = DataLoader(test_dataset, batch_size=1000, shuffle=False)
+        test_loader = DataLoader(test_dataset, batch_size=1000, shuffle=True)
 
         rand_idxs = np.random.randint(0, len(actor_param_dims), 1000)
         # inducing_points = torch.rand(5000, device=args.device) * actor_param_dims[-1]
@@ -252,7 +252,7 @@ def main(args):
             nn_pred_params = torch.cat(nn_pred_params)
 
             idx = 0
-            for param in [list(agent.actor.main_parameters())[2], list(agent.actor.main_parameters())[3]]:
+            for param in agent.actor.main_parameters():
                 num_param = param.numel()  # number of parameters in [p]
                 param.copy_(pred_params[idx:idx + num_param].reshape(param.shape))
                 idx += num_param
@@ -263,7 +263,7 @@ def main(args):
 
         with torch.no_grad():
             idx = 0
-            for param in [list(agent.actor.main_parameters())[2], list(agent.actor.main_parameters())[3]]:
+            for param in agent.actor.main_parameters():
                 num_param = param.numel()  # number of parameters in [p]
                 param.copy_(nn_pred_params[idx:idx + num_param].reshape(param.shape))
                 idx += num_param

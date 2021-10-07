@@ -14,7 +14,6 @@ np.random.seed(73)
 
 from gpytorch.models.gplvm.latent_variable import *
 from gpytorch.models.gplvm.bayesian_gplvm import BayesianGPLVM
-from matplotlib import pyplot as plt
 from tqdm import trange
 from gpytorch.means import ZeroMean
 from gpytorch.mlls import VariationalELBO
@@ -27,7 +26,7 @@ from gpytorch.distributions import MultivariateNormal
 
 
 class bGPLVM(BayesianGPLVM):
-    def __init__(self, n, data_dim, latent_dim, n_inducing, pca=False):
+    def __init__(self, n, data_dim, latent_dim, n_inducing):
         self.n = n
         self.batch_shape = torch.Size([data_dim])
 
