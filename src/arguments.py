@@ -154,7 +154,9 @@ def parse_args():
 	# sac awp
 	parser.add_argument('--sac_awp_coeff', default=0.01, type=float)
 
-	# sac sparse gp hypernet
+	# sac gp hypernet
+	parser.add_argument('--sac_gp_chunk_size', default=1000, type=int)
+	parser.add_argument('--sac_gp_latent_dim', default=64, type=int)
 	parser.add_argument('--sac_gp_num_inducing_points', default=1000, type=int)
 
 	# td3

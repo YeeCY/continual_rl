@@ -28,7 +28,8 @@ def evaluate(env, agent, video, num_episodes, logger, step,
         obs = env.reset()
         video.record(env)
 
-        if 'task_embedding_hypernet' in args.algo or 'sparse_gp_hypernet' in args.algo:
+        if 'task_embedding_hypernet' in args.algo or 'sparse_gp_hypernet' in args.algo \
+                or 'gp_lvm_hypernet' in args.algo:
             agent.infer_weights(task_id)
 
         while len(episode_rewards) < num_episodes:
@@ -93,7 +94,8 @@ def evaluate(env, agent, video, num_episodes, logger, step,
         #     'eval/task_name': task_name
         # }
 
-        if 'task_embedding_hypernet' in args.algo or 'sparse_gp_hypernet' in args.algo:
+        if 'task_embedding_hypernet' in args.algo or 'sparse_gp_hypernet' in args.algo \
+                or 'gp_lvm_hypernet' in args.algo:
             agent.clear_weights()
 
         if len(episode_successes) > 0:
@@ -337,7 +339,8 @@ def main(args):
             #     agent.reset_target_critic()
             #     replay_buffer.reset()
 
-            if 'task_embedding_hypernet' in args.algo or 'sparse_gp_hypernet' in args.algo:
+            if 'task_embedding_hypernet' in args.algo or 'sparse_gp_hypernet' in args.algo \
+                    or 'gp_lvm_hypernet' in args.algo:
                 with utils.eval_mode(agent):
                     agent.infer_weights(task_id)
             for step in range(args.sac_num_expl_steps_per_process):
@@ -366,7 +369,8 @@ def main(args):
 
                 obs = next_obs
 
-            if 'task_embedding_hypernet' in args.algo or 'sparse_gp_hypernet' in args.algo:
+            if 'task_embedding_hypernet' in args.algo or 'sparse_gp_hypernet' in args.algo \
+                    or 'gp_lvm_hypernet' in args.algo:
                 with utils.eval_mode(agent):
                     agent.clear_weights()
 

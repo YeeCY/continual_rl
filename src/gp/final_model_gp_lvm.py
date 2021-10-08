@@ -256,8 +256,8 @@ def main(args):
 
         n = actor_params.shape[0]
         data_dim = chunk_size
-        latent_dim = 64
-        n_inducing = n
+        latent_dim = 16
+        n_inducing = 20
         model = bGPLVM(n, data_dim, latent_dim, n_inducing).to(args.device)
         likelihood = GaussianLikelihood(batch_shape=model.batch_shape).to(args.device)
         mll = VariationalELBO(likelihood, model, num_data=n).to(args.device)
@@ -293,13 +293,17 @@ def main(args):
         #         nn_optimizer.step()
         loss_list = []
         iterator = trange(20000, leave=True)
-        batch_size = 16
+        batch_size = n
+        import time
         for i in iterator:
             batch_idxs = np.random.choice(n, size=batch_size, replace=False)
             optimizer.zero_grad()
+            start_time = time.time()
             sample = model.sample_latent_variable()  # a full sample returns latent x across all N
             sample_batch = sample[batch_idxs]
             output_batch = model(sample_batch)
+            end_time = time.time()
+            print(end_time - start_time)
             loss = -mll(output_batch, actor_params[batch_idxs].T).sum()
             loss_list.append(loss.item())
             iterator.set_description('Loss: ' + str(float(np.round(loss.item(), 2))) + ", iter no: " + str(i))

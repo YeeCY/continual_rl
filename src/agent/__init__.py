@@ -37,6 +37,8 @@ from src.agent.sac import \
     AdversarialWeightPermutationSacMlpAgent
 from src.agent.sac import \
     SparseGPHyperNetActorSacMlpAgent
+from src.agent.sac import \
+    GPLatentVariableModelHyperNetActorSacMlpAgent
 from src.agent.td3 import Td3MlpAgent, MultiHeadTd3MlpAgent, MultiInputTd3MlpAgent, \
     EwcMultiHeadTd3MlpAgent, EwcMultiInputTd3MlpAgent, \
     SiMultiHeadTd3MlpAgent, SiMultiInputTd3MlpAgent, \
@@ -78,6 +80,7 @@ ALGOS = [
     'distilled_actor_mh_sac_mlp',
     'distilled_actor_mi_sac_mlp',
     'sparse_gp_hypernet_actor_sac_mlp',
+    'gp_lvm_hypernet_actor_sac_mlp',
     'task_embedding_hypernet_actor_sac_mlp',
     'ewc_task_embedding_hypernet_actor_sac_mlp',
     'si_task_embedding_hypernet_actor_sac_mlp',
@@ -323,6 +326,11 @@ def make_agent(obs_space, action_space, device, args):
         elif args.algo == 'sparse_gp_hypernet_actor_sac_mlp':
             kwargs['gp_num_inducing_points'] = args.sac_gp_num_inducing_points
             agent = SparseGPHyperNetActorSacMlpAgent(**kwargs)
+        elif args.algo == 'gp_lvm_hypernet_actor_sac_mlp':
+            kwargs['gp_chunk_size'] = args.sac_gp_chunk_size
+            kwargs['gp_latent_dim'] = args.sac_gp_latent_dim
+            kwargs['gp_num_inducing_points'] = args.sac_gp_num_inducing_points
+            agent = GPLatentVariableModelHyperNetActorSacMlpAgent(**kwargs)
         elif args.algo == 'task_embedding_hypernet_actor_sac_mlp':
             kwargs['hypernet_hidden_dim'] = args.sac_hypernet_hidden_dim
             kwargs['hypernet_task_embedding_dim'] = args.sac_hypernet_task_embedding_dim

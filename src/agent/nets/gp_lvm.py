@@ -2,7 +2,6 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import gpytorch
 
 from collections import OrderedDict
 from itertools import chain
@@ -10,44 +9,106 @@ from itertools import chain
 from src.utils import gaussian_logprob, squash
 
 
-class ApproximateGPModel(gpytorch.models.ApproximateGP):
-    def __init__(self, inducing_points):
-        # standard
-        variational_distribution = gpytorch.variational.DeltaVariationalDistribution(
-            inducing_points.size(0))
-        variational_strategy = gpytorch.variational.UnwhitenedVariationalStrategy(
-            self, inducing_points, variational_distribution, learn_inducing_locations=True)
+import gpytorch
+from gpytorch.models.gplvm.latent_variable import *
+from gpytorch.models.gplvm.bayesian_gplvm import BayesianGPLVM
+from tqdm import trange
+from gpytorch.means import ZeroMean
+from gpytorch.mlls import VariationalELBO
+from gpytorch.priors import NormalPrior
+from gpytorch.likelihoods import GaussianLikelihood
+from gpytorch.variational import VariationalStrategy
+from gpytorch.variational import UnwhitenedVariationalStrategy
+from gpytorch.variational import CholeskyVariationalDistribution
+from gpytorch.variational import MeanFieldVariationalDistribution
+from gpytorch.kernels import ScaleKernel, RBFKernel
+from gpytorch.distributions import MultivariateNormal
 
-        # orthogonally decoupled
-        # mean_inducing_points = inducing_points
-        # covar_inducing_points = inducing_points[
-        #     np.random.randint(len(inducing_points), size=len(inducing_points) // 10)]
-        # covar_variational_strategy = gpytorch.variational.UnwhitenedVariationalStrategy(
-        #     self, covar_inducing_points,
-        #     gpytorch.variational.MeanFieldVariationalDistribution(covar_inducing_points.size(0)),
-        #     learn_inducing_locations=True
-        # )
-        # variational_strategy = gpytorch.variational.OrthogonallyDecoupledVariationalStrategy(
-        #     covar_variational_strategy, mean_inducing_points,
-        #     gpytorch.variational.DeltaVariationalDistribution(mean_inducing_points.size(0)),
-        # )
-        super().__init__(variational_strategy)
+# class ApproximateGPModel(gpytorch.models.ApproximateGP):
+#     def __init__(self, inducing_points):
+#         # standard
+#         variational_distribution = gpytorch.variational.DeltaVariationalDistribution(
+#             inducing_points.size(0))
+#         variational_strategy = gpytorch.variational.UnwhitenedVariationalStrategy(
+#             self, inducing_points, variational_distribution, learn_inducing_locations=True)
+#
+#         # orthogonally decoupled
+#         # mean_inducing_points = inducing_points
+#         # covar_inducing_points = inducing_points[
+#         #     np.random.randint(len(inducing_points), size=len(inducing_points) // 10)]
+#         # covar_variational_strategy = gpytorch.variational.UnwhitenedVariationalStrategy(
+#         #     self, covar_inducing_points,
+#         #     gpytorch.variational.MeanFieldVariationalDistribution(covar_inducing_points.size(0)),
+#         #     learn_inducing_locations=True
+#         # )
+#         # variational_strategy = gpytorch.variational.OrthogonallyDecoupledVariationalStrategy(
+#         #     covar_variational_strategy, mean_inducing_points,
+#         #     gpytorch.variational.DeltaVariationalDistribution(mean_inducing_points.size(0)),
+#         # )
+#         super().__init__(variational_strategy)
+#
+#         self.mean = gpytorch.means.ConstantMean()
+#         # self.kernel = gpytorch.kernels.ScaleKernel(
+#         #     gpytorch.kernels.RBFKernel(lengthscale_prior=None),
+#         #     outputscale_prior=None
+#         # )
+#         self.kernel = gpytorch.kernels.ScaleKernel(
+#             gpytorch.kernels.RBFKernel(lengthscale_constraint=gpytorch.constraints.Interval(1e-6, 1e-3)),
+#             outputscale_constraint=gpytorch.constraints.Interval(1e-6, 1e-3)
+#         )
+#
+#     def forward(self, x):
+#         mean = self.mean(x)
+#         covar = self.kernel(x)
+#
+#         return gpytorch.distributions.MultivariateNormal(mean, covar)
 
-        self.mean = gpytorch.means.ConstantMean()
-        # self.kernel = gpytorch.kernels.ScaleKernel(
-        #     gpytorch.kernels.RBFKernel(lengthscale_prior=None),
-        #     outputscale_prior=None
-        # )
-        self.kernel = gpytorch.kernels.ScaleKernel(
-            gpytorch.kernels.RBFKernel(lengthscale_constraint=gpytorch.constraints.Interval(1e-6, 1e-3)),
-            outputscale_constraint=gpytorch.constraints.Interval(1e-6, 1e-3)
+
+class BayesianGPLVMModel(BayesianGPLVM):
+    def __init__(self, n, data_dim, latent_dim, n_inducing):
+        self.n = n
+        self.batch_shape = torch.Size([data_dim])
+
+        # Locations Z_{d} corresponding to u_{d}, they can be randomly initialized or
+        # regularly placed with shape (D x n_inducing x latent_dim).
+        self.inducing_inputs = torch.randn(data_dim, n_inducing, latent_dim)
+
+        # Sparse Variational Formulation (inducing variables initialised as randn)
+        q_u = MeanFieldVariationalDistribution(n_inducing, batch_shape=self.batch_shape)
+        q_f = UnwhitenedVariationalStrategy(self, self.inducing_inputs, q_u, learn_inducing_locations=True)
+
+        # Define prior for X
+        X_prior_mean = torch.zeros(n, latent_dim)  # shape: N x Q
+        prior_x = NormalPrior(X_prior_mean, torch.ones_like(X_prior_mean))
+
+        # Initialise X with PCA or randn
+        X_init = torch.nn.Parameter(torch.randn(n, latent_dim))
+
+        # LatentVariable (c)
+        X = VariationalLatentVariable(n, data_dim, latent_dim, X_init, prior_x)
+
+        # For (a) or (b) change to below:
+        # X = PointLatentVariable(n, latent_dim, X_init)
+        # X = MAPLatentVariable(n, latent_dim, X_init, prior_x)
+
+        super().__init__(X, q_f)
+
+        # Kernel (acting on latent dimensions)
+        # self.mean_module = ZeroMean(ard_num_dims=latent_dim)
+        # self.covar_module = ScaleKernel(RBFKernel(ard_num_dims=latent_dim))
+        self.mean_module = gpytorch.means.ConstantMean(ard_num_dims=latent_dim)
+        self.covar_module = gpytorch.kernels.ScaleKernel(
+            gpytorch.kernels.RBFKernel(
+                ard_num_dims=latent_dim,
+                lengthscale_constraint=gpytorch.constraints.Interval(1e-4, 1e-1)),
+            outputscale_constraint=gpytorch.constraints.Interval(1e-4, 1e-1)
         )
 
     def forward(self, x):
-        mean = self.mean(x)
-        covar = self.kernel(x)
-
-        return gpytorch.distributions.MultivariateNormal(mean, covar)
+        mean_x = self.mean_module(x)
+        covar_x = self.covar_module(x)
+        dist = MultivariateNormal(mean_x, covar_x)
+        return dist
 
 
 class SacActorMainNetMlp(nn.Module):
@@ -151,103 +212,44 @@ class SacActorMainNetMlp(nn.Module):
         return log_pi
 
 
-class SacSparseGPActorHyperNetMlp(nn.Module):
-    def __init__(self, num_tasks, actor_shapes, num_inducing_points, act_func=torch.relu):
+class SacGPLVMActorHyperNetMlp(nn.Module):
+    def __init__(self, num_tasks, actor_shapes, chunk_size, latent_dim, num_inducing_points):
         super().__init__()
 
         assert isinstance(actor_shapes, OrderedDict)
 
         self.num_tasks = num_tasks
         self.actor_shapes = actor_shapes
-        self.act_fun = act_func
+        self.chunk_size = chunk_size
+        self.latent_dim = latent_dim
+        self.num_inducing_points = num_inducing_points
 
         self.num_actor_params = 0
         for actor_layer_shapes in self.actor_shapes.values():
             self.num_actor_params += np.prod(actor_layer_shapes)
-        actor_param_dims = torch.linspace(0, self.num_actor_params,
-                                          self.num_actor_params)
-        # normalize to [-1, 1]
-        self.norm_actor_param_dims = 2 * actor_param_dims / self.num_actor_params - 1
+        self.num_chunks = np.ceil(self.num_actor_params / chunk_size).astype(int)
+
+        # actor_param_dims = torch.linspace(0, self.num_actor_params,
+        #                                   self.num_actor_params)
+        # # normalize to [-1, 1]
+        # self.norm_actor_param_dims = 2 * actor_param_dims / self.num_actor_params - 1
+        # self.models = []
+        # for _ in range(num_tasks):
+        #     # rand_idxs = np.random.randint(0, len(actor_param_dims), num_inducing_points)
+        #     # inducing_points = self.norm_actor_param_dims[rand_idxs]
+        #     self.models.append(ApproximateGPModel(inducing_points))
         self.models = []
         for _ in range(num_tasks):
-            rand_idxs = np.random.randint(0, len(actor_param_dims), num_inducing_points)
-            inducing_points = self.norm_actor_param_dims[rand_idxs]
-            self.models.append(ApproximateGPModel(inducing_points))
-
-        # initialize model
-        # self.model.variational_strategy
-
-        # TODO (cyzheng): Do we need likelihood model?
-        # self.likelihood = gpytorch.likelihoods.GaussianLikelihood()
-
-        # # hypernet trunk
-        # # FIXME (cyzheng): configurable architecture
-        # self.weights = nn.ParameterDict()
-        #
-        # self.hidden_layers = [hidden_dim, hidden_dim]
-        # input_dim = task_embedding_dim
-        # for i, layer_dim in enumerate(self.hidden_layers):
-        #     # self.add_module('hidden_layer{}'.format(i),
-        #     #                 nn.Linear(input_dim, layer_dim))
-        #     # self.weights['hidden_layer{}/weight'.format(i)] = \
-        #     #     nn.Parameter(data=torch.Tensor(layer_dim, input_dim),
-        #     #                  requires_grad=True)
-        #     # self.weights['hidden_layer{}/bias'.format(i)] = \
-        #     #     nn.Parameter(data=torch.Tensor(layer_dim),
-        #     #                  requires_grad=True)
-        #     weight = nn.Parameter(data=torch.Tensor(layer_dim, input_dim),
-        #                           requires_grad=True)
-        #     nn.init.orthogonal_(weight.data)
-        #     self.weights['hidden_layer{}/weight'.format(i)] = weight
-        #
-        #     bias = nn.Parameter(data=torch.Tensor(layer_dim),
-        #                         requires_grad=True)
-        #     bias.data.fill_(0.0)
-        #     self.weights['hidden_layer{}/bias'.format(i)] = bias
-        #
-        #     input_dim = layer_dim
-        #
-        # # hypernet output layers
-        # self.output_layers = []
-        # input_dim = hidden_dim
-        # for i, shape in enumerate(actor_shapes.values()):
-        #     output_dim = int(np.prod(shape))
-        #     self.output_layers.append(output_dim)
-        #     # self.add_module('output_layer{}'.format(i),
-        #     #                 nn.Linear(input_dim, output_dim))
-        #     weight = nn.Parameter(data=torch.Tensor(output_dim, input_dim),
-        #                           requires_grad=True)
-        #     nn.init.orthogonal_(weight.data)
-        #     self.weights['output_layer{}/weight'.format(i)] = weight
-        #
-        #     bias = nn.Parameter(data=torch.Tensor(output_dim),
-        #                         requires_grad=True)
-        #     bias.data.fill_(0.0)
-        #     self.weights['output_layer{}/bias'.format(i)] = bias
-        #
-        # # task embeddings
-        # self.task_embs = nn.ParameterList()
-        # for _ in range(num_tasks):
-        #     self.task_embs.append(
-        #         nn.Parameter(data=torch.Tensor(task_embedding_dim),
-        #                      requires_grad=True)
-        #     )
-        #     torch.nn.init.normal_(self.task_embs[-1], mean=0., std=1.)
-
-    # def construct_input(self, task_idx):
-    #     batch_size = 1
-    #     task_emb = self.task_embs[task_idx]
-    #     task_emb = task_emb.expand(batch_size,
-    #                                self.task_embedding_dim)
-    #
-    #     return task_emb
+            model = BayesianGPLVMModel(self.num_chunks, self.chunk_size, self.latent_dim,
+                                       self.num_inducing_points)
+            self.models.append(model)
 
     def to(self, device):
         for idx, model in enumerate(self.models):
             self.models[idx] = model.to(device)
             # self.model = self.model.to(device)
         # self.likelihood = self.likelihood.to(device)
-        self.norm_actor_param_dims = self.norm_actor_param_dims.to(device)
+        # self.norm_actor_param_dims = self.norm_actor_param_dims.to(device)
 
         return self
 
@@ -297,17 +299,24 @@ class SacSparseGPActorHyperNetMlp(nn.Module):
 
         actor_weights = OrderedDict()
 
+        # import time
+        # start_time = time.time()
+        sample = self.models[task_idx].sample_latent_variable()
+        actor_all_layer_weights = self.models[task_idx](sample).rsample()
+        actor_all_layer_weights = actor_all_layer_weights.T.flatten()
+        # end_time = time.time()
+        # print(end_time - start_time)
+
         idx = 0
-        import time
-        start_time = time.time()
         for actor_layer_name, actor_layer_shape in self.actor_shapes.items():
             num_actor_layer_params = np.prod(actor_layer_shape)
-            norm_layer_actor_param_dims = self.norm_actor_param_dims[idx:idx + num_actor_layer_params]
+            # norm_layer_actor_param_dims = self.norm_actor_param_dims[idx:idx + num_actor_layer_params]
+            actor_layer_weight = actor_all_layer_weights[idx:idx + num_actor_layer_params]
 
             # actor_weight = F.linear(hidden,
             #                         weight=weights['output_layer{}/weight'.format(i)],
             #                         bias=weights['output_layer{}/bias'.format(i)])
-            actor_weight = self.models[task_idx](norm_layer_actor_param_dims).rsample()
+            # actor_weight = self.models[task_idx](norm_layer_actor_param_dims).rsample()
 
             # actor_weight = []
             # for i in range(np.ceil(num_actor_layer_params / 2000).astype(int)):
@@ -324,12 +333,10 @@ class SacSparseGPActorHyperNetMlp(nn.Module):
             # ).rsample()
             # actor_weight = torch.cat(weight_chunks.reshape(-1), remained_weight_chunk)
 
-            actor_weight = actor_weight.reshape(-1, *actor_layer_shape)
-            actor_weight = torch.squeeze(actor_weight, dim=0)
-            actor_weights[actor_layer_name] = actor_weight
+            actor_layer_weight = actor_layer_weight.reshape(-1, *actor_layer_shape)
+            actor_layer_weight = torch.squeeze(actor_layer_weight, dim=0)
+            actor_weights[actor_layer_name] = actor_layer_weight
 
             idx += num_actor_layer_params
-        end_time = time.time()
-        print(end_time - start_time)
 
         return actor_weights
