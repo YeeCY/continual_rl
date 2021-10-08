@@ -85,10 +85,10 @@ class BayesianGPLVMModel(BayesianGPLVM):
         X_init = torch.nn.Parameter(torch.randn(n, latent_dim))
 
         # LatentVariable (c)
-        X = VariationalLatentVariable(n, data_dim, latent_dim, X_init, prior_x)
+        # X = VariationalLatentVariable(n, data_dim, latent_dim, X_init, prior_x)
 
         # For (a) or (b) change to below:
-        # X = PointLatentVariable(n, latent_dim, X_init)
+        X = PointLatentVariable(n, latent_dim, X_init)
         # X = MAPLatentVariable(n, latent_dim, X_init, prior_x)
 
         super().__init__(X, q_f)
@@ -100,8 +100,8 @@ class BayesianGPLVMModel(BayesianGPLVM):
         self.covar_module = gpytorch.kernels.ScaleKernel(
             gpytorch.kernels.RBFKernel(
                 ard_num_dims=latent_dim,
-                lengthscale_constraint=gpytorch.constraints.Interval(1e-4, 1e-1)),
-            outputscale_constraint=gpytorch.constraints.Interval(1e-4, 1e-1)
+                lengthscale_constraint=gpytorch.constraints.Interval(1e-4, 5e-3)),
+            # outputscale_constraint=gpytorch.constraints.Interval(1e-4, 5e-3)
         )
 
     def forward(self, x):

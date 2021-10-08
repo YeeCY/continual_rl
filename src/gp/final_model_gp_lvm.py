@@ -62,20 +62,20 @@ class bGPLVM(BayesianGPLVM):
 
         # Sparse Variational Formulation (inducing variables initialised as randn)
         q_u = MeanFieldVariationalDistribution(n_inducing, batch_shape=self.batch_shape)
-        q_f = VariationalStrategy(self, self.inducing_inputs, q_u, learn_inducing_locations=True)
+        q_f = UnwhitenedVariationalStrategy(self, self.inducing_inputs, q_u, learn_inducing_locations=True)
 
         # Define prior for X
         X_prior_mean = torch.zeros(n, latent_dim)  # shape: N x Q
-        prior_x = NormalPrior(X_prior_mean, 1e-3 * torch.ones_like(X_prior_mean))
+        prior_x = NormalPrior(X_prior_mean, torch.ones_like(X_prior_mean))
 
         # Initialise X with PCA or randn
-        X_init = torch.nn.Parameter(torch.randn(n, latent_dim))
+        X_init = torch.nn.Parameter(2 * torch.randn(n, latent_dim))
 
         # LatentVariable (c)
-        X = VariationalLatentVariable(n, data_dim, latent_dim, X_init, prior_x)
+        # X = VariationalLatentVariable(n, data_dim, latent_dim, X_init, prior_x)
 
         # For (a) or (b) change to below:
-        # X = PointLatentVariable(n, latent_dim, X_init)
+        X = PointLatentVariable(n, latent_dim, X_init)
         # X = MAPLatentVariable(n, latent_dim, X_init, prior_x)
 
         super().__init__(X, q_f)
@@ -86,9 +86,7 @@ class bGPLVM(BayesianGPLVM):
         self.mean_module = gpytorch.means.ConstantMean(ard_num_dims=latent_dim)
         self.covar_module = gpytorch.kernels.ScaleKernel(
             gpytorch.kernels.RBFKernel(
-                ard_num_dims=latent_dim,
-                lengthscale_constraint=gpytorch.constraints.Interval(1e-6, 1e-4)),
-            outputscale_constraint=gpytorch.constraints.Interval(1e-6, 1e-4)
+                ard_num_dims=latent_dim)
         )
 
     def forward(self, x):
@@ -304,7 +302,12 @@ def main(args):
             output_batch = model(sample_batch)
             end_time = time.time()
             print(end_time - start_time)
-            loss = -mll(output_batch, actor_params[batch_idxs].T).sum()
+            # loss = -mll(output_batch, actor_params[batch_idxs].T).sum()
+            loss = torch.sum(output_batch.rsample())
+            # L = torch.linalg.cholesky(torch.exp(output_batch.covariance_matrix))
+            # output_rsample = output_batch.mean + L.matmul(
+            #     torch.randn(list(output_batch.mean.size()) + [1], device=L.device))[:, :, 0]
+            # loss = torch.sum(output_rsample)
             loss_list.append(loss.item())
             iterator.set_description('Loss: ' + str(float(np.round(loss.item(), 2))) + ", iter no: " + str(i))
             loss.backward()
