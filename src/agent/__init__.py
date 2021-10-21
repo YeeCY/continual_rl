@@ -334,6 +334,9 @@ def make_agent(obs_space, action_space, device, args):
         elif args.algo == 'task_embedding_hypernet_actor_sac_mlp':
             kwargs['hypernet_hidden_dim'] = args.sac_hypernet_hidden_dim
             kwargs['hypernet_task_embedding_dim'] = args.sac_hypernet_task_embedding_dim
+            kwargs['hypernet_chunked'] = args.sac_hypernet_chunked
+            kwargs['hypernet_chunk_embedding_dim'] = args.sac_hypernet_chunk_embedding_dim
+            kwargs['hypernet_chunk_size'] = args.sac_hypernet_chunk_size
             kwargs['hypernet_reg_coeff'] = args.sac_hypernet_reg_coeff
             kwargs['hypernet_on_the_fly_reg'] = args.sac_hypernet_on_the_fly_reg
             kwargs['hypernet_online_uniform_reg'] = args.sac_hypernet_online_uniform_reg

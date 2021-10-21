@@ -7,7 +7,8 @@ import torch.nn.functional as F
 
 import utils
 from agent.sac.base_sac_agent import SacMlpAgent
-from agent.nets.hypernet import SacActorMainNetMlp, SacTaskEmbeddingActorHyperNetMlp
+from agent.nets.hypernet import SacActorMainNetMlp, SacTaskEmbeddingChunkedActorHyperNetMlp, \
+    SacTaskEmbeddingActorHyperNetMlp
 from agent.network import SacCriticMlp
 
 
@@ -33,6 +34,9 @@ class TaskEmbeddingHyperNetActorSacMlpAgent(SacMlpAgent):
             batch_size=128,
             hypernet_hidden_dim=128,
             hypernet_task_embedding_dim=16,
+            hypernet_chunked=False,
+            hypernet_chunk_embedding_dim=64,
+            hypernet_chunk_size=1000,
             hypernet_reg_coeff=0.01,
             hypernet_on_the_fly_reg=False,
             hypernet_online_uniform_reg=False,
@@ -45,6 +49,9 @@ class TaskEmbeddingHyperNetActorSacMlpAgent(SacMlpAgent):
 
         self.hypernet_hidden_dim = hypernet_hidden_dim
         self.hypernet_task_embedding_dim = hypernet_task_embedding_dim
+        self.hypernet_chunked = hypernet_chunked
+        self.hypernet_chunk_embedding_dim = hypernet_chunk_embedding_dim
+        self.hypernet_chunk_size = hypernet_chunk_size
         self.hypernet_reg_coeff = hypernet_reg_coeff
         self.hypernet_on_the_fly_reg = hypernet_on_the_fly_reg
         self.hypernet_online_uniform_reg = hypernet_online_uniform_reg
@@ -71,11 +78,23 @@ class TaskEmbeddingHyperNetActorSacMlpAgent(SacMlpAgent):
         ).to(self.device)
 
         num_tasks = len(self.action_shape)
-        actor_shapes = self.actor.weight_shapes
-        self.hypernet = SacTaskEmbeddingActorHyperNetMlp(
-            num_tasks, actor_shapes, self.hypernet_hidden_dim,
-            self.hypernet_task_embedding_dim
-        ).to(self.device)
+        actor_shapes = self.actor.weight_shapes  # actor weights per task = 143880
+        if self.hypernet_chunked:
+            # chunked hypernet weights = 155880
+            # chunked hypernet task embeddings = 16 * N = 16N
+            # chunked hypernet chunk embeddings = 64 * 144 * N = 9216N
+            self.hypernet = SacTaskEmbeddingChunkedActorHyperNetMlp(
+                num_tasks, actor_shapes, self.hypernet_hidden_dim,
+                self.hypernet_task_embedding_dim, self.hypernet_chunk_size,
+                self.hypernet_chunk_embedding_dim
+            ).to(self.device)
+        else:
+            # hypernet weights = 18579208
+            # hypernet task embeddings = 16 * N = 16N
+            self.hypernet = SacTaskEmbeddingActorHyperNetMlp(
+                num_tasks, actor_shapes, self.hypernet_hidden_dim,
+                self.hypernet_task_embedding_dim
+            ).to(self.device)
 
         self.critic = SacCriticMlp(
             self.obs_shape, self.action_shape[0], self.critic_hidden_dim
@@ -101,10 +120,18 @@ class TaskEmbeddingHyperNetActorSacMlpAgent(SacMlpAgent):
         self.hypernet_weight_optimizer = torch.optim.Adam(
             self.hypernet.weights.values(), lr=self.actor_lr,
         )
-        self.hypernet_emb_optimizer = torch.optim.Adam(
-            [self.hypernet.task_embs[self.task_count]],
-            lr=self.actor_lr
-        )
+        if self.hypernet_chunked:
+            self.hypernet_emb_optimizer = torch.optim.Adam(
+                [self.hypernet.task_embs[self.task_count],
+                 *self.hypernet.chunk_embs[
+                  self.task_count * self.hypernet.num_chunk:(self.task_count + 1) * self.hypernet.num_chunk]],
+                lr=self.actor_lr
+            )
+        else:
+            self.hypernet_emb_optimizer = torch.optim.Adam(
+                [self.hypernet.task_embs[self.task_count]],
+                lr=self.actor_lr
+            )
         self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), lr=self.critic_lr)
 
         self.log_alpha_optimizer = torch.optim.Adam([self.log_alpha], lr=self.alpha_lr)
@@ -116,9 +143,18 @@ class TaskEmbeddingHyperNetActorSacMlpAgent(SacMlpAgent):
         self.hypernet_weight_optimizer = torch.optim.Adam(
             self.hypernet.weights.values(), lr=self.actor_lr,
         )
-        self.hypernet_emb_optimizer = torch.optim.Adam(
-            [self.hypernet.task_embs[self.task_count]], lr=self.actor_lr,
-        )
+        if self.hypernet_chunked:
+            self.hypernet_emb_optimizer = torch.optim.Adam(
+                [self.hypernet.task_embs[self.task_count],
+                 *self.hypernet.chunk_embs[
+                  self.task_count * self.hypernet.num_chunk:(self.task_count + 1) * self.hypernet.num_chunk]],
+                lr=self.actor_lr
+            )
+        else:
+            self.hypernet_emb_optimizer = torch.optim.Adam(
+                [self.hypernet.task_embs[self.task_count]],
+                lr=self.actor_lr
+            )
         self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), lr=self.critic_lr)
         self.log_alpha_optimizer = torch.optim.Adam([self.log_alpha], lr=self.alpha_lr)
 
@@ -137,7 +173,7 @@ class TaskEmbeddingHyperNetActorSacMlpAgent(SacMlpAgent):
             mu, pi, _, _ = self.actor(obs, compute_log_pi=False, weights=weights)
             action = pi if sample else mu
             action = action.clamp(*self.action_range[task_idx])
-            assert action.ndim == 2 and action.shape[0] == 1
+            assert action.ndim == 2 and action.shape[0] == obs.shape[0]
 
         return utils.to_np(action)
 
@@ -282,7 +318,7 @@ class TaskEmbeddingHyperNetActorSacMlpAgent(SacMlpAgent):
                 state['step'] += 1
 
                 if group['weight_decay'] != 0:
-                    #grad.add_(group['weight_decay'], p.data)
+                    # grad.add_(group['weight_decay'], p.data)
                     grad.add(group['weight_decay'], p.data)
 
                 # Decay the first and second moment running average coefficient
@@ -295,7 +331,7 @@ class TaskEmbeddingHyperNetActorSacMlpAgent(SacMlpAgent):
                     # Use the max. for normalizing running avg. of gradient
                     denom = max_exp_avg_sq.sqrt().add_(group['eps'])
                 else:
-                    #denom = exp_avg_sq.sqrt().add_(group['eps'])
+                    # denom = exp_avg_sq.sqrt().add_(group['eps'])
                     denom = exp_avg_sq.sqrt() + group['eps']
 
                 bias_correction1 = 1 - beta1 ** state['step']

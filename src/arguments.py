@@ -146,6 +146,9 @@ def parse_args():
 	# sac hypernet
 	parser.add_argument('--sac_hypernet_hidden_dim', default=128, type=int)
 	parser.add_argument('--sac_hypernet_task_embedding_dim', default=16, type=int)
+	parser.add_argument('--sac_hypernet_chunked', default=False, type=str2bool)
+	parser.add_argument('--sac_hypernet_chunk_embedding_dim', default=64, type=int)
+	parser.add_argument('--sac_hypernet_chunk_size', default=1000, type=int)
 	parser.add_argument('--sac_hypernet_reg_coeff', default=0.1, type=float)
 	parser.add_argument('--sac_hypernet_on_the_fly_reg', default=False, type=str2bool)
 	parser.add_argument('--sac_hypernet_online_uniform_reg', default=False, type=str2bool)
