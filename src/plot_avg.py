@@ -363,6 +363,16 @@ CURVE_FORMAT = {
         'style': '-',
         'label': 'task_embedding_hypernet_actor_256_reg_coeff0.1_online_uniform',
     },
+    'task_embedding_chunked_hypernet_actor_256_reg_coeff0.1': {
+        'color': [204, 153, 255],
+        'style': '-',
+        'label': 'task_embedding_chunked_hypernet_actor_256_reg_coeff0.1',
+    },
+    'task_embedding_chunked_hypernet_actor_256_reg_coeff0.1_online_uniform': {
+        'color': [139, 101, 8],
+        'style': '-',
+        'label': 'task_embedding_chunked_hypernet_actor_256_reg_coeff0.1_online_uniform',
+    },
 
     'task_embedding_hypernet_actor_256_ewc_actor_loss_lambda5000': {
         'color': [255, 0, 0],
