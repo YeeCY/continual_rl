@@ -10,6 +10,7 @@ from src.utils import gaussian_logprob, squash
 
 class SacActorMainNetMlp(nn.Module):
     """torch.distributions implementation of an diagonal Gaussian policy with MLP"""
+
     def __init__(self, obs_shape, action_shape, hidden_dim, log_std_min, log_std_max,
                  act_func=torch.relu):
         super().__init__()
@@ -186,11 +187,11 @@ class SacTaskEmbeddingActorHyperNetMlp(nn.Module):
             input_dim = layer_dim
 
         # hypernet output layers
-        self.output_layers = []
+        # self.output_layers = []
         input_dim = hidden_dim
         for i, shape in enumerate(actor_shapes.values()):
             output_dim = int(np.prod(shape))
-            self.output_layers.append(output_dim)
+            # self.output_layers.append(output_dim)
             # self.add_module('output_layer{}'.format(i),
             #                 nn.Linear(input_dim, output_dim))
             weight = nn.Parameter(data=torch.Tensor(output_dim, input_dim),
@@ -255,5 +256,141 @@ class SacTaskEmbeddingActorHyperNetMlp(nn.Module):
             actor_weight = actor_weight.reshape(-1, *actor_layer_shape)
             actor_weight = torch.squeeze(actor_weight, dim=0)
             actor_weights[actor_layer_name] = actor_weight
+
+        return actor_weights
+
+
+class SacTaskEmbeddingChunkedActorHyperNetMlp(nn.Module):
+    def __init__(self, num_tasks, actor_shapes, hidden_dim,
+                 task_embedding_dim, chunk_size, chunk_embedding_dim, act_func=torch.relu):
+        super().__init__()
+
+        assert isinstance(actor_shapes, OrderedDict)
+
+        self.num_tasks = num_tasks
+        self.actor_shapes = actor_shapes
+        self.hidden_dim = hidden_dim
+        self.task_embedding_dim = task_embedding_dim
+        self.chunk_size = chunk_size
+        self.chunk_embedding_dim = chunk_embedding_dim
+        self.act_fun = act_func
+
+        # hypernet trunk
+        # FIXME (cyzheng): configurable architecture
+        self.weights = nn.ParameterDict()
+
+        self.hidden_layers = [hidden_dim, hidden_dim]
+        input_dim = task_embedding_dim + chunk_embedding_dim
+        for i, layer_dim in enumerate(self.hidden_layers):
+            # self.add_module('hidden_layer{}'.format(i),
+            #                 nn.Linear(input_dim, layer_dim))
+            # self.weights['hidden_layer{}/weight'.format(i)] = \
+            #     nn.Parameter(data=torch.Tensor(layer_dim, input_dim),
+            #                  requires_grad=True)
+            # self.weights['hidden_layer{}/bias'.format(i)] = \
+            #     nn.Parameter(data=torch.Tensor(layer_dim),
+            #                  requires_grad=True)
+            weight = nn.Parameter(data=torch.Tensor(layer_dim, input_dim),
+                                  requires_grad=True)
+            nn.init.orthogonal_(weight.data)
+            self.weights['hidden_layer{}/weight'.format(i)] = weight
+
+            bias = nn.Parameter(data=torch.Tensor(layer_dim),
+                                requires_grad=True)
+            bias.data.fill_(0.0)
+            self.weights['hidden_layer{}/bias'.format(i)] = bias
+
+            input_dim = layer_dim
+
+        # hypernet output layers
+        input_dim = hidden_dim
+        weight = nn.Parameter(data=torch.Tensor(chunk_size, input_dim),
+                              requires_grad=True)
+        nn.init.orthogonal_(weight.data)
+        self.weights['output_layer/weight'] = weight
+        bias = nn.Parameter(data=torch.Tensor(chunk_size),
+                            requires_grad=True)
+        bias.data.fill_(0.0)
+        self.weights['output_layer/bias'] = bias
+
+        num_actor_weight = 0
+        for shape in actor_shapes.values():
+            num_actor_weight += np.prod(shape)
+        # for i, shape in enumerate(actor_shapes.values()):
+        #     output_dim = int(np.prod(shape))
+        #     # self.add_module('output_layer{}'.format(i),
+        #     #                 nn.Linear(input_dim, output_dim))
+        #     weight = nn.Parameter(data=torch.Tensor(output_dim, input_dim),
+        #                           requires_grad=True)
+        #     nn.init.orthogonal_(weight.data)
+        #     self.weights['output_layer{}/weight'.format(i)] = weight
+        #
+        #     bias = nn.Parameter(data=torch.Tensor(output_dim),
+        #                         requires_grad=True)
+        #     bias.data.fill_(0.0)
+        #     self.weights['output_layer{}/bias'.format(i)] = bias
+        self.num_chunk = np.ceil(num_actor_weight / chunk_size).astype(int)
+
+        # task embeddings
+        self.task_embs = nn.ParameterList()
+        self.chunk_embs = nn.ParameterList()
+        for _ in range(num_tasks):
+            self.task_embs.append(
+                nn.Parameter(data=torch.Tensor(task_embedding_dim),
+                             requires_grad=True)
+            )
+            torch.nn.init.normal_(self.task_embs[-1], mean=0., std=1.)
+
+            for _ in range(self.num_chunk):
+                self.chunk_embs.append(
+                    nn.Parameter(data=torch.Tensor(chunk_embedding_dim),
+                                 requires_grad=True)
+                )
+                torch.nn.init.normal_(self.chunk_embs[-1], mean=0., std=1.)
+
+    def construct_input(self, task_idx):
+        chunk_emb = torch.stack(
+            list(self.chunk_embs[task_idx * self.num_chunk:(task_idx + 1) * self.num_chunk])
+        )
+
+        task_emb = self.task_embs[task_idx]
+        task_emb = task_emb.expand(self.num_chunk,
+                                   self.task_embedding_dim)
+
+        task_chunk_emb = torch.cat([task_emb, chunk_emb], dim=-1)
+
+        return task_chunk_emb
+
+    def forward(self, task_idx, weights=None):
+        # (cyzheng): add weights parameter for output regularization
+        if weights is None:
+            weights = self.weights
+
+        hidden = self.construct_input(task_idx)
+
+        for i in range(len(self.hidden_layers)):
+            hidden = F.linear(hidden,
+                              weight=weights['hidden_layer{}/weight'.format(i)],
+                              bias=weights['hidden_layer{}/bias'.format(i)])
+            hidden = self.act_fun(hidden)
+
+        outputs = F.linear(hidden,
+                           weight=weights['output_layer/weight'],
+                           bias=weights['output_layer/bias'])
+        outputs = outputs.reshape(-1)
+
+        idx = 0
+        actor_weights = OrderedDict()
+        for actor_layer_name, actor_layer_shape in self.actor_shapes.items():
+            #     actor_weight = F.linear(hidden,
+            #                             weight=weights['output_layer{}/weight'.format(i)],
+            #                             bias=weights['output_layer{}/bias'.format(i)])
+            #     actor_weight = actor_weight.reshape(-1, *actor_layer_shape)
+            #     actor_weight = torch.squeeze(actor_weight, dim=0)
+            #     actor_weights[actor_layer_name] = actor_weight
+            num_actor_layer_weight = np.prod(actor_layer_shape)
+            actor_weights[actor_layer_name] = outputs[idx:idx + num_actor_layer_weight].reshape(actor_layer_shape)
+
+            idx += num_actor_layer_weight
 
         return actor_weights
